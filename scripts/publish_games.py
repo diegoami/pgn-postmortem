@@ -15,6 +15,10 @@ writes, inside <data-dir>:
                                    (NAG $2 Mistake, $4 Blunder, or $9 Miss)
                                    played by --player
 
+Pass --player '*' to report blunders by both sides in every game instead of
+filtering to one named player - useful for games where neither side is
+"you", e.g. the master games under examples/.
+
 Whenever the source PGN attaches a side variation directly at a blunder's
 decision point, its full line (not just the first move) is rendered under
 "Better was:" alongside the diagram.
@@ -35,6 +39,7 @@ Usage:
     .venv/bin/python scripts/publish_games.py --player "Magnus Carlsen"
     .venv/bin/python scripts/publish_games.py --player myusername --source analyzed_games
     .venv/bin/python scripts/publish_games.py --player myusername --data-dir /path/to/games
+    .venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games
     .venv/bin/python scripts/publish_games.py   # reads CHESS_PLAYER/CHESS_DATA_DIR from .env
 """
 from __future__ import annotations
@@ -65,6 +70,11 @@ GAMES_OUT_DIR: Path
 # with these NAGs: $2 = Mistake, $4 = Blunder, $9 = Miss (a non-standard
 # reuse of that code). All three count as a "blunder" here, when present.
 BLUNDER_NAGS = {chess.pgn.NAG_MISTAKE, chess.pgn.NAG_BLUNDER, 9}
+
+# --player '*' (or CHESS_PLAYER=*) reports blunders by both sides instead of
+# filtering to a single named player - useful for games where neither side
+# is "you", e.g. the bundled examples/ master games.
+ALL_PLAYERS = "*"
 
 NAG_LABELS = {
     chess.pgn.NAG_GOOD_MOVE: "Good",
@@ -114,6 +124,20 @@ def player_color(game: chess.pgn.Game) -> chess.Color | None:
     return None
 
 
+def blunder_colors(game: chess.pgn.Game) -> set[chess.Color]:
+    """Which side(s)' moves should be scanned for blunders: both, under the
+    --player '*' wildcard, or just the configured player's color (empty if
+    that player isn't in this game at all)."""
+    if PLAYER_NAME == ALL_PLAYERS:
+        return {chess.WHITE, chess.BLACK}
+    color = player_color(game)
+    return {color} if color is not None else set()
+
+
+def display_player_name() -> str:
+    return "both players" if PLAYER_NAME == ALL_PLAYERS else PLAYER_NAME
+
+
 def move_label(step: dict) -> str:
     letter = "." if step["mover_color"] == chess.WHITE else "..."
     return f"{step['move_number']}{letter} {step['san']}"
@@ -142,7 +166,7 @@ def format_named_line(board_before: chess.Board, moves_san: tuple[str, ...]) -> 
     return " ".join(parts)
 
 
-def analyze_opening(book: OpeningBook, steps: list[dict], color: chess.Color | None, headers: chess.pgn.Headers) -> dict:
+def analyze_opening(book: OpeningBook, steps: list[dict], colors: set[chess.Color], headers: chess.pgn.Headers) -> dict:
     """Describe how far the game matches a cataloged named opening line
     (see scripts/openings.py). Returns a dict with:
       message           - summary sentence
@@ -172,7 +196,7 @@ def analyze_opening(book: OpeningBook, steps: list[dict], color: chess.Color | N
 
     last_book_step = steps[in_book_plies - 1]
     dev_step = steps[in_book_plies]
-    if color is not None and dev_step["mover_color"] == color:
+    if PLAYER_NAME != ALL_PLAYERS and dev_step["mover_color"] in colors:
         who = PLAYER_NAME
     else:
         who = headers.get("White") if dev_step["mover_color"] == chess.WHITE else headers.get("Black")
@@ -304,15 +328,15 @@ def mainline_steps(game: chess.pgn.Game) -> list[dict]:
     return steps
 
 
-def find_blunders(steps: list[dict], color: chess.Color) -> list[dict]:
-    """From the flattened mainline, collect every move by `color` whose NAG
-    marks it a Mistake or Blunder, together with the movetext played since
-    the previous blunder (or the start of the game) and, where the source
-    PGN offers one, the engine's suggested better move."""
+def find_blunders(steps: list[dict], colors: set[chess.Color]) -> list[dict]:
+    """From the flattened mainline, collect every move by a side in `colors`
+    whose NAG marks it a Mistake or Blunder, together with the movetext
+    played since the previous blunder (or the start of the game) and, where
+    the source PGN offers one, the engine's suggested better move."""
     blunders = []
     lead_in_start = 0
     for i, step in enumerate(steps):
-        if step["mover_color"] == color and BLUNDER_NAGS & set(step["nags"]):
+        if step["mover_color"] in colors and BLUNDER_NAGS & set(step["nags"]):
             blunder = dict(step)
             blunder["nags"] = sorted(BLUNDER_NAGS & set(step["nags"]))
             blunder["lead_in"] = format_movetext(steps[lead_in_start:i])
@@ -368,7 +392,7 @@ def write_game_markdown(
     index: str,
     pgn_path: Path,
     game: chess.pgn.Game,
-    color: chess.Color | None,
+    colors: set[chess.Color],
     blunders_with_svg: list[tuple[str, dict]],
     opening: dict,
     opening_svg_name: str | None,
@@ -406,18 +430,21 @@ def write_game_markdown(
         parts.append(opening["message"])
         parts.append("")
 
-    parts.append(f"## Blunders by {PLAYER_NAME}")
+    parts.append(f"## Blunders by {display_player_name()}")
     parts.append("")
-    if color is None:
+    if not colors:
         parts.append(f"_{PLAYER_NAME} is not a player in this game._")
+        parts.append("")
     elif not blunders_with_svg:
-        parts.append(f"No blunders (Mistake or worse) by {PLAYER_NAME} found in this game.")
+        parts.append(f"No blunders (Mistake or worse) by {display_player_name()} found in this game.")
+        parts.append("")
     else:
         for n, (svg_name, b) in enumerate(blunders_with_svg, start=1):
             labels = "/".join(NAG_LABELS.get(nag, f"${nag}") for nag in b["nags"])
             move_no = b["move_number"]
             letter = "." if b["mover_color"] == chess.WHITE else "..."
-            parts.append(f"### Move {move_no}{letter} {b['san']} ({labels})")
+            by = f" by {white if b['mover_color'] == chess.WHITE else black}" if PLAYER_NAME == ALL_PLAYERS else ""
+            parts.append(f"### Move {move_no}{letter} {b['san']}{by} ({labels})")
             parts.append("")
             if b["lead_in"]:
                 lead_label = "Moves from the start of the game" if n == 1 else "Moves since the previous diagram"
@@ -459,10 +486,10 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
     dest_pgn = game_dir / f"{index}.pgn"
     shutil.copyfile(pgn_path, dest_pgn)
 
-    color = player_color(game)
+    colors = blunder_colors(game)
     steps = mainline_steps(game)
-    blunders = find_blunders(steps, color) if color is not None else []
-    opening = analyze_opening(book, steps, color, game.headers)
+    blunders = find_blunders(steps, colors)
+    opening = analyze_opening(book, steps, colors, game.headers)
 
     blunders_with_svg = []
     for i, b in enumerate(blunders, start=1):
@@ -480,7 +507,7 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
             render_svg(dev_step["board_before"], dev_step["move"], dev_step["mover_color"]), encoding="utf-8"
         )
 
-    write_game_markdown(index, pgn_path, game, color, blunders_with_svg, opening, opening_svg_name)
+    write_game_markdown(index, pgn_path, game, colors, blunders_with_svg, opening, opening_svg_name)
 
     return {
         "index": index,
@@ -490,7 +517,8 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
 
 
 def write_index(entries: list[dict]) -> None:
-    lines = [f"# {PLAYER_NAME}'s Games", "", "| # | Date | White | Black | Result | Opening | Blunders |", "|---|---|---|---|---|---|---|"]
+    title = "All Games" if PLAYER_NAME == ALL_PLAYERS else f"{PLAYER_NAME}'s Games"
+    lines = [f"# {title}", "", "| # | Date | White | Black | Result | Opening | Blunders |", "|---|---|---|---|---|---|---|"]
     for e in entries:
         h = e["headers"]
         eco = h.get("ECO", "")
@@ -515,7 +543,8 @@ def main() -> None:
     parser.add_argument(
         "--player",
         default=os.environ.get("CHESS_PLAYER"),
-        help="whose blunders to report, matched against the PGN White/Black headers "
+        help="whose blunders to report, matched against the PGN White/Black headers, "
+        "or '*' to report blunders by both sides in every game "
         "(required; can also be set via CHESS_PLAYER in .env or the real environment)",
     )
     parser.add_argument(

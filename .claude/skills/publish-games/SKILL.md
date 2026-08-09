@@ -44,6 +44,7 @@ games". Reach for the individual steps below only when a custom flag is actually
 ```bash
 .venv/bin/python scripts/analyze_games.py
 .venv/bin/python scripts/analyze_games.py --depth 18  # fixed depth instead of the 0.3s default
+.venv/bin/python scripts/analyze_games.py --blunder-threshold 25 --mistake-threshold 15  # stricter
 ```
 
 (No flags needed if `.env` is configured — `CHESS_DATA_DIR` from there is used automatically. Add
@@ -57,9 +58,17 @@ existing games pick up the change too - don't forget this when you've just edite
 
 For every `daily_games/<id>.pgn` this writes `analyzed_games/<id>.pgn`: mainline moves only (the
 source's variations/NAGs stripped), with our own eval comment on every move (pawns, White's POV, e.g.
-`{+0.23}`) and our own NAG when centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake
-≥100cp, `$4` Blunder ≥300cp, for the side that played the move). A flagged move gets two side
-variations (each capped at `--pv-length` half-moves, default 8), each ending with a standard PGN
+`{+0.23}`) and our own NAG when **win percentage lost** (not raw centipawns) crosses a threshold (`$6`
+Inaccuracy, `$2` Mistake, `$4` Blunder, for the side that played the move). Centipawns are converted to
+a 0-100 win% via `win_percent()`, the same logistic fit [lichess uses](https://lichess.org/page/accuracy)
+— this matters because the same cp swing means very different things in an equal position vs. an
+already-decided one (e.g. a huge cp swing that still leaves the mover completely winning shouldn't
+count the same as an equal-position blunder). Thresholds default to lichess's own (10/20/30 win%
+points) and are configurable via `--inaccuracy-threshold`/`--mistake-threshold`/`--blunder-threshold`
+on `analyze_games.py`, or `ANALYSIS_INACCURACY_PCT`/`ANALYSIS_MISTAKE_PCT`/`ANALYSIS_BLUNDER_PCT` in
+`.env` (a flag always wins over `.env`). Same pattern for search effort: `--time`/`--depth` or
+`ANALYSIS_TIME`/`ANALYSIS_DEPTH`. A flagged move gets two side variations (each capped at `--pv-length`
+half-moves, default 8), each ending with a standard PGN
 position-evaluation NAG (`$10 =`, `$14 +=`, `$15 =+`, `$16 ±`, `$17 ∓`, `$18 +-`, `$19 -+`, always from
 White's POV, via `classify_position()`):
 - off the position *before* the move, when Stockfish's top choice there differed from what was played:
@@ -102,7 +111,9 @@ For every `<source>/<id>.pgn` it writes:
   theory (only written if it did)
 
 A "blunder" means a move played by the configured player carrying NAG `$2` (Mistake), `$4` (Blunder),
-or `$9` (Miss).
+or `$9` (Miss). `--player '*'` (or `CHESS_PLAYER=*`) reports blunders by both sides in every game
+instead of filtering to one name — useful when neither side is "the configured player", e.g. a folder
+of master games.
 
 **Opening theory** (via `scripts/openings.py`, backed by `data/openings/*.tsv` — the
 [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) named-line dataset,

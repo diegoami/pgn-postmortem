@@ -34,11 +34,21 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
 
 2. **`scripts/analyze_games.py`** re-analyzes each game independently with a local Stockfish engine
    and writes a clean copy to **`analyzed_games/<id>.pgn`**: mainline moves only (the source's own
-   variations/NAGs stripped), an eval comment on every move (pawns, White's POV, e.g. `{+0.23}`), our
-   own NAG when a move's centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake
-   ≥100cp, `$4` Blunder ≥300cp), and, for a flagged move, two side variations capturing Stockfish's own
-   view of the position, each ending in a standard PGN position-evaluation NAG (`$10`/`$14`.../`$19`,
-   i.e. `=`, `+=`, `=+`, `±`, `∓`, `+-`, `-+`, always from White's POV):
+   variations/NAGs stripped), an eval comment on every move (pawns, White's POV, e.g. `{+0.23}`), and
+   our own NAG when a move's **win percentage lost** crosses a threshold (`$6` Inaccuracy, `$2`
+   Mistake, `$4` Blunder). Win% (not raw centipawns) is the signal because the same centipawn swing
+   means very different things in an equal position versus an already-decided one — e.g. blundering a
+   mate-in-4 into a mate-in-9 loses ~0 win% despite a huge cp swing, and shouldn't count the same as
+   the same swing near equality. Centipawns are converted via the logistic fit
+   [lichess uses](https://lichess.org/page/accuracy) (fit to real game outcomes at various evals), and
+   thresholds default to lichess's own (10/20/30 win% points), overridable with
+   `--inaccuracy-threshold`/`--mistake-threshold`/`--blunder-threshold` (or `ANALYSIS_INACCURACY_PCT`/
+   `ANALYSIS_MISTAKE_PCT`/`ANALYSIS_BLUNDER_PCT` in `.env`), same for search effort via `--time`/`--depth`
+   (or `ANALYSIS_TIME`/`ANALYSIS_DEPTH`) — a flag always wins over `.env`. For a flagged move, two side
+   variations capture Stockfish's own view of the position, each ending in a standard PGN
+   position-evaluation NAG (`$10`/`$14`.../`$19`, i.e. `=`, `+=`, `=+`, `±`, `∓`, `+-`, `-+`, always
+   from White's POV, unaffected by the threshold change above — those describe the resulting
+   *position*, not the move that got there):
    - off the position *before* the move: the engine's actual best move there and how it refutes the
      blunder, e.g. `( 8. dxc6 Qxd1+ 9. Kxd1 bxc6 10. e4 Nd7 11. a3 Nb6 $10 )` — read on the page as
      **Better was**
@@ -51,6 +61,7 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
    ```bash
    .venv/bin/python scripts/analyze_games.py            # 0.3s of search per position (default)
    .venv/bin/python scripts/analyze_games.py --depth 18  # or a fixed depth instead
+   .venv/bin/python scripts/analyze_games.py --blunder-threshold 25 --mistake-threshold 15
    ```
 
    `analyzed_games/` is meant to be committed to git, so rebuilding the docs doesn't require
@@ -70,7 +81,9 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
 
    `--player` is matched case-insensitively against the PGN's `White`/`Black` headers and is
    **required** — there's no default. A game where that name isn't a player still gets a page, just
-   without a blunders section.
+   without a blunders section. Pass `--player '*'` to report blunders by *both* sides in every game
+   instead of filtering to one name — useful when neither side is "you", e.g. a folder of annotated
+   master games.
 
    The **Opening theory** section uses `scripts/openings.py`, backed by the
    [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) dataset
@@ -112,7 +125,7 @@ either can also come from a `.env` file instead:
 ```bash
 cp .env.example .env
 # then edit .env:
-#   CHESS_PLAYER=yourusername
+#   CHESS_PLAYER=yourusername   (or '*' to report blunders by both sides in every game)
 #   CHESS_DATA_DIR=/path/to/your/games   (omit to use this repo's own checkout)
 ```
 
