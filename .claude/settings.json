@@ -11,13 +11,13 @@
       "Bash(python3 -m venv .venv)",
       "Bash(.venv/bin/pip install *)",
       "Bash(.venv/bin/python -c \"import chess, chess.pgn, chess.svg; print\\('chess', chess.__version__\\)\")",
-      "Bash(mkdir -p /home/diego/projects/chess_with_claude/scripts)",
+      "Bash(mkdir -p /home/diego/projects/pgn-postmortem/scripts)",
       "Bash(.venv/bin/python scripts/publish_games.py)",
       "Bash(.venv/bin/pip freeze *)",
-      "Bash(mkdir -p /home/diego/projects/chess_with_claude/.claude/skills/publish-games)",
+      "Bash(mkdir -p /home/diego/projects/pgn-postmortem/.claude/skills/publish-games)",
       "Edit(/.claude/skills/publish-games/**)",
       "Bash(.venv/bin/python3 -)",
-      "Bash(grep -n '\\\\$2.*Mistake\\\\|NAG' /home/diego/projects/chess_with_claude/.claude/skills/publish-games/SKILL.md)",
+      "Bash(grep -n '\\\\$2.*Mistake\\\\|NAG' /home/diego/projects/pgn-postmortem/.claude/skills/publish-games/SKILL.md)",
       "Bash(stockfish --help)",
       "Bash(dpkg -l)",
       "Bash(.venv/bin/python scripts/analyze_games.py --time 0.3)",
@@ -40,11 +40,11 @@
       "Bash(.venv/bin/python -m py_compile scripts/analyze_games.py)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(cd /home/diego/projects/chess_with_claude *)"
+      "Bash(cd /home/diego/projects/pgn-postmortem *)"
     ],
     "additionalDirectories": [
-      "/home/diego/projects/chess_with_claude",
-      "/home/diego/projects/chess_with_claude/.claude/skills"
+      "/home/diego/projects/pgn-postmortem",
+      "/home/diego/projects/pgn-postmortem/.claude/skills"
     ]
   }
 }

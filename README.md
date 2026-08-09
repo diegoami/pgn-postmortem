@@ -1,4 +1,4 @@
-# chess_with_claude
+# pgn-postmortem
 
 Turns a folder of PGN chess games into a browsable set of GitHub-viewable Markdown pages, highlighting
 every blunder a chosen player made — with a board diagram before each one, the engine's refutation,
