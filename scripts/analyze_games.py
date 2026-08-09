@@ -29,14 +29,16 @@ clean, consistently-annotated copy to analyzed_games/<id>.pgn:
     symbol after the line
 
 Reads <data-dir>/daily_games/*.pgn and writes <data-dir>/analyzed_games/*.pgn.
-<data-dir> can be this same repo, or (as in this project's own setup) a
-separate sibling "data repo" holding just the games/analysis/docs, kept apart
-from these scripts. Resolved as: --data-dir, else $CHESS_DATA_DIR, else this
-repo's own checkout directory.
+Each daily_games/<id>.pgn must hold exactly one game - see read_single_game()
+in pgn_io.py for why. <data-dir> can be this same repo, or a separate
+repo/directory holding just the games/analysis/docs, kept apart from these
+scripts. Resolved as: --data-dir, else CHESS_DATA_DIR (from .env or the real
+environment), else this repo's own checkout directory. See .env.example.
 
 Usage:
     .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
     .venv/bin/python scripts/analyze_games.py --data-dir /path/to/games
+    .venv/bin/python scripts/analyze_games.py   # reads CHESS_DATA_DIR from .env
 """
 from __future__ import annotations
 
@@ -49,6 +51,8 @@ from pathlib import Path
 import chess
 import chess.engine
 import chess.pgn
+
+from pgn_io import load_dotenv, read_single_game
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = REPO_ROOT
@@ -126,10 +130,8 @@ def attach_line(
 
 
 def analyze_game(
-    engine: chess.engine.SimpleEngine, limit: chess.engine.Limit, pgn_path: Path, pv_plies: int
+    engine: chess.engine.SimpleEngine, limit: chess.engine.Limit, source_game: chess.pgn.Game, pv_plies: int
 ) -> chess.pgn.Game:
-    with pgn_path.open(encoding="utf-8") as fh:
-        source_game = chess.pgn.read_game(fh)
     moves = list(source_game.mainline_moves())
 
     out_game = chess.pgn.Game()
@@ -183,6 +185,8 @@ def analyze_game(
 
 
 def main() -> None:
+    load_dotenv(REPO_ROOT / ".env")
+
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--time", type=float, default=0.3, help="seconds of search per position (default 0.3)")
     parser.add_argument("--depth", type=int, default=None, help="fixed search depth instead of a time limit")
@@ -193,14 +197,17 @@ def main() -> None:
         "--data-dir",
         default=None,
         help=f"directory holding daily_games/ and analyzed_games/ - your own repo, or a "
-        f"separate data repo (default: $CHESS_DATA_DIR, else this repo's own checkout, "
-        f"currently {DEFAULT_DATA_DIR})",
+        f"separate data repo (default: CHESS_DATA_DIR from .env or the real environment, "
+        f"else this repo's own checkout, currently {DEFAULT_DATA_DIR})",
     )
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir or os.environ.get("CHESS_DATA_DIR") or DEFAULT_DATA_DIR).resolve()
     if not data_dir.is_dir():
-        print(f"error: data dir not found: {data_dir}\nPass --data-dir, or set $CHESS_DATA_DIR.", file=sys.stderr)
+        print(
+            f"error: data dir not found: {data_dir}\nPass --data-dir, or set CHESS_DATA_DIR in .env.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     games_src_dir = data_dir / "daily_games"
     games_out_dir = data_dir / "analyzed_games"
@@ -216,8 +223,11 @@ def main() -> None:
 
     with chess.engine.SimpleEngine.popen_uci(ENGINE_PATH) as engine:
         for pgn_path in pgn_paths:
+            source_game = read_single_game(pgn_path)
+            if source_game is None:
+                continue
             print(f"Analyzing {pgn_path.name}...")
-            out_game = analyze_game(engine, limit, pgn_path, args.pv_length)
+            out_game = analyze_game(engine, limit, source_game, args.pv_length)
             out_path = games_out_dir / pgn_path.name
             out_path.write_text(str(out_game) + "\n", encoding="utf-8")
             print(f"  -> {out_path}")

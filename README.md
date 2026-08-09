@@ -6,7 +6,8 @@ how the game actually continued, and an opening-theory breakdown showing where (
 left known theory.
 
 Works with any standard PGN collection and any player name — nothing here is tied to a particular
-chess site or person. Move-quality detection comes from an independent local
+chess site, person, or data location; all of that is configuration (see below), not something baked
+into the repo. Move-quality detection comes from an independent local
 [Stockfish](https://stockfishchess.org/) analysis pass (see below), not from whatever annotations (if
 any) the source PGN happens to carry.
 
@@ -21,6 +22,15 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
    were found to attach a side variation demonstrating a punishment line rather than a genuine
    alternative to the move it actually flagged) — not reliable enough to build blunder detection on
    directly.
+
+   **Each file must hold exactly one game.** Every output path these scripts generate
+   (`docs/games/<id>.md`, `docs/games/<id>/blunder_*.svg`, `analyzed_games/<id>.pgn`, ...) is derived
+   from just the source filename - there's no second index for "which game within the file", so a
+   second game packed into the same file has nowhere to go. Worse, `python-chess`'s PGN reader silently
+   reads only the *first* game in a multi-game file and drops the rest with no error - exactly the kind
+   of silent data loss that's easy to miss until a game is just... gone. Both scripts detect this case
+   and skip the whole file with a warning rather than guessing; split multi-game PGN exports into one
+   file per game before dropping them in.
 
 2. **`scripts/analyze_games.py`** re-analyzes each game independently with a local Stockfish engine
    and writes a clean copy to **`analyzed_games/<id>.pgn`**: mainline moves only (the source's own
@@ -93,40 +103,37 @@ python3 -m venv .venv
 `scripts/analyze_games.py` also needs the `stockfish` binary on the system (`/usr/games/stockfish` on
 Debian/Ubuntu — installed via `apt install stockfish`).
 
-## Where the games live
+## Configuration
 
-By default, both scripts treat this repo's own checkout as the data directory — drop `daily_games/`
-in here and everything works standalone. If you'd rather keep the games/analysis/generated pages in a
-**separate repo** from these scripts (e.g. to keep this repo purely reusable tooling, or to publish the
-games repo under GitHub Pages on its own), pass `--data-dir /path/to/games-repo` to either script, or
-set `$CHESS_DATA_DIR`. `<data-dir>` just needs `daily_games/` (and will get `analyzed_games/`/`docs/`
-written into it); it doesn't need to be a git repo at all, though committing it is how you'd track
-changes and publish via GitHub Pages.
-
-### This project's own setup
-
-This instance of the tool is configured for user **diegoami**, whose games live in a separate sibling
-repo, **[chessgamescollection](https://github.com/diegoami/chessgamescollection)**:
-
-```
-projects/
-├── chess_with_claude/     (this repo: scripts, venv, requirements.txt)
-└── chessgamescollection/  (daily_games/, analyzed_games/, docs/)
-```
+Both scripts need to know **who** (`--player`) and, optionally, **where your games live**
+(`--data-dir`, if not this repo's own checkout). Passing these as flags every time gets old fast, so
+either can also come from a `.env` file instead:
 
 ```bash
-git clone git@github.com:diegoami/chessgamescollection.git ../chessgamescollection
-.venv/bin/python scripts/analyze_games.py --data-dir ../chessgamescollection
-.venv/bin/python scripts/publish_games.py --player diegoami --data-dir ../chessgamescollection --source analyzed_games
+cp .env.example .env
+# then edit .env:
+#   CHESS_PLAYER=yourusername
+#   CHESS_DATA_DIR=/path/to/your/games   (omit to use this repo's own checkout)
 ```
 
-The `publish-games` Claude Code skill (`.claude/skills/publish-games/`) automates this pairing for
-diegoami specifically — see that file if you're adapting it for a different player/data-dir.
+`.env` is gitignored — it's local machine config, never committed, and this repo never hardcodes a
+player name or a games location itself. A flag on the command line always overrides `.env`.
+
+`--data-dir` (or `CHESS_DATA_DIR`) just needs `daily_games/` in it; `analyzed_games/` and `docs/` get
+written alongside. It doesn't need to be this repo, or even a git repo at all — a common setup is a
+**separate sibling repo** holding just the games/analysis/generated pages, so this repo stays pure,
+reusable tooling with no game data of its own, and the games repo can be published under GitHub Pages
+independently. Nothing here assumes that split, though — dropping `daily_games/` straight into this
+repo works too.
+
+If you're using a Claude Code skill (see `.claude/skills/publish-games/`) to automate steps 2–3, it
+relies on the same `.env` — configure that once and the skill needs no per-project edits.
 
 ## Adding a new game
 
 1. Drop the PGN export into `daily_games/` (in whichever data dir you're using) as the next number,
-   e.g. `daily_games/3.pgn`.
+   e.g. `daily_games/3.pgn` — one game per file (see above).
 2. Run `scripts/analyze_games.py` to (re-)generate `analyzed_games/`.
-3. Run `scripts/publish_games.py --player <name> --source analyzed_games` to regenerate `docs/`.
+3. Run `scripts/publish_games.py --source analyzed_games` to regenerate `docs/` (reads `--player`
+   from `.env` if you've configured it, otherwise pass it explicitly).
 4. Review with `git status` / `git diff`, then commit and push.

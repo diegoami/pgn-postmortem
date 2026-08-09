@@ -1,39 +1,48 @@
 ---
 name: publish-games
-description: Regenerate the docs/ pages (main index + one page per game) from analyzed_games/ (or daily_games/), including SVG diagrams of the board before every blunder diegoami made and the engine's full refutation line. Use when the user adds/updates PGN files and wants the published GitHub pages refreshed, or says things like "publish the games", "regenerate the game pages", "update docs for the new games".
+description: Regenerate the docs/ pages (main index + one page per game) from analyzed_games/ (or daily_games/), including SVG diagrams of the board before every blunder the configured player made and the engine's full refutation line. Use when the user adds/updates PGN files and wants the published GitHub pages refreshed, or says things like "publish the games", "regenerate the game pages", "update docs for the new games".
 ---
 
-# Publish daily games
+# Publish games
 
-The scripts in this repo (chess_with_claude) are generic — they take `--player` and `--data-dir` and
-don't assume any particular person or data location. In *this* project's setup, the player is always
-**diegoami** and the games/analysis/generated pages live in a separate sibling repo,
-**chessgamescollection**, so every command below passes `--player diegoami --data-dir
-../chessgamescollection` explicitly. If that directory doesn't exist, clone it first:
-`git clone git@github.com:diegoami/chessgamescollection.git ../chessgamescollection`.
+The scripts (`scripts/analyze_games.py`, `scripts/publish_games.py`) are generic — they take
+`--player` and `--data-dir` and don't hardcode any particular person or data location. This project's
+own choice of player and data location lives in a local, gitignored **`.env`** file (see
+`.env.example`), never in a tracked file. If `.env` isn't set up yet, check for it before running
+anything:
 
-Inside chessgamescollection there are two source-of-truth directories, and `docs/` is generated from
-one of them — never hand-edit files under `docs/`, always regenerate with the scripts below.
+```bash
+test -f .env && cat .env || echo "no .env - see .env.example"
+```
 
-- `daily_games/*.pgn` — raw PGNs as downloaded from chess.com, with chess.com's own review
-  annotations (NAGs + side variations). Turned out unreliable to build blunder detection on:
-  chess.com attaches side variations somewhat inconsistently (e.g. to demonstrate a punishment line
-  rather than a genuine alternative for the move that was actually flagged).
+If it's missing, ask the user for `CHESS_PLAYER` (and `CHESS_DATA_DIR`, if their games live outside
+this repo) rather than guessing or hardcoding a value into any command or file.
+
+There are two source-of-truth directories inside the data directory, and `docs/` is generated from one
+of them — never hand-edit files under `docs/`, always regenerate with the scripts below.
+
+- `daily_games/*.pgn` — raw source PGNs, one game per file (see the README's "Adding a new game"
+  section for why). Whatever move-quality review the source attached (if any) is treated as unreliable
+  for blunder detection — e.g. chess.com exports were found to attach side variations somewhat
+  inconsistently (a punishment line rather than a genuine alternative for the flagged move).
 - `analyzed_games/*.pgn` — same games, re-analyzed independently with a local Stockfish engine by
   `scripts/analyze_games.py`. This is the preferred source for publishing.
 
 ## Step 1 (only when daily_games/ changed): re-analyze with Stockfish
 
 ```bash
-.venv/bin/python scripts/analyze_games.py --data-dir ../chessgamescollection
-.venv/bin/python scripts/analyze_games.py --data-dir ../chessgamescollection --depth 18  # fixed depth instead
+.venv/bin/python scripts/analyze_games.py
+.venv/bin/python scripts/analyze_games.py --depth 18  # fixed depth instead of the 0.3s default
 ```
 
-For every `daily_games/<id>.pgn` this writes `analyzed_games/<id>.pgn`: mainline moves only (chess.com's
-variations/NAGs stripped), with our own eval comment on every move (pawns, White's POV, e.g. `{+0.23}`)
-and our own NAG when centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake ≥100cp,
-`$4` Blunder ≥300cp, for the side that played the move). A flagged move gets two side variations
-(each capped at `--pv-length` half-moves, default 8), each ending with a standard PGN
+(No flags needed if `.env` is configured — `CHESS_DATA_DIR` from there is used automatically. Add
+`--data-dir ...` only to override it for this run.)
+
+For every `daily_games/<id>.pgn` this writes `analyzed_games/<id>.pgn`: mainline moves only (the
+source's variations/NAGs stripped), with our own eval comment on every move (pawns, White's POV, e.g.
+`{+0.23}`) and our own NAG when centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake
+≥100cp, `$4` Blunder ≥300cp, for the side that played the move). A flagged move gets two side
+variations (each capped at `--pv-length` half-moves, default 8), each ending with a standard PGN
 position-evaluation NAG (`$10 =`, `$14 +=`, `$15 =+`, `$16 ±`, `$17 ∓`, `$18 +-`, `$19 -+`, always from
 White's POV, via `classify_position()`):
 - off the position *before* the move, when Stockfish's top choice there differed from what was played:
@@ -49,39 +58,45 @@ to a node *after* that node's real next move already exists as `variations[0]`) 
 `analyze_game()` in `scripts/analyze_games.py`, preserve that ordering or `mainline_moves()` will stop
 matching the actual game.
 
-`analyzed_games/` is committed to git in chessgamescollection (unlike `docs/`) so re-running the slower
-Stockfish pass isn't required just to rebuild the docs.
+Each source file must hold exactly one game — `read_single_game()` in `scripts/pgn_io.py` skips (with
+a warning) any file with zero or more than one game, rather than silently dropping games. That warning
+in the script's output means a file needs to be split, not that something is broken.
+
+`analyzed_games/` is meant to be committed to git (unlike `docs/`) so re-running the slower Stockfish
+pass isn't required just to rebuild the docs.
 
 ## Step 2: regenerate docs/ from analyzed_games/
 
 ```bash
-.venv/bin/python scripts/publish_games.py --player diegoami --data-dir ../chessgamescollection --source analyzed_games
+.venv/bin/python scripts/publish_games.py --source analyzed_games
 ```
 
-(Omit `--source` to fall back to raw `daily_games/` instead — same script, same output shape, just
-trusts the source PGN's own annotations rather than the Stockfish pass. `--player` and `--data-dir` are
-required — the script has no defaults tied to this project.)
+(Again, no `--player`/`--data-dir` needed if `.env` is configured. Omit `--source` to fall back to raw
+`daily_games/` instead — same script, same output shape, just trusts the source PGN's own annotations
+rather than the Stockfish pass.)
 
 For every `<source>/<id>.pgn` it writes:
 - `docs/games/<id>.md` — game info table, an **Opening theory** section, one section per blunder,
   full PGN in a collapsible block
 - `docs/games/<id>/<id>.pgn` — a copy of the source PGN (downloadable from the page)
-- `docs/games/<id>/blunder_*.svg` — one board diagram per blunder by `diegoami`, showing the position
-  right before the move with a red arrow for the move played
+- `docs/games/<id>/blunder_*.svg` — one board diagram per blunder by the configured player, showing
+  the position right before the move with a red arrow for the move played
 - `docs/games/<id>/opening_deviation.svg` — board diagram right before the game left cataloged opening
   theory (only written if it did)
 
-A "blunder" means a move played by diegoami carrying NAG `$2` (Mistake), `$4` (Blunder), or `$9` (Miss).
+A "blunder" means a move played by the configured player carrying NAG `$2` (Mistake), `$4` (Blunder),
+or `$9` (Miss).
 
 **Opening theory** (via `scripts/openings.py`, backed by `data/openings/*.tsv` — the
 [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) named-line dataset,
 downloaded once and committed) shows, in order: **Opening moves** (the movetext still within cataloged
 theory); a diagram of the position right before the game left it (same red-arrow style as the blunder
-diagrams); a sentence naming whoever played that first move (diegoami, or the opponent — in which case
-diegoami never had a chance to deviate himself); and, via `OpeningBook.continuations()`, a few example
-cataloged lines that were still available there — one per distinct next move, picking the shortest
-available example of each for readability. This only covers *named* lines in that dataset, so it's
-phrased as "the first move not found in any named line", not a claim that the move was objectively bad.
+diagrams); a sentence naming whoever played that first move (the configured player, or the opponent —
+in which case the configured player never had a chance to deviate); and, via
+`OpeningBook.continuations()`, a few example cataloged lines that were still available there — one per
+distinct next move, picking the shortest available example of each for readability. This only covers
+*named* lines in that dataset, so it's phrased as "the first move not found in any named line", not a
+claim that the move was objectively bad.
 
 Each blunder section shows, in order: the movetext played since the previous diagram (or since the
 start of the game, for the first blunder); then, when the source PGN attaches the two variations
@@ -116,16 +131,17 @@ python3 -m venv .venv
 
 ## After running
 
-These scripts only regenerate files locally — they do **not** commit or push, **in either repo**.
-After running:
+These scripts only regenerate files locally — they do **not** commit or push, **in whichever repo the
+data directory turns out to be**. After running:
 
-1. Run `git status` / `git diff --stat` **inside chessgamescollection** (not this repo — `docs/` and
-   `analyzed_games/` live there now) to show the user what changed: new games added, blunder counts
-   changed, etc.
-2. Let the user review, then ask before staging/committing/pushing in chessgamescollection — don't
-   push to GitHub on your own initiative. If you also changed the scripts themselves in this repo,
-   that's a separate commit here, in chess_with_claude.
+1. Both scripts print the resolved output paths as they run (e.g. `-> /path/to/analyzed_games/1.pgn`,
+   `Wrote docs/index.md ...`) — use that (or `CHESS_DATA_DIR` from `.env`) to find the data directory,
+   since it isn't a fixed path relative to this repo. Run `git status` / `git diff --stat` there to
+   show the user what changed: new games added, blunder counts changed, etc. If the data directory is
+   this same repo, that's just this repo's own `git status`.
+2. Let the user review, then ask before staging/committing/pushing — don't push to GitHub on your own
+   initiative. If you also changed the scripts themselves, that's a separate commit in this repo.
 
-If a PGN has no player named `diegoami` (the `--player` value used in this project) in the White/Black
-headers, the script still generates a page for it but notes that diegoami isn't a player and skips the
-blunder section — that's expected, not a bug to fix.
+If a PGN has no player matching `--player`/`CHESS_PLAYER` in the White/Black headers, the script still
+generates a page for it but notes that the player isn't in this game and skips the blunder section —
+that's expected, not a bug to fix.

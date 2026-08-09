@@ -24,15 +24,18 @@ It also (re)writes docs/index.md, a table linking to every game page.
 The script is idempotent: docs/games/ is wiped and fully regenerated each
 run, so it always reflects exactly what's currently in the source directory.
 
-<data-dir> can be this same repo, or (as in this project's own setup) a
-separate sibling "data repo" holding just the games/analysis/docs, kept apart
-from these scripts. Resolved as: --data-dir, else $CHESS_DATA_DIR, else this
-repo's own checkout directory.
+<data-dir> can be this same repo, or a separate repo/directory holding just
+the games/analysis/docs, kept apart from these scripts. Resolved as:
+--data-dir, else CHESS_DATA_DIR (from .env or the real environment), else
+this repo's own checkout directory. --player is resolved the same way via
+CHESS_PLAYER, but has no directory fallback - it's always required one way
+or another. See .env.example.
 
 Usage:
     .venv/bin/python scripts/publish_games.py --player "Magnus Carlsen"
     .venv/bin/python scripts/publish_games.py --player myusername --source analyzed_games
     .venv/bin/python scripts/publish_games.py --player myusername --data-dir /path/to/games
+    .venv/bin/python scripts/publish_games.py   # reads CHESS_PLAYER/CHESS_DATA_DIR from .env
 """
 from __future__ import annotations
 
@@ -47,6 +50,7 @@ import chess.pgn
 import chess.svg
 
 from openings import OpeningBook, load_book
+from pgn_io import load_dotenv, read_single_game
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = REPO_ROOT
@@ -93,10 +97,8 @@ def sort_key(path: Path):
 def load_games() -> list[tuple[Path, chess.pgn.Game]]:
     games = []
     for pgn_path in sorted(GAMES_SRC_DIR.glob("*.pgn"), key=sort_key):
-        with pgn_path.open(encoding="utf-8") as fh:
-            game = chess.pgn.read_game(fh)
+        game = read_single_game(pgn_path)
         if game is None:
-            print(f"warning: could not parse {pgn_path}", file=sys.stderr)
             continue
         games.append((pgn_path, game))
     return games
@@ -507,12 +509,14 @@ def write_index(entries: list[dict]) -> None:
 
 
 def main() -> None:
+    load_dotenv(REPO_ROOT / ".env")
+
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--player",
         default=os.environ.get("CHESS_PLAYER"),
         help="whose blunders to report, matched against the PGN White/Black headers "
-        "(required; can also be set via $CHESS_PLAYER)",
+        "(required; can also be set via CHESS_PLAYER in .env or the real environment)",
     )
     parser.add_argument(
         "--source",
@@ -523,18 +527,21 @@ def main() -> None:
         "--data-dir",
         default=None,
         help=f"directory holding {{daily_games,analyzed_games,docs}}/ - your own repo, or a "
-        f"separate data repo (default: $CHESS_DATA_DIR, else this repo's own checkout, "
-        f"currently {DEFAULT_DATA_DIR})",
+        f"separate data repo (default: CHESS_DATA_DIR in .env or the real environment, else "
+        f"this repo's own checkout, currently {DEFAULT_DATA_DIR})",
     )
     args = parser.parse_args()
 
     if not args.player:
-        print("error: --player is required (whose blunders to report), or set $CHESS_PLAYER", file=sys.stderr)
+        print("error: --player is required (whose blunders to report), or set CHESS_PLAYER in .env", file=sys.stderr)
         sys.exit(1)
 
     data_dir = Path(args.data_dir or os.environ.get("CHESS_DATA_DIR") or DEFAULT_DATA_DIR).resolve()
     if not data_dir.is_dir():
-        print(f"error: data dir not found: {data_dir}\nPass --data-dir, or set $CHESS_DATA_DIR.", file=sys.stderr)
+        print(
+            f"error: data dir not found: {data_dir}\nPass --data-dir, or set CHESS_DATA_DIR in .env.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     global PLAYER_NAME, GAMES_SRC_DIR, DOCS_DIR, GAMES_OUT_DIR
