@@ -60,6 +60,29 @@ class OpeningBook:
             "left_book": in_book_plies < len(moves_san),
         }
 
+    def continuations(self, prefix: list[str], limit: int = 3) -> list[tuple[str, str, tuple[str, ...]]]:
+        """Return up to `limit` example named lines that extend `prefix`
+        (a list/tuple of SAN moves), one per distinct immediate next move,
+        preferring the shortest available example for each so the lines
+        stay readable.
+
+        Each result is (eco, name, remaining_moves) where remaining_moves
+        are just the moves after `prefix`.
+        """
+        prefix = tuple(prefix)
+        plen = len(prefix)
+        best_by_next_move: dict[str, tuple[str, str, tuple[str, ...]]] = {}
+        for moves, (eco, name) in self._named.items():
+            if len(moves) <= plen or moves[:plen] != prefix:
+                continue
+            next_move = moves[plen]
+            candidate = (eco, name, moves[plen:])
+            existing = best_by_next_move.get(next_move)
+            if existing is None or len(moves) < len(existing[2]) + plen:
+                best_by_next_move[next_move] = candidate
+        examples = sorted(best_by_next_move.values(), key=lambda c: (len(c[2]), c[2]))
+        return examples[:limit]
+
 
 def load_book(data_dir: Path = OPENINGS_DIR) -> OpeningBook:
     prefixes: set[tuple[str, ...]] = set()

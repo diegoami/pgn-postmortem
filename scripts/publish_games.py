@@ -56,6 +56,18 @@ NAG_LABELS = {
     9: "Miss",
 }
 
+# Standard PGN position-evaluation NAGs, always from White's POV.
+POSITION_NAG_SYMBOLS = {
+    10: "=",
+    13: "∞",  # unclear
+    14: "+=",
+    15: "=+",
+    16: "±",  # white moderate advantage
+    17: "∓",  # black moderate advantage
+    18: "+-",
+    19: "-+",
+}
+
 
 def sort_key(path: Path):
     stem = path.stem
@@ -89,21 +101,56 @@ def move_label(step: dict) -> str:
     return f"{step['move_number']}{letter} {step['san']}"
 
 
-def opening_theory_message(book: OpeningBook, steps: list[dict], color: chess.Color | None, headers: chess.pgn.Headers) -> str:
+def format_named_line(board_before: chess.Board, moves_san: tuple[str, ...]) -> str | None:
+    """Render a sequence of SAN moves (as found in the openings dataset,
+    starting at board_before) as PGN-style movetext. Returns None if the
+    moves turn out not to be legal from this position (defensive - the
+    dataset is external, third-party data)."""
+    board = board_before.copy()
+    parts = []
+    first = True
+    try:
+        for san in moves_san:
+            if board.turn == chess.WHITE:
+                parts.append(f"{board.fullmove_number}. {san}")
+            elif first:
+                parts.append(f"{board.fullmove_number}... {san}")
+            else:
+                parts.append(san)
+            board.push_san(san)
+            first = False
+    except ValueError:
+        return None
+    return " ".join(parts)
+
+
+def analyze_opening(book: OpeningBook, steps: list[dict], color: chess.Color | None, headers: chess.pgn.Headers) -> dict:
     """Describe how far the game matches a cataloged named opening line
-    (see scripts/openings.py), and, if it left one, who played the first
-    move no longer found in any named line."""
+    (see scripts/openings.py). Returns a dict with:
+      message           - summary sentence
+      opening_moves     - movetext played up to (not including) the point
+                           the game left cataloged theory, i.e. what the
+                           deviation diagram shows the position after
+      deviation_step     - the step where the game first left the cataloged
+                            lines (for a diagram), or None if it never did
+                            (or never matched one at all)
+      continuation_lines - a few example cataloged lines from that same
+                            position, as "movetext (*name*, ECO)" strings
+    """
     sans = [s["san"] for s in steps]
     result = book.find_deviation(sans)
     in_book_plies = result["in_book_plies"]
     opening = result["opening"]
 
+    empty = {"message": "", "opening_moves": "", "deviation_step": None, "continuation_lines": []}
+
     if opening is None:
-        return "No cataloged named opening line matches this game's moves."
+        return {**empty, "message": "No cataloged named opening line matches this game's moves."}
 
     name, eco = opening[1], opening[0]
     if not result["left_book"]:
-        return f"The whole game stayed within a cataloged named opening line (*{name}*, ECO {eco})."
+        message = f"The whole game stayed within a cataloged named opening line (*{name}*, ECO {eco})."
+        return {**empty, "message": message}
 
     last_book_step = steps[in_book_plies - 1]
     dev_step = steps[in_book_plies]
@@ -113,10 +160,23 @@ def opening_theory_message(book: OpeningBook, steps: list[dict], color: chess.Co
         who = headers.get("White") if dev_step["mover_color"] == chess.WHITE else headers.get("Black")
         who = who or ("White" if dev_step["mover_color"] == chess.WHITE else "Black")
 
-    return (
+    message = (
         f"Matches a cataloged line (*{name}*, ECO {eco}) through {move_label(last_book_step)}. "
         f"{who} played {move_label(dev_step)}, the first move not found in any named line in this dataset."
     )
+
+    continuation_lines = []
+    for cont_eco, cont_name, cont_moves in book.continuations(sans[:in_book_plies]):
+        line = format_named_line(dev_step["board_before"], cont_moves)
+        if line:
+            continuation_lines.append(f"{line} (*{cont_name}*, {cont_eco})")
+
+    return {
+        "message": message,
+        "opening_moves": format_movetext(steps[:in_book_plies]),
+        "deviation_step": dev_step,
+        "continuation_lines": continuation_lines,
+    }
 
 
 def format_movetext(steps: list[dict]) -> str:
@@ -137,10 +197,13 @@ def format_movetext(steps: list[dict]) -> str:
 
 def variation_movetext(board_before: chess.Board, first_node: chess.pgn.GameNode) -> str:
     """Render a variation's own mainline (following .variations[0] down the
-    chain) as PGN-style movetext, e.g. '8. dxc6 Qxd1+ 9. Kxd1 Nxc6'."""
+    chain) as PGN-style movetext, e.g. '8. dxc6 Qxd1+ 9. Kxd1 Nxc6 ±'. If the
+    last move carries a position-evaluation NAG (see analyze_games.py), the
+    usual annotation symbol (=, +=, ±, +-, ...) is appended."""
     board = board_before.copy()
     parts = []
     node = first_node
+    last_node = None
     first = True
     while node is not None:
         san = board.san(node.move)
@@ -152,8 +215,14 @@ def variation_movetext(board_before: chess.Board, first_node: chess.pgn.GameNode
             parts.append(san)
         board.push(node.move)
         first = False
+        last_node = node
         node = node.variations[0] if node.variations else None
-    return " ".join(parts)
+    text = " ".join(parts)
+    if last_node is not None:
+        symbol = next((POSITION_NAG_SYMBOLS[n] for n in last_node.nags if n in POSITION_NAG_SYMBOLS), None)
+        if symbol:
+            text += f" {symbol}"
+    return text
 
 
 def suggested_better_line(step: dict) -> str | None:
@@ -177,18 +246,16 @@ def suggested_punishment_line(step: dict) -> str | None:
     """If the PGN attaches a side variation directly off of the blunder move
     itself (the engine's best continuation from the position that actually
     resulted, i.e. how the blunder should have been punished), return its
-    full movetext. Returns "same" if the opponent's actual reply already
-    matched the engine's top choice (nothing more to show), or None if no
-    such variation is attached at all — e.g. the blunder was the last move
-    of the game, or the source PGN doesn't offer one."""
+    full movetext - regardless of whether it happens to match what the
+    opponent actually played next. Returns None if no such variation is
+    attached at all — e.g. the blunder was the last move of the game, or the
+    source PGN doesn't offer one."""
     child_node = step["child_node"]
     if len(child_node.variations) < 2:
         return None
-    actual_reply, punishment_node = child_node.variations[0], child_node.variations[1]
+    punishment_node = child_node.variations[1]
     board_after = step["board_before"].copy()
     board_after.push(step["move"])
-    if punishment_node.move == actual_reply.move:
-        return "same"
     return variation_movetext(board_after, punishment_node)
 
 
@@ -284,7 +351,8 @@ def write_game_markdown(
     game: chess.pgn.Game,
     color: chess.Color | None,
     blunders_with_svg: list[tuple[str, dict]],
-    opening_summary: str,
+    opening: dict,
+    opening_svg_name: str | None,
 ) -> None:
     headers = game.headers
     white = headers.get("White", "?")
@@ -295,8 +363,29 @@ def write_game_markdown(
     parts.append("")
     parts.append(f"[Download PGN]({index}/{index}.pgn)")
     parts.append("")
-    parts.append(f"**Opening theory:** {opening_summary}")
+
+    parts.append("## Opening theory")
     parts.append("")
+    if opening_svg_name:
+        dev_step = opening["deviation_step"]
+        move_no = dev_step["move_number"]
+        letter = "." if dev_step["mover_color"] == chess.WHITE else "..."
+        if opening["opening_moves"]:
+            parts.append(f"**Opening moves**: {opening['opening_moves']}")
+            parts.append("")
+        parts.append(f"![Position before {move_no}{letter} {dev_step['san']}]({index}/{opening_svg_name})")
+        parts.append("")
+        parts.append(opening["message"])
+        parts.append("")
+        if opening["continuation_lines"]:
+            parts.append("**Known continuations from here:**")
+            parts.append("")
+            for line in opening["continuation_lines"]:
+                parts.append(f"- {line}")
+            parts.append("")
+    else:
+        parts.append(opening["message"])
+        parts.append("")
 
     parts.append(f"## Blunders by {PLAYER_NAME}")
     parts.append("")
@@ -315,8 +404,6 @@ def write_game_markdown(
                 lead_label = "Moves from the start of the game" if n == 1 else "Moves since the previous diagram"
                 parts.append(f"**{lead_label}**: {b['lead_in']}")
                 parts.append("")
-            parts.append(f"![Position before {move_no}{letter} {b['san']}]({index}/{svg_name})")
-            parts.append("")
             better = b["better_line"]
             if better == "same":
                 parts.append("No stronger alternative was available here — this was already the engine's top choice.")
@@ -325,12 +412,11 @@ def write_game_markdown(
                 parts.append(f"**Better was:** {better}")
                 parts.append("")
             punishment = b["punishment_line"]
-            if punishment == "same":
-                parts.append("The opponent's actual reply already matched the engine's top choice here.")
-                parts.append("")
-            elif punishment:
+            if punishment:
                 parts.append(f"**Best continuation:** {punishment}")
                 parts.append("")
+            parts.append(f"![Position before {move_no}{letter} {b['san']}]({index}/{svg_name})")
+            parts.append("")
 
     parts.append("## Full PGN")
     parts.append("")
@@ -357,7 +443,7 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
     color = player_color(game)
     steps = mainline_steps(game)
     blunders = find_blunders(steps, color) if color is not None else []
-    opening_summary = opening_theory_message(book, steps, color, game.headers)
+    opening = analyze_opening(book, steps, color, game.headers)
 
     blunders_with_svg = []
     for i, b in enumerate(blunders, start=1):
@@ -367,7 +453,15 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
         )
         blunders_with_svg.append((svg_name, b))
 
-    write_game_markdown(index, pgn_path, game, color, blunders_with_svg, opening_summary)
+    opening_svg_name = None
+    dev_step = opening["deviation_step"]
+    if dev_step is not None:
+        opening_svg_name = "opening_deviation.svg"
+        (game_dir / opening_svg_name).write_text(
+            render_svg(dev_step["board_before"], dev_step["move"], dev_step["mover_color"]), encoding="utf-8"
+        )
+
+    write_game_markdown(index, pgn_path, game, color, blunders_with_svg, opening, opening_svg_name)
 
     return {
         "index": index,

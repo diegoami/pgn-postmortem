@@ -21,6 +21,10 @@ consistently-annotated copy to analyzed_games/<id>.pgn:
     move's own node (what publish_games.py reads for "Best continuation:
     ..." - how the blunder should have been punished, in case the real
     opponent didn't find it)
+  - the last move of each of those two attached lines gets a standard PGN
+    position-evaluation NAG ($10/$14/$15/$16/$17/$18/$19, i.e. =, +=, =+,
+    ±, ∓, +-, -+), read by publish_games.py to print the usual annotation
+    symbol after the line
 
 Usage:
     .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
@@ -74,9 +78,31 @@ def classify(loss_cp: int) -> int | None:
     return None
 
 
-def attach_line(parent_node: chess.pgn.GameNode, parent_board: chess.Board, pv: list[chess.Move], pv_plies: int) -> None:
+# Standard PGN position-evaluation NAGs (always from White's POV, regardless
+# of whose blunder is being described).
+def classify_position(eval_cp_white: int) -> int:
+    pawns = eval_cp_white / 100
+    if pawns <= -3.0:
+        return 19  # -+
+    if pawns <= -1.0:
+        return 17  # (black moderate advantage)
+    if pawns <= -0.4:
+        return 15  # =+
+    if pawns < 0.4:
+        return 10  # =
+    if pawns < 1.0:
+        return 14  # +=
+    if pawns < 3.0:
+        return 16  # (white moderate advantage)
+    return 18  # +-
+
+
+def attach_line(
+    parent_node: chess.pgn.GameNode, parent_board: chess.Board, pv: list[chess.Move], pv_plies: int, final_eval_cp: int
+) -> None:
     """Add pv (capped at pv_plies) as a new sibling variation chain off
-    parent_node. Caller must ensure parent_node's real mainline child (if
+    parent_node, tagging its last move with a position-evaluation NAG for
+    final_eval_cp. Caller must ensure parent_node's real mainline child (if
     any) already exists - adding a variation to a node with no children yet
     would wrongly make it the mainline."""
     var_board = parent_board.copy()
@@ -86,6 +112,8 @@ def attach_line(parent_node: chess.pgn.GameNode, parent_board: chess.Board, pv: 
             break
         var_node = var_node.add_variation(move)
         var_board.push(move)
+    if var_node is not parent_node:
+        var_node.nags.add(classify_position(final_eval_cp))
 
 
 def analyze_game(
@@ -111,7 +139,7 @@ def analyze_game(
     # move's own node once *that* node's real mainline child (the actual
     # next move played) exists - otherwise it would wrongly become the
     # mainline itself. So it's queued here and attached one iteration later.
-    pending_punishment: tuple[chess.pgn.GameNode, chess.Board, list[chess.Move]] | None = None
+    pending_punishment: tuple[chess.pgn.GameNode, chess.Board, list[chess.Move], int] | None = None
 
     for move in moves:
         mover = board.turn
@@ -121,8 +149,8 @@ def analyze_game(
         node = node.add_variation(move)
 
         if pending_punishment is not None:
-            punish_node, punish_board, punish_pv = pending_punishment
-            attach_line(punish_node, punish_board, punish_pv, pv_plies)
+            punish_node, punish_board, punish_pv, punish_eval = pending_punishment
+            attach_line(punish_node, punish_board, punish_pv, pv_plies, punish_eval)
             pending_punishment = None
 
         board.push(move)
@@ -138,9 +166,9 @@ def analyze_game(
         if nag is not None:
             node.nags.add(nag)
             if pv_before and pv_before[0] != move:
-                attach_line(node.parent, node.parent.board(), pv_before, pv_plies)
+                attach_line(node.parent, node.parent.board(), pv_before, pv_plies, eval_before)
             if pv:
-                pending_punishment = (node, board.copy(), pv)
+                pending_punishment = (node, board.copy(), pv, eval_cp)
 
     return out_game
 

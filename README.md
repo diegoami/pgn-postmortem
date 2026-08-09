@@ -20,13 +20,14 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
    variations/NAGs stripped), an eval comment on every move (pawns, White's POV, e.g. `{+0.23}`), our
    own NAG when a move's centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake
    ≥100cp, `$4` Blunder ≥300cp), and, for a flagged move, two side variations capturing Stockfish's own
-   view of the position:
+   view of the position, each ending in a standard PGN position-evaluation NAG (`$10`/`$14`.../`$19`,
+   i.e. `=`, `+=`, `=+`, `±`, `∓`, `+-`, `-+`, always from White's POV):
    - off the position *before* the move: the engine's actual best move there and how it refutes the
-     blunder, e.g. `( 8. dxc6 Qxd1+ 9. Kxd1 bxc6 10. e4 Nd7 11. a3 Nb6 )` — read on the page as
+     blunder, e.g. `( 8. dxc6 Qxd1+ 9. Kxd1 bxc6 10. e4 Nd7 11. a3 Nb6 $10 )` — read on the page as
      **Better was**
    - off the move's own resulting position: the engine's best continuation from there, i.e. how the
      blunder *should* have been punished, in case the real opponent missed it — read on the page as
-     **Best continuation**
+     **Best continuation**, shown even if it happens to match what the opponent actually played next
 
    Both lines are capped at `--pv-length` half-moves (default 8).
 
@@ -41,20 +42,23 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
 3. **`scripts/publish_games.py`** reads a source directory of PGNs (default `daily_games/`, but pass
    `--source analyzed_games` to use the Stockfish-analyzed version) and writes **`docs/`**:
    - `docs/index.md` — a table linking to every game, with date/players/result/opening/blunder count
-   - `docs/games/<id>.md` — per-game page: info table; an **Opening theory** line (see below); one
-     section per blunder by diegoami (the movetext since the previous diagram, a board diagram with a
-     red arrow for the move played, the engine's refutation under **Better was:**, and its punishment
-     line under **Best continuation:**); and the full PGN in a collapsible block
-   - `docs/games/<id>/<id>.pgn` and `docs/games/<id>/blunder_*.svg` — the downloadable PGN and board
-     diagrams referenced by the page above
+   - `docs/games/<id>.md` — per-game page: info table; an **Opening theory** section (see below); one
+     section per blunder by diegoami (the movetext since the previous diagram, the engine's refutation
+     under **Better was:** and its punishment line under **Best continuation:** — each with its eval
+     symbol, both shown before the board diagram with a red arrow for the move played); and the full
+     PGN in a collapsible block
+   - `docs/games/<id>/<id>.pgn`, `docs/games/<id>/blunder_*.svg`, and `docs/games/<id>/opening_deviation.svg`
+     — the downloadable PGN and board diagrams referenced by the page above
 
-   The **Opening theory** line uses `scripts/openings.py`, backed by the
+   The **Opening theory** section uses `scripts/openings.py`, backed by the
    [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) dataset
-   (`data/openings/*.tsv`, downloaded once and committed to the repo): it reports how far the game's
-   moves match a cataloged named opening line, and who played the first move that doesn't — diegoami,
-   or the opponent (in which case diegoami never actually got the chance to deviate). Note this only
-   covers *named* lines in that dataset, not every reasonable book move, so a "deviation" it reports
-   isn't necessarily objectively bad — just unnamed in this particular dataset.
+   (`data/openings/*.tsv`, downloaded once and committed to the repo). It shows, in order: the
+   **Opening moves** played while still in cataloged theory; a diagram of the position right before the
+   game left it; a sentence naming who played that first move — diegoami, or the opponent (in which
+   case diegoami never actually got the chance to deviate); and a few example cataloged lines that were
+   still available at that point. Note this only covers *named* lines in that dataset, not every
+   reasonable book move, so a "deviation" it reports isn't necessarily objectively bad — just unnamed
+   in this particular dataset.
 
    ```bash
    .venv/bin/python scripts/publish_games.py --source analyzed_games

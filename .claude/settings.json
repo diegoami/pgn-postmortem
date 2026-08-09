@@ -31,7 +31,14 @@
       "Bash(timeout 10 curl -sI https://raw.githubusercontent.com/lichess-org/chess-openings/master/a.tsv)",
       "Bash(curl -sI https://raw.githubusercontent.com/lichess-org/chess-openings/master/LICENSE)",
       "Bash(curl -s -o LICENSE https://raw.githubusercontent.com/lichess-org/chess-openings/master/LICENSE)",
-      "Bash(grep \"Queen's Gambit Accepted$\")"
+      "Bash(grep \"Queen's Gambit Accepted$\")",
+      "Bash(git check-ignore *)",
+      "Bash(.venv/bin/python -c \"import ast; ast.parse\\(open\\('scripts/publish_games.py'\\).read\\(\\)\\); ast.parse\\(open\\('scripts/analyze_games.py'\\).read\\(\\)\\); ast.parse\\(open\\('scripts/openings.py'\\).read\\(\\)\\); print\\('syntax ok'\\)\")",
+      "Bash(.venv/bin/python -m py_compile scripts/publish_games.py scripts/analyze_games.py scripts/openings.py)",
+      "Bash(.venv/bin/python -m py_compile scripts/publish_games.py)",
+      "Bash(.venv/bin/python -m py_compile scripts/*.py)",
+      "Bash(.venv/bin/python -m py_compile scripts/analyze_games.py)",
+      "Bash(git add *)"
     ],
     "additionalDirectories": [
       "/home/diego/projects/chess_with_claude",
