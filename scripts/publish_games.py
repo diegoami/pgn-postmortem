@@ -15,6 +15,11 @@ writes, inside <data-dir>:
                                    (NAG $2 Mistake, $4 Blunder, or $9 Miss)
                                    played by --player
 
+$6 Inaccuracies get the same treatment (docs/games/<id>/inaccuracy_*.svg) and
+are interleaved into the same list in move order rather than shown
+separately, just individually folded into a <details> block since they're
+one notch below a real blunder.
+
 Pass --player '*' to report blunders by both sides in every game instead of
 filtering to one named player - useful for games where neither side is
 "you", e.g. the master games under examples/.
@@ -70,6 +75,10 @@ GAMES_OUT_DIR: Path
 # with these NAGs: $2 = Mistake, $4 = Blunder, $9 = Miss (a non-standard
 # reuse of that code). All three count as a "blunder" here, when present.
 BLUNDER_NAGS = {chess.pgn.NAG_MISTAKE, chess.pgn.NAG_BLUNDER, 9}
+
+# $6 Inaccuracy is one notch below a "blunder" - shown separately, folded
+# under a <details> block, rather than in the main blunders list.
+INACCURACY_NAGS = {chess.pgn.NAG_DUBIOUS_MOVE}
 
 # --player '*' (or CHESS_PLAYER=*) reports blunders by both sides instead of
 # filtering to a single named player - useful for games where neither side
@@ -328,23 +337,26 @@ def mainline_steps(game: chess.pgn.Game) -> list[dict]:
     return steps
 
 
-def find_blunders(steps: list[dict], colors: set[chess.Color]) -> list[dict]:
+def find_flagged_moves(steps: list[dict], colors: set[chess.Color], nag_filter: set[int]) -> list[dict]:
     """From the flattened mainline, collect every move by a side in `colors`
-    whose NAG marks it a Mistake or Blunder, together with the movetext
-    played since the previous blunder (or the start of the game) and, where
-    the source PGN offers one, the engine's suggested better move."""
-    blunders = []
+    whose NAG intersects `nag_filter` (BLUNDER_NAGS or INACCURACY_NAGS),
+    together with the movetext played since the previous one found (or the
+    start of the game) and, where the source PGN offers one, the engine's
+    suggested better move. Lead-in text is relative to the previous *match*,
+    so calling this once per NAG set (as process_game does) gives each list
+    its own independent lead-in trail rather than sharing one."""
+    found = []
     lead_in_start = 0
     for i, step in enumerate(steps):
-        if step["mover_color"] in colors and BLUNDER_NAGS & set(step["nags"]):
-            blunder = dict(step)
-            blunder["nags"] = sorted(BLUNDER_NAGS & set(step["nags"]))
-            blunder["lead_in"] = format_movetext(steps[lead_in_start:i])
-            blunder["better_line"] = suggested_better_line(step)
-            blunder["punishment_line"] = suggested_punishment_line(step)
-            blunders.append(blunder)
+        if step["mover_color"] in colors and nag_filter & set(step["nags"]):
+            item = dict(step)
+            item["nags"] = sorted(nag_filter & set(step["nags"]))
+            item["lead_in"] = format_movetext(steps[lead_in_start:i])
+            item["better_line"] = suggested_better_line(step)
+            item["punishment_line"] = suggested_punishment_line(step)
+            found.append(item)
             lead_in_start = i
-    return blunders
+    return found
 
 
 def render_svg(board_before: chess.Board, move: chess.Move, mover_color: chess.Color) -> str:
@@ -388,12 +400,57 @@ def format_headers_table(headers: chess.pgn.Headers) -> str:
     return "\n".join(lines)
 
 
+def move_heading_text(item: dict, white: str, black: str) -> str:
+    labels = "/".join(NAG_LABELS.get(nag, f"${nag}") for nag in item["nags"])
+    move_no = item["move_number"]
+    letter = "." if item["mover_color"] == chess.WHITE else "..."
+    by = f" by {white if item['mover_color'] == chess.WHITE else black}" if PLAYER_NAME == ALL_PLAYERS else ""
+    return f"Move {move_no}{letter} {item['san']}{by} ({labels})"
+
+
+def is_inaccuracy(item: dict) -> bool:
+    return bool(INACCURACY_NAGS & set(item["nags"]))
+
+
+def render_flagged_move(
+    index: str, n: int, svg_name: str, item: dict, white: str, black: str, include_heading: bool = True
+) -> list[str]:
+    """Render one Move entry (optionally a '### ...' heading, lead-in, Better
+    was/Best continuation, diagram). include_heading=False is used for
+    Inaccuracy entries, whose heading instead becomes the <summary> of the
+    <details> block wrapping them - see write_game_markdown()."""
+    lines = []
+    move_no = item["move_number"]
+    letter = "." if item["mover_color"] == chess.WHITE else "..."
+    if include_heading:
+        lines.append(f"### {move_heading_text(item, white, black)}")
+        lines.append("")
+    if item["lead_in"]:
+        lead_label = "Moves from the start of the game" if n == 1 else "Moves since the previous diagram"
+        lines.append(f"**{lead_label}**: {item['lead_in']}")
+        lines.append("")
+    better = item["better_line"]
+    if better == "same":
+        lines.append("No stronger alternative was available here — this was already the engine's top choice.")
+        lines.append("")
+    elif better:
+        lines.append(f"**Better was:** {better}")
+        lines.append("")
+    punishment = item["punishment_line"]
+    if punishment:
+        lines.append(f"**Best continuation:** {punishment}")
+        lines.append("")
+    lines.append(f"![Position before {move_no}{letter} {item['san']}]({index}/{svg_name})")
+    lines.append("")
+    return lines
+
+
 def write_game_markdown(
     index: str,
     pgn_path: Path,
     game: chess.pgn.Game,
     colors: set[chess.Color],
-    blunders_with_svg: list[tuple[str, dict]],
+    flagged_with_svg: list[tuple[str, dict]],
     opening: dict,
     opening_svg_name: str | None,
 ) -> None:
@@ -435,34 +492,20 @@ def write_game_markdown(
     if not colors:
         parts.append(f"_{PLAYER_NAME} is not a player in this game._")
         parts.append("")
-    elif not blunders_with_svg:
+    elif not flagged_with_svg:
         parts.append(f"No blunders (Mistake or worse) by {display_player_name()} found in this game.")
         parts.append("")
     else:
-        for n, (svg_name, b) in enumerate(blunders_with_svg, start=1):
-            labels = "/".join(NAG_LABELS.get(nag, f"${nag}") for nag in b["nags"])
-            move_no = b["move_number"]
-            letter = "." if b["mover_color"] == chess.WHITE else "..."
-            by = f" by {white if b['mover_color'] == chess.WHITE else black}" if PLAYER_NAME == ALL_PLAYERS else ""
-            parts.append(f"### Move {move_no}{letter} {b['san']}{by} ({labels})")
-            parts.append("")
-            if b["lead_in"]:
-                lead_label = "Moves from the start of the game" if n == 1 else "Moves since the previous diagram"
-                parts.append(f"**{lead_label}**: {b['lead_in']}")
+        for n, (svg_name, item) in enumerate(flagged_with_svg, start=1):
+            if is_inaccuracy(item):
+                parts.append("<details>")
+                parts.append(f"<summary>{move_heading_text(item, white, black)}</summary>")
                 parts.append("")
-            better = b["better_line"]
-            if better == "same":
-                parts.append("No stronger alternative was available here — this was already the engine's top choice.")
+                parts.extend(render_flagged_move(index, n, svg_name, item, white, black, include_heading=False))
+                parts.append("</details>")
                 parts.append("")
-            elif better:
-                parts.append(f"**Better was:** {better}")
-                parts.append("")
-            punishment = b["punishment_line"]
-            if punishment:
-                parts.append(f"**Best continuation:** {punishment}")
-                parts.append("")
-            parts.append(f"![Position before {move_no}{letter} {b['san']}]({index}/{svg_name})")
-            parts.append("")
+            else:
+                parts.extend(render_flagged_move(index, n, svg_name, item, white, black))
 
     parts.append("## Full PGN")
     parts.append("")
@@ -488,16 +531,21 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
 
     colors = blunder_colors(game)
     steps = mainline_steps(game)
-    blunders = find_blunders(steps, colors)
+    # One combined, move-ordered list - Inaccuracies are interleaved with
+    # Mistakes/Blunders/Misses rather than shown as a separate section, so
+    # the lead-in text between entries also flows continuously regardless of
+    # which severity separates them.
+    flagged = find_flagged_moves(steps, colors, BLUNDER_NAGS | INACCURACY_NAGS)
     opening = analyze_opening(book, steps, colors, game.headers)
 
-    blunders_with_svg = []
-    for i, b in enumerate(blunders, start=1):
-        svg_name = f"blunder_{i}_move{b['move_number']}{color_letter(b['mover_color'])}.svg"
+    flagged_with_svg = []
+    for i, item in enumerate(flagged, start=1):
+        prefix = "inaccuracy" if is_inaccuracy(item) else "blunder"
+        svg_name = f"{prefix}_{i}_move{item['move_number']}{color_letter(item['mover_color'])}.svg"
         (game_dir / svg_name).write_text(
-            render_svg(b["board_before"], b["move"], b["mover_color"]), encoding="utf-8"
+            render_svg(item["board_before"], item["move"], item["mover_color"]), encoding="utf-8"
         )
-        blunders_with_svg.append((svg_name, b))
+        flagged_with_svg.append((svg_name, item))
 
     opening_svg_name = None
     dev_step = opening["deviation_step"]
@@ -507,12 +555,12 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
             render_svg(dev_step["board_before"], dev_step["move"], dev_step["mover_color"]), encoding="utf-8"
         )
 
-    write_game_markdown(index, pgn_path, game, colors, blunders_with_svg, opening, opening_svg_name)
+    write_game_markdown(index, pgn_path, game, colors, flagged_with_svg, opening, opening_svg_name)
 
     return {
         "index": index,
         "headers": game.headers,
-        "num_blunders": len(blunders_with_svg),
+        "num_blunders": sum(1 for _, item in flagged_with_svg if not is_inaccuracy(item)),
     }
 
 

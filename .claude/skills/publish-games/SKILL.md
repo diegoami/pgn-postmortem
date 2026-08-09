@@ -102,18 +102,25 @@ pass isn't required just to rebuild the docs.
 rather than the Stockfish pass.)
 
 For every `<source>/<id>.pgn` it writes:
-- `docs/games/<id>.md` — game info table, an **Opening theory** section, one section per blunder,
-  full PGN in a collapsible block
+- `docs/games/<id>.md` — game info table, an **Opening theory** section, then one entry per flagged
+  move in move order under "## Blunders by \<name\>" — Mistakes/Blunders/Misses shown plainly,
+  Inaccuracies individually folded under a `<details>` block since they're one notch below a real
+  blunder (`is_inaccuracy()` decides which) — full PGN in a collapsible block
 - `docs/games/<id>/<id>.pgn` — a copy of the source PGN (downloadable from the page)
-- `docs/games/<id>/blunder_*.svg` — one board diagram per blunder by the configured player, showing
-  the position right before the move with a red arrow for the move played
+- `docs/games/<id>/blunder_*.svg` — one board diagram per Mistake/Blunder/Miss by the configured
+  player, showing the position right before the move with a red arrow for the move played
+- `docs/games/<id>/inaccuracy_*.svg` — same, for Inaccuracies
 - `docs/games/<id>/opening_deviation.svg` — board diagram right before the game left cataloged opening
   theory (only written if it did)
 
 A "blunder" means a move played by the configured player carrying NAG `$2` (Mistake), `$4` (Blunder),
-or `$9` (Miss). `--player '*'` (or `CHESS_PLAYER=*`) reports blunders by both sides in every game
-instead of filtering to one name — useful when neither side is "the configured player", e.g. a folder
-of master games.
+or `$9` (Miss) — these count toward the index page's Blunders column. `$6` (Inaccuracy, via
+`INACCURACY_NAGS`) is interleaved into the same list (see above) but not counted there.
+`find_flagged_moves(steps, colors, BLUNDER_NAGS | INACCURACY_NAGS)` produces the single combined,
+move-ordered list both severities are drawn from, so lead-in text between entries flows continuously
+regardless of which severity separates them. `--player '*'` (or `CHESS_PLAYER=*`) reports blunders by
+both sides in every game instead of filtering to one name — useful when neither side is "the
+configured player", e.g. a folder of master games.
 
 **Opening theory** (via `scripts/openings.py`, backed by `data/openings/*.tsv` — the
 [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) named-line dataset,
@@ -126,9 +133,10 @@ distinct next move, picking the shortest available example of each for readabili
 *named* lines in that dataset, so it's phrased as "the first move not found in any named line", not a
 claim that the move was objectively bad.
 
-Each blunder section shows, in order: the movetext played since the previous diagram (or since the
-start of the game, for the first blunder); then, when the source PGN attaches the two variations
-described in Step 1:
+Each entry shows, in order (via `render_flagged_move()`, shared by both severities —
+`include_heading=False` for Inaccuracies since their heading becomes the `<details>`'s `<summary>`
+instead): the movetext played since the previous diagram (or since the start of the game, for the
+first one); then, when the source PGN attaches the two variations described in Step 1:
 - **Better was:** the engine's full suggested refutation line and its eval symbol, played from *before*
   the blunder (e.g. `8. dxc6 Qxd1+ 9. Kxd1 bxc6 ... =`), not just the first move. If that variation's
   first move is identical to what was actually played, the page says so explicitly instead of inventing

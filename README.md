@@ -72,12 +72,14 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
    writes **`docs/`**:
    - `docs/index.md` — a table linking to every game, with date/players/result/opening/blunder count
    - `docs/games/<id>.md` — per-game page: info table; an **Opening theory** section (see below); one
-     section per blunder by `<name>` (the movetext since the previous diagram, the engine's refutation
-     under **Better was:** and its punishment line under **Best continuation:** — each with its eval
-     symbol, both shown before the board diagram with a red arrow for the move played); and the full
-     PGN in a collapsible block
-   - `docs/games/<id>/<id>.pgn`, `docs/games/<id>/blunder_*.svg`, and `docs/games/<id>/opening_deviation.svg`
-     — the downloadable PGN and board diagrams referenced by the page above
+     entry per flagged move by `<name>`, in move order — Mistakes/Blunders/Misses shown plainly,
+     Inaccuracies folded individually under a collapsible `<details>` block since they're one notch
+     below a real blunder — each showing the movetext since the previous diagram, the engine's
+     refutation under **Better was:** and its punishment line under **Best continuation:** (each with
+     its eval symbol) before the board diagram with a red arrow for the move played; and the full PGN
+     in a collapsible block
+   - `docs/games/<id>/<id>.pgn`, `docs/games/<id>/blunder_*.svg`, `docs/games/<id>/inaccuracy_*.svg`, and
+     `docs/games/<id>/opening_deviation.svg` — the downloadable PGN and board diagrams referenced above
 
    `--player` is matched case-insensitively against the PGN's `White`/`Black` headers and is
    **required** — there's no default. A game where that name isn't a player still gets a page, just
