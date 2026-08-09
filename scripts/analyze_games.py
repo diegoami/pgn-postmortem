@@ -88,6 +88,17 @@ def format_eval(cp_white: int) -> str:
     return f"{'+' if pawns >= 0 else ''}{pawns:.2f}"
 
 
+def format_game(game: chess.pgn.Game) -> str:
+    """Render a game as PGN text wrapped at 80 columns (standard PGN
+    convention). Game.__str__() disables wrapping entirely (columns=None),
+    which produces a single, very long movetext line that's unreadable
+    without horizontal scrolling both as a raw file and inside the docs'
+    fenced ```pgn block."""
+    exporter = chess.pgn.StringExporter(columns=80)
+    game.accept(exporter)
+    return str(exporter) + "\n"
+
+
 def classify(loss_cp: int) -> int | None:
     if loss_cp >= BLUNDER_CP:
         return chess.pgn.NAG_BLUNDER
@@ -254,7 +265,7 @@ def main() -> None:
             print(f"Analyzing {pgn_path.name}...")
             out_game = analyze_game(engine, limit, source_game, args.pv_length)
             out_path = games_out_dir / pgn_path.name
-            out_path.write_text(str(out_game) + "\n", encoding="utf-8")
+            out_path.write_text(format_game(out_game), encoding="utf-8")
             print(f"  -> {out_path}")
 
 
