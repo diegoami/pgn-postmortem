@@ -22,7 +22,16 @@
       "Bash(dpkg -l)",
       "Bash(.venv/bin/python scripts/analyze_games.py --time 0.3)",
       "Bash(.venv/bin/python scripts/analyze_games.py)",
-      "Bash(.venv/bin/python scripts/publish_games.py --source analyzed_games)"
+      "Bash(.venv/bin/python scripts/publish_games.py --source analyzed_games)",
+      "Bash(timeout 5 curl -sI https://raw.githubusercontent.com)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(apt-cache search *)",
+      "Bash(apt list *)",
+      "Bash(.venv/bin/pip show *)",
+      "Bash(timeout 10 curl -sI https://raw.githubusercontent.com/lichess-org/chess-openings/master/a.tsv)",
+      "Bash(curl -sI https://raw.githubusercontent.com/lichess-org/chess-openings/master/LICENSE)",
+      "Bash(curl -s -o LICENSE https://raw.githubusercontent.com/lichess-org/chess-openings/master/LICENSE)",
+      "Bash(grep \"Queen's Gambit Accepted$\")"
     ],
     "additionalDirectories": [
       "/home/diego/projects/chess_with_claude",

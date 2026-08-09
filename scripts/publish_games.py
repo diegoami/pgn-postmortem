@@ -33,6 +33,8 @@ import chess
 import chess.pgn
 import chess.svg
 
+from openings import OpeningBook, load_book
+
 PLAYER_NAME = "diegoami"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -80,6 +82,41 @@ def player_color(game: chess.pgn.Game) -> chess.Color | None:
     if black.lower() == PLAYER_NAME.lower():
         return chess.BLACK
     return None
+
+
+def move_label(step: dict) -> str:
+    letter = "." if step["mover_color"] == chess.WHITE else "..."
+    return f"{step['move_number']}{letter} {step['san']}"
+
+
+def opening_theory_message(book: OpeningBook, steps: list[dict], color: chess.Color | None, headers: chess.pgn.Headers) -> str:
+    """Describe how far the game matches a cataloged named opening line
+    (see scripts/openings.py), and, if it left one, who played the first
+    move no longer found in any named line."""
+    sans = [s["san"] for s in steps]
+    result = book.find_deviation(sans)
+    in_book_plies = result["in_book_plies"]
+    opening = result["opening"]
+
+    if opening is None:
+        return "No cataloged named opening line matches this game's moves."
+
+    name, eco = opening[1], opening[0]
+    if not result["left_book"]:
+        return f"The whole game stayed within a cataloged named opening line (*{name}*, ECO {eco})."
+
+    last_book_step = steps[in_book_plies - 1]
+    dev_step = steps[in_book_plies]
+    if color is not None and dev_step["mover_color"] == color:
+        who = PLAYER_NAME
+    else:
+        who = headers.get("White") if dev_step["mover_color"] == chess.WHITE else headers.get("Black")
+        who = who or ("White" if dev_step["mover_color"] == chess.WHITE else "Black")
+
+    return (
+        f"Matches a cataloged line (*{name}*, ECO {eco}) through {move_label(last_book_step)}. "
+        f"{who} played {move_label(dev_step)}, the first move not found in any named line in this dataset."
+    )
 
 
 def format_movetext(steps: list[dict]) -> str:
@@ -136,6 +173,25 @@ def suggested_better_line(step: dict) -> str | None:
     return variation_movetext(step["board_before"], alt)
 
 
+def suggested_punishment_line(step: dict) -> str | None:
+    """If the PGN attaches a side variation directly off of the blunder move
+    itself (the engine's best continuation from the position that actually
+    resulted, i.e. how the blunder should have been punished), return its
+    full movetext. Returns "same" if the opponent's actual reply already
+    matched the engine's top choice (nothing more to show), or None if no
+    such variation is attached at all — e.g. the blunder was the last move
+    of the game, or the source PGN doesn't offer one."""
+    child_node = step["child_node"]
+    if len(child_node.variations) < 2:
+        return None
+    actual_reply, punishment_node = child_node.variations[0], child_node.variations[1]
+    board_after = step["board_before"].copy()
+    board_after.push(step["move"])
+    if punishment_node.move == actual_reply.move:
+        return "same"
+    return variation_movetext(board_after, punishment_node)
+
+
 def mainline_steps(game: chess.pgn.Game) -> list[dict]:
     """Flatten the mainline (the game as actually played) into a list of
     per-move steps, each retaining enough tree context to find the sibling
@@ -176,6 +232,7 @@ def find_blunders(steps: list[dict], color: chess.Color) -> list[dict]:
             blunder["nags"] = sorted(BLUNDER_NAGS & set(step["nags"]))
             blunder["lead_in"] = format_movetext(steps[lead_in_start:i])
             blunder["better_line"] = suggested_better_line(step)
+            blunder["punishment_line"] = suggested_punishment_line(step)
             blunders.append(blunder)
             lead_in_start = i
     return blunders
@@ -227,6 +284,7 @@ def write_game_markdown(
     game: chess.pgn.Game,
     color: chess.Color | None,
     blunders_with_svg: list[tuple[str, dict]],
+    opening_summary: str,
 ) -> None:
     headers = game.headers
     white = headers.get("White", "?")
@@ -236,6 +294,8 @@ def write_game_markdown(
     parts.append(format_headers_table(headers))
     parts.append("")
     parts.append(f"[Download PGN]({index}/{index}.pgn)")
+    parts.append("")
+    parts.append(f"**Opening theory:** {opening_summary}")
     parts.append("")
 
     parts.append(f"## Blunders by {PLAYER_NAME}")
@@ -253,7 +313,7 @@ def write_game_markdown(
             parts.append("")
             if b["lead_in"]:
                 lead_label = "Moves from the start of the game" if n == 1 else "Moves since the previous diagram"
-                parts.append(f"_{lead_label}: {b['lead_in']}_")
+                parts.append(f"**{lead_label}**: {b['lead_in']}")
                 parts.append("")
             parts.append(f"![Position before {move_no}{letter} {b['san']}]({index}/{svg_name})")
             parts.append("")
@@ -263,6 +323,13 @@ def write_game_markdown(
                 parts.append("")
             elif better:
                 parts.append(f"**Better was:** {better}")
+                parts.append("")
+            punishment = b["punishment_line"]
+            if punishment == "same":
+                parts.append("The opponent's actual reply already matched the engine's top choice here.")
+                parts.append("")
+            elif punishment:
+                parts.append(f"**Best continuation:** {punishment}")
                 parts.append("")
 
     parts.append("## Full PGN")
@@ -279,7 +346,7 @@ def write_game_markdown(
     (GAMES_OUT_DIR / f"{index}.md").write_text("\n".join(parts), encoding="utf-8")
 
 
-def process_game(pgn_path: Path, game: chess.pgn.Game) -> dict:
+def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dict:
     index = pgn_path.stem
     game_dir = GAMES_OUT_DIR / index
     game_dir.mkdir(parents=True, exist_ok=True)
@@ -288,7 +355,9 @@ def process_game(pgn_path: Path, game: chess.pgn.Game) -> dict:
     shutil.copyfile(pgn_path, dest_pgn)
 
     color = player_color(game)
-    blunders = find_blunders(mainline_steps(game), color) if color is not None else []
+    steps = mainline_steps(game)
+    blunders = find_blunders(steps, color) if color is not None else []
+    opening_summary = opening_theory_message(book, steps, color, game.headers)
 
     blunders_with_svg = []
     for i, b in enumerate(blunders, start=1):
@@ -298,7 +367,7 @@ def process_game(pgn_path: Path, game: chess.pgn.Game) -> dict:
         )
         blunders_with_svg.append((svg_name, b))
 
-    write_game_markdown(index, pgn_path, game, color, blunders_with_svg)
+    write_game_markdown(index, pgn_path, game, color, blunders_with_svg, opening_summary)
 
     return {
         "index": index,
@@ -347,7 +416,8 @@ def main() -> None:
         shutil.rmtree(GAMES_OUT_DIR)
     GAMES_OUT_DIR.mkdir(parents=True)
 
-    entries = [process_game(pgn_path, game) for pgn_path, game in games]
+    book = load_book()
+    entries = [process_game(pgn_path, game, book) for pgn_path, game in games]
     write_index(entries)
 
     total_blunders = sum(e["num_blunders"] for e in entries)

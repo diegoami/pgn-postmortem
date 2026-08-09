@@ -25,10 +25,19 @@ hand-edit files under `docs/`, always regenerate with the scripts below.
 For every `daily_games/<id>.pgn` this writes `analyzed_games/<id>.pgn`: mainline moves only (chess.com's
 variations/NAGs stripped), with our own eval comment on every move (pawns, White's POV, e.g. `{+0.23}`)
 and our own NAG when centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake ≥100cp,
-`$4` Blunder ≥300cp, for the side that played the move). When a flagged move differs from Stockfish's
-own top choice at that point, that choice's full principal line (capped at `--pv-length` half-moves,
-default 8) is attached as a sibling variation, e.g.
-`( 8. dxc6 Qxd1+ 9. Kxd1 bxc6 10. e4 Nd7 11. a3 Nb6 )`.
+`$4` Blunder ≥300cp, for the side that played the move). A flagged move gets two side variations
+(each capped at `--pv-length` half-moves, default 8):
+- off the position *before* the move, when Stockfish's top choice there differed from what was played:
+  its full line, e.g. `( 8. dxc6 Qxd1+ 9. Kxd1 bxc6 10. e4 Nd7 11. a3 Nb6 )` — read downstream as
+  **Better was**
+- off the move's own resulting position: Stockfish's best continuation from there (how the blunder
+  should have been punished, in case the real opponent missed it) — read downstream as
+  **Best continuation**
+
+These are attached in a way that never disturbs the real mainline (a side variation is only ever added
+to a node *after* that node's real next move already exists as `variations[0]`) — if you touch
+`analyze_game()` in `scripts/analyze_games.py`, preserve that ordering or `mainline_moves()` will stop
+matching the actual game.
 
 `analyzed_games/` is committed to git (unlike `docs/`) so re-running the slower Stockfish pass isn't
 required just to rebuild the docs.
@@ -43,20 +52,34 @@ required just to rebuild the docs.
 trusts chess.com's own annotations rather than the Stockfish pass.)
 
 For every `<source>/<id>.pgn` it writes:
-- `docs/games/<id>.md` — game info table, one section per blunder, full PGN in a collapsible block
+- `docs/games/<id>.md` — game info table, an **Opening theory** line, one section per blunder, full
+  PGN in a collapsible block
 - `docs/games/<id>/<id>.pgn` — a copy of the source PGN (downloadable from the page)
 - `docs/games/<id>/blunder_*.svg` — one board diagram per blunder by `diegoami`, showing the position
   right before the move with a red arrow for the move played
 
 A "blunder" means a move played by diegoami carrying NAG `$2` (Mistake), `$4` (Blunder), or `$9` (Miss).
 
+**Opening theory** (via `scripts/openings.py`, backed by `data/openings/*.tsv` — the
+[lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) named-line dataset,
+downloaded once and committed) reports how far the game matched a cataloged opening line and names
+whoever played the first move that didn't (diegoami, or the opponent — in which case diegoami never
+had a chance to deviate himself). This only covers *named* lines in that dataset, so it's phrased as
+"the first move not found in any named line", not a claim that the move was objectively bad.
+
 Each blunder section shows, in order: the movetext played since the previous diagram (or since the
 start of the game, for the first blunder) so the diagrams read as a continuous story; the diagram
-itself; and, when the source PGN attaches a side variation at that exact decision point, the engine's
-full suggested refutation line (`**Better was:** 8. dxc6 Qxd1+ 9. Kxd1 bxc6 ...`), not just the first
-move. If the attached variation's first move is identical to what was actually played, the page says
-so explicitly instead of inventing an alternative. If no variation is attached at that point at all,
-the "Better was" line is omitted rather than guessing.
+itself; and, when the source PGN attaches the two variations described in Step 1:
+- **Better was:** the engine's full suggested refutation line, played from *before* the blunder
+  (e.g. `8. dxc6 Qxd1+ 9. Kxd1 bxc6 ...`), not just the first move. If that variation's first move is
+  identical to what was actually played, the page says so explicitly instead of inventing an
+  alternative.
+- **Best continuation:** the engine's best line from *after* the blunder — i.e. how it should have
+  been punished. If the opponent's actual reply already matched it, the page says so instead of
+  repeating it.
+
+Either line is omitted rather than guessing if the source PGN doesn't attach a variation there at all
+(e.g. daily_games/ as source, or the blunder was the last move of the game).
 
 It also rewrites `docs/index.md`, a table linking to every game with date/players/result/opening/blunder
 count.

@@ -13,9 +13,14 @@ consistently-annotated copy to analyzed_games/<id>.pgn:
   - a move gets our own NAG ($2 Mistake / $4 Blunder / $6 Inaccuracy) when
     the centipawn loss for the side that played it crosses a threshold
   - when a move is flagged and Stockfish's own top choice at that point
-    differed from what was played, that top choice is attached as a
-    one-move sibling variation (same shape publish_games.py already knows
-    how to read for "Better was: ...")
+    differed from what was played, that top choice's full line is attached
+    as a sibling variation off the position *before* the move (same shape
+    publish_games.py reads for "Better was: ...")
+  - a flagged move also gets Stockfish's best continuation from the
+    position that actually resulted, attached as a second sibling off the
+    move's own node (what publish_games.py reads for "Best continuation:
+    ..." - how the blunder should have been punished, in case the real
+    opponent didn't find it)
 
 Usage:
     .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
@@ -69,6 +74,20 @@ def classify(loss_cp: int) -> int | None:
     return None
 
 
+def attach_line(parent_node: chess.pgn.GameNode, parent_board: chess.Board, pv: list[chess.Move], pv_plies: int) -> None:
+    """Add pv (capped at pv_plies) as a new sibling variation chain off
+    parent_node. Caller must ensure parent_node's real mainline child (if
+    any) already exists - adding a variation to a node with no children yet
+    would wrongly make it the mainline."""
+    var_board = parent_board.copy()
+    var_node = parent_node
+    for move in pv[:pv_plies]:
+        if move not in var_board.legal_moves:
+            break
+        var_node = var_node.add_variation(move)
+        var_board.push(move)
+
+
 def analyze_game(
     engine: chess.engine.SimpleEngine, limit: chess.engine.Limit, pgn_path: Path, pv_plies: int
 ) -> chess.pgn.Game:
@@ -87,12 +106,25 @@ def analyze_game(
     eval_cp = eval_white_cp(info["score"])
     pv = info.get("pv") or []
 
+    # A flagged move's "punishment" line (Stockfish's best continuation from
+    # the position that actually resulted) can only be attached to that
+    # move's own node once *that* node's real mainline child (the actual
+    # next move played) exists - otherwise it would wrongly become the
+    # mainline itself. So it's queued here and attached one iteration later.
+    pending_punishment: tuple[chess.pgn.GameNode, chess.Board, list[chess.Move]] | None = None
+
     for move in moves:
         mover = board.turn
         eval_before = eval_cp
         pv_before = pv
 
         node = node.add_variation(move)
+
+        if pending_punishment is not None:
+            punish_node, punish_board, punish_pv = pending_punishment
+            attach_line(punish_node, punish_board, punish_pv, pv_plies)
+            pending_punishment = None
+
         board.push(move)
 
         info = engine.analyse(board, limit)
@@ -106,16 +138,9 @@ def analyze_game(
         if nag is not None:
             node.nags.add(nag)
             if pv_before and pv_before[0] != move:
-                # Attach the engine's full principal line (capped) as a
-                # sibling variation, so the published page can show not
-                # just the better move but how it refutes the blunder.
-                var_board = node.parent.board()
-                var_node = node.parent
-                for alt_move in pv_before[:pv_plies]:
-                    if alt_move not in var_board.legal_moves:
-                        break
-                    var_node = var_node.add_variation(alt_move)
-                    var_board.push(alt_move)
+                attach_line(node.parent, node.parent.board(), pv_before, pv_plies)
+            if pv:
+                pending_punishment = (node, board.copy(), pv)
 
     return out_game
 
