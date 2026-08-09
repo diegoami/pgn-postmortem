@@ -5,8 +5,13 @@ description: Regenerate the docs/ pages (main index + one page per game) from an
 
 # Publish daily games
 
-There are two source-of-truth directories, and `docs/` is generated from one of them — never
-hand-edit files under `docs/`, always regenerate with the scripts below.
+The scripts live in this repo (chess_with_claude); the games, analysis, and generated pages live in a
+separate sibling repo, **chessgamescollection**, expected at `../chessgamescollection` by default (both
+scripts accept `--data-dir` to point elsewhere). If that directory doesn't exist, clone it first:
+`git clone git@github.com:diegoami/chessgamescollection.git ../chessgamescollection`.
+
+Inside chessgamescollection there are two source-of-truth directories, and `docs/` is generated from
+one of them — never hand-edit files under `docs/`, always regenerate with the scripts below.
 
 - `daily_games/*.pgn` — raw PGNs as downloaded from chess.com, with chess.com's own review
   annotations (NAGs + side variations). Turned out unreliable to build blunder detection on:
@@ -42,8 +47,8 @@ to a node *after* that node's real next move already exists as `variations[0]`) 
 `analyze_game()` in `scripts/analyze_games.py`, preserve that ordering or `mainline_moves()` will stop
 matching the actual game.
 
-`analyzed_games/` is committed to git (unlike `docs/`) so re-running the slower Stockfish pass isn't
-required just to rebuild the docs.
+`analyzed_games/` is committed to git in chessgamescollection (unlike `docs/`) so re-running the slower
+Stockfish pass isn't required just to rebuild the docs.
 
 ## Step 2: regenerate docs/ from analyzed_games/
 
@@ -108,12 +113,15 @@ python3 -m venv .venv
 
 ## After running
 
-These scripts only regenerate files locally — they do **not** commit or push. After running:
+These scripts only regenerate files locally — they do **not** commit or push, **in either repo**.
+After running:
 
-1. Run `git status` / `git diff --stat docs/ analyzed_games/` to show the user what changed (new
-   games added, blunder counts changed, etc.).
-2. Let the user review, then ask before staging/committing/pushing — don't push to GitHub on your
-   own initiative.
+1. Run `git status` / `git diff --stat` **inside chessgamescollection** (not this repo — `docs/` and
+   `analyzed_games/` live there now) to show the user what changed: new games added, blunder counts
+   changed, etc.
+2. Let the user review, then ask before staging/committing/pushing in chessgamescollection — don't
+   push to GitHub on your own initiative. If you also changed the scripts themselves in this repo,
+   that's a separate commit here, in chess_with_claude.
 
 If a PGN has no player named `diegoami` in the White/Black headers, the script still generates a page
 for it but notes that diegoami isn't a player and skips the blunder section — that's expected, not a

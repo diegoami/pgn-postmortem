@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Generate GitHub-viewable markdown pages for the games in daily_games/ (or
-another source directory of same-shaped PGNs, e.g. analyzed_games/).
+"""Generate GitHub-viewable markdown pages for the games in the
+chessgamescollection data repo's daily_games/ (or another source directory of
+same-shaped PGNs there, e.g. analyzed_games/).
 
-For every <source>/<id>.pgn this writes:
+For every <data-dir>/<source>/<id>.pgn this writes, inside <data-dir>:
   docs/games/<id>.md            - game info page (result, opening, full PGN)
   docs/games/<id>/<id>.pgn      - copy of the source PGN, downloadable
   docs/games/<id>/blunder_*.svg - board position before each blunder
@@ -18,9 +19,13 @@ It also (re)writes docs/index.md, a table linking to every game page.
 The script is idempotent: docs/games/ is wiped and fully regenerated each
 run, so it always reflects exactly what's currently in the source directory.
 
+By default <data-dir> is expected as a sibling directory of this repo's
+checkout (../chessgamescollection) - pass --data-dir to point elsewhere.
+
 Usage:
     .venv/bin/python scripts/publish_games.py
     .venv/bin/python scripts/publish_games.py --source analyzed_games
+    .venv/bin/python scripts/publish_games.py --data-dir /path/to/chessgamescollection
 """
 from __future__ import annotations
 
@@ -38,9 +43,12 @@ from openings import OpeningBook, load_book
 PLAYER_NAME = "diegoami"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GAMES_SRC_DIR = REPO_ROOT / "daily_games"
-DOCS_DIR = REPO_ROOT / "docs"
-GAMES_OUT_DIR = DOCS_DIR / "games"
+DEFAULT_DATA_DIR = REPO_ROOT.parent / "chessgamescollection"
+
+# Populated at startup by main() from --data-dir/--source.
+GAMES_SRC_DIR: Path
+DOCS_DIR: Path
+GAMES_OUT_DIR: Path
 
 # chess.com marks its worst move categories with these PGN NAGs:
 # $2 = Mistake, $4 = Blunder, $9 = Miss. All three count as a "blunder" here.
@@ -494,12 +502,28 @@ def main() -> None:
     parser.add_argument(
         "--source",
         default="daily_games",
-        help="directory of source PGNs, relative to repo root (default: daily_games)",
+        help="directory of source PGNs, relative to --data-dir (default: daily_games)",
+    )
+    parser.add_argument(
+        "--data-dir",
+        default=None,
+        help=f"path to the chessgamescollection checkout (default: {DEFAULT_DATA_DIR})",
     )
     args = parser.parse_args()
 
-    global GAMES_SRC_DIR
-    GAMES_SRC_DIR = REPO_ROOT / args.source
+    data_dir = Path(args.data_dir).resolve() if args.data_dir else DEFAULT_DATA_DIR
+    if not data_dir.is_dir():
+        print(
+            f"error: data dir not found: {data_dir}\n"
+            "Clone chessgamescollection alongside this repo, or pass --data-dir.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    global GAMES_SRC_DIR, DOCS_DIR, GAMES_OUT_DIR
+    GAMES_SRC_DIR = data_dir / args.source
+    DOCS_DIR = data_dir / "docs"
+    GAMES_OUT_DIR = DOCS_DIR / "games"
 
     games = load_games()
     if not games:

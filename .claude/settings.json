@@ -38,7 +38,9 @@
       "Bash(.venv/bin/python -m py_compile scripts/publish_games.py)",
       "Bash(.venv/bin/python -m py_compile scripts/*.py)",
       "Bash(.venv/bin/python -m py_compile scripts/analyze_games.py)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(cd /home/diego/projects/chess_with_claude *)"
     ],
     "additionalDirectories": [
       "/home/diego/projects/chess_with_claude",

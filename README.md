@@ -1,22 +1,37 @@
 # chess_with_claude
 
-Publishes diegoami's daily chess.com games as browsable GitHub pages, with a diagram of the board
-before every blunder he made and the engine's refutation line.
+Scripts that publish diegoami's daily chess.com games as browsable GitHub pages, with a diagram of
+the board before every blunder he made and the engine's refutation line.
+
+This repo holds only the generator scripts. The actual games, Stockfish analysis, and generated pages
+live in a separate data repo, **[chessgamescollection](https://github.com/diegoami/chessgamescollection)**,
+which both scripts expect as a sibling directory by default:
+
+```
+projects/
+├── chess_with_claude/     (this repo: scripts, venv, requirements.txt)
+└── chessgamescollection/  (daily_games/, analyzed_games/, docs/)
+```
+
+Pass `--data-dir /path/to/chessgamescollection` to either script to point elsewhere.
 
 ## Workflow
 
 ```
-daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_games.py]-->  docs/
+chessgamescollection/daily_games/*.pgn
+  --[analyze_games.py]--> chessgamescollection/analyzed_games/*.pgn
+  --[publish_games.py]--> chessgamescollection/docs/
 ```
 
-1. **`daily_games/<id>.pgn`** — raw PGNs as downloaded from chess.com, one file per game, numbered
-   sequentially. These carry chess.com's own move-quality review (NAGs like `$2`/`$4`/`$9` and side
-   variations), which turned out too inconsistent to build blunder detection on directly — chess.com
-   sometimes attaches a side variation to demonstrate a punishment line rather than a genuine
-   alternative to the move it actually flagged.
+1. **`daily_games/<id>.pgn`** (in chessgamescollection) — raw PGNs as downloaded from chess.com, one
+   file per game, numbered sequentially. These carry chess.com's own move-quality review (NAGs like
+   `$2`/`$4`/`$9` and side variations), which turned out too inconsistent to build blunder detection on
+   directly — chess.com sometimes attaches a side variation to demonstrate a punishment line rather
+   than a genuine alternative to the move it actually flagged.
 
 2. **`scripts/analyze_games.py`** re-analyzes each game independently with a local Stockfish engine
-   and writes a clean copy to **`analyzed_games/<id>.pgn`**: mainline moves only (chess.com's
+   and writes a clean copy to **`analyzed_games/<id>.pgn`** (in chessgamescollection): mainline moves
+   only (chess.com's
    variations/NAGs stripped), an eval comment on every move (pawns, White's POV, e.g. `{+0.23}`), our
    own NAG when a move's centipawn loss crosses a threshold (`$6` Inaccuracy ≥50cp, `$2` Mistake
    ≥100cp, `$4` Blunder ≥300cp), and, for a flagged move, two side variations capturing Stockfish's own
@@ -39,8 +54,9 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
    `analyzed_games/` is committed to git, so rebuilding the docs doesn't require re-running the
    (slower) Stockfish pass unless `daily_games/` changed.
 
-3. **`scripts/publish_games.py`** reads a source directory of PGNs (default `daily_games/`, but pass
-   `--source analyzed_games` to use the Stockfish-analyzed version) and writes **`docs/`**:
+3. **`scripts/publish_games.py`** reads a source directory of PGNs inside chessgamescollection (default
+   `daily_games/`, but pass `--source analyzed_games` to use the Stockfish-analyzed version) and writes
+   **`docs/`** (also inside chessgamescollection):
    - `docs/index.md` — a table linking to every game, with date/players/result/opening/blunder count
    - `docs/games/<id>.md` — per-game page: info table; an **Opening theory** section (see below); one
      section per blunder by diegoami (the movetext since the previous diagram, the engine's refutation
@@ -66,7 +82,7 @@ daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_gam
 
    Both scripts are idempotent — output directories are fully regenerated on each run, so they always
    match exactly what's in the source directory. Neither script commits or pushes; review the diff
-   and push when ready.
+   in chessgamescollection and push when ready.
 
 A "blunder" always means a move played by **diegoami** (White or Black, detected from the PGN
 headers) carrying NAG `$2` (Mistake), `$4` (Blunder), or `$9` (Miss).
@@ -74,6 +90,7 @@ headers) carrying NAG `$2` (Mistake), `$4` (Blunder), or `$9` (Miss).
 ## Setup
 
 ```bash
+git clone git@github.com:diegoami/chessgamescollection.git ../chessgamescollection
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
@@ -83,9 +100,10 @@ Debian/Ubuntu — installed via `apt install stockfish`).
 
 ## Adding a new game
 
-1. Drop the chess.com PGN export into `daily_games/` as the next number, e.g. `daily_games/3.pgn`.
-2. Run `scripts/analyze_games.py` to (re-)generate `analyzed_games/`.
-3. Run `scripts/publish_games.py --source analyzed_games` to regenerate `docs/`.
-4. Review with `git status` / `git diff`, then commit and push.
+1. Drop the chess.com PGN export into `chessgamescollection/daily_games/` as the next number, e.g.
+   `daily_games/3.pgn`.
+2. Run `scripts/analyze_games.py` to (re-)generate `chessgamescollection/analyzed_games/`.
+3. Run `scripts/publish_games.py --source analyzed_games` to regenerate `chessgamescollection/docs/`.
+4. Review with `git status` / `git diff` inside chessgamescollection, then commit and push there.
 
 The `publish-games` Claude Code skill (`.claude/skills/publish-games/`) automates steps 2–3.

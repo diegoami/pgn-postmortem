@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Independently re-analyze daily_games/*.pgn with a local Stockfish engine.
+"""Independently re-analyze daily_games/*.pgn (from the chessgamescollection
+data repo) with a local Stockfish engine.
 
 chess.com's own PGN annotations turned out to attach side variations to
 whichever move it felt like ($9 "Miss" instead of the move actually being
@@ -26,8 +27,13 @@ consistently-annotated copy to analyzed_games/<id>.pgn:
     ±, ∓, +-, -+), read by publish_games.py to print the usual annotation
     symbol after the line
 
+Reads from and writes to a separate data repo (chessgamescollection), which by
+default is expected as a sibling directory of this repo's checkout
+(../chessgamescollection) - pass --data-dir to point elsewhere.
+
 Usage:
     .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
+    .venv/bin/python scripts/analyze_games.py --data-dir /path/to/chessgamescollection
 """
 from __future__ import annotations
 
@@ -41,8 +47,7 @@ import chess.engine
 import chess.pgn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GAMES_SRC_DIR = REPO_ROOT / "daily_games"
-GAMES_OUT_DIR = REPO_ROOT / "analyzed_games"
+DEFAULT_DATA_DIR = REPO_ROOT.parent / "chessgamescollection"
 
 ENGINE_PATH = shutil.which("stockfish") or "/usr/games/stockfish"
 
@@ -174,28 +179,44 @@ def analyze_game(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--time", type=float, default=0.3, help="seconds of search per position (default 0.3)")
     parser.add_argument("--depth", type=int, default=None, help="fixed search depth instead of a time limit")
     parser.add_argument(
         "--pv-length", type=int, default=8, help="max half-moves of the refutation line to attach (default 8)"
     )
+    parser.add_argument(
+        "--data-dir",
+        default=None,
+        help=f"path to the chessgamescollection checkout (default: {DEFAULT_DATA_DIR})",
+    )
     args = parser.parse_args()
+
+    data_dir = Path(args.data_dir).resolve() if args.data_dir else DEFAULT_DATA_DIR
+    if not data_dir.is_dir():
+        print(
+            f"error: data dir not found: {data_dir}\n"
+            "Clone chessgamescollection alongside this repo, or pass --data-dir.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    games_src_dir = data_dir / "daily_games"
+    games_out_dir = data_dir / "analyzed_games"
 
     limit = chess.engine.Limit(depth=args.depth) if args.depth else chess.engine.Limit(time=args.time)
 
-    pgn_paths = sorted(GAMES_SRC_DIR.glob("*.pgn"), key=sort_key)
+    pgn_paths = sorted(games_src_dir.glob("*.pgn"), key=sort_key)
     if not pgn_paths:
-        print(f"No PGN files found in {GAMES_SRC_DIR}", file=sys.stderr)
+        print(f"No PGN files found in {games_src_dir}", file=sys.stderr)
         sys.exit(1)
 
-    GAMES_OUT_DIR.mkdir(exist_ok=True)
+    games_out_dir.mkdir(exist_ok=True)
 
     with chess.engine.SimpleEngine.popen_uci(ENGINE_PATH) as engine:
         for pgn_path in pgn_paths:
             print(f"Analyzing {pgn_path.name}...")
             out_game = analyze_game(engine, limit, pgn_path, args.pv_length)
-            out_path = GAMES_OUT_DIR / pgn_path.name
+            out_path = games_out_dir / pgn_path.name
             out_path.write_text(str(out_game) + "\n", encoding="utf-8")
             print(f"  -> {out_path}")
 
