@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Independently re-analyze daily_games/*.pgn with a local Stockfish engine.
+
+chess.com's own PGN annotations turned out to attach side variations to
+whichever move it felt like ($9 "Miss" instead of the move actually being
+mistaken, punishment lines instead of alternatives, etc.) - not reliable
+enough to build blunder detection on. This script ignores all of that: it
+takes the mainline moves only (chess.com's variations and NAGs stripped),
+runs Stockfish on every resulting position itself, and writes a clean,
+consistently-annotated copy to analyzed_games/<id>.pgn:
+
+  - every move gets an eval comment in pawns, from White's POV, e.g. {+0.23}
+  - a move gets our own NAG ($2 Mistake / $4 Blunder / $6 Inaccuracy) when
+    the centipawn loss for the side that played it crosses a threshold
+  - when a move is flagged and Stockfish's own top choice at that point
+    differed from what was played, that top choice is attached as a
+    one-move sibling variation (same shape publish_games.py already knows
+    how to read for "Better was: ...")
+
+Usage:
+    .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
+"""
+from __future__ import annotations
+
+import argparse
+import shutil
+import sys
+from pathlib import Path
+
+import chess
+import chess.engine
+import chess.pgn
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+GAMES_SRC_DIR = REPO_ROOT / "daily_games"
+GAMES_OUT_DIR = REPO_ROOT / "analyzed_games"
+
+ENGINE_PATH = shutil.which("stockfish") or "/usr/games/stockfish"
+
+# Centipawn-loss thresholds for the side that played the move, roughly
+# mirroring chess.com's own categories.
+BLUNDER_CP = 300
+MISTAKE_CP = 100
+INACCURACY_CP = 50
+MATE_SCORE = 100000
+
+
+def sort_key(path: Path):
+    stem = path.stem
+    return (0, int(stem)) if stem.isdigit() else (1, stem)
+
+
+def eval_white_cp(score: chess.engine.PovScore) -> int:
+    return score.white().score(mate_score=MATE_SCORE)
+
+
+def format_eval(cp_white: int) -> str:
+    pawns = cp_white / 100
+    return f"{'+' if pawns >= 0 else ''}{pawns:.2f}"
+
+
+def classify(loss_cp: int) -> int | None:
+    if loss_cp >= BLUNDER_CP:
+        return chess.pgn.NAG_BLUNDER
+    if loss_cp >= MISTAKE_CP:
+        return chess.pgn.NAG_MISTAKE
+    if loss_cp >= INACCURACY_CP:
+        return chess.pgn.NAG_DUBIOUS_MOVE
+    return None
+
+
+def analyze_game(
+    engine: chess.engine.SimpleEngine, limit: chess.engine.Limit, pgn_path: Path, pv_plies: int
+) -> chess.pgn.Game:
+    with pgn_path.open(encoding="utf-8") as fh:
+        source_game = chess.pgn.read_game(fh)
+    moves = list(source_game.mainline_moves())
+
+    out_game = chess.pgn.Game()
+    out_game.headers = source_game.headers.copy()
+    out_game.headers.pop("CurrentPosition", None)
+
+    board = out_game.board()
+    node = out_game
+
+    info = engine.analyse(board, limit)
+    eval_cp = eval_white_cp(info["score"])
+    pv = info.get("pv") or []
+
+    for move in moves:
+        mover = board.turn
+        eval_before = eval_cp
+        pv_before = pv
+
+        node = node.add_variation(move)
+        board.push(move)
+
+        info = engine.analyse(board, limit)
+        eval_cp = eval_white_cp(info["score"])
+        pv = info.get("pv") or []
+
+        node.comment = format_eval(eval_cp)
+
+        loss = (eval_before - eval_cp) if mover == chess.WHITE else (eval_cp - eval_before)
+        nag = classify(max(loss, 0))
+        if nag is not None:
+            node.nags.add(nag)
+            if pv_before and pv_before[0] != move:
+                # Attach the engine's full principal line (capped) as a
+                # sibling variation, so the published page can show not
+                # just the better move but how it refutes the blunder.
+                var_board = node.parent.board()
+                var_node = node.parent
+                for alt_move in pv_before[:pv_plies]:
+                    if alt_move not in var_board.legal_moves:
+                        break
+                    var_node = var_node.add_variation(alt_move)
+                    var_board.push(alt_move)
+
+    return out_game
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--time", type=float, default=0.3, help="seconds of search per position (default 0.3)")
+    parser.add_argument("--depth", type=int, default=None, help="fixed search depth instead of a time limit")
+    parser.add_argument(
+        "--pv-length", type=int, default=8, help="max half-moves of the refutation line to attach (default 8)"
+    )
+    args = parser.parse_args()
+
+    limit = chess.engine.Limit(depth=args.depth) if args.depth else chess.engine.Limit(time=args.time)
+
+    pgn_paths = sorted(GAMES_SRC_DIR.glob("*.pgn"), key=sort_key)
+    if not pgn_paths:
+        print(f"No PGN files found in {GAMES_SRC_DIR}", file=sys.stderr)
+        sys.exit(1)
+
+    GAMES_OUT_DIR.mkdir(exist_ok=True)
+
+    with chess.engine.SimpleEngine.popen_uci(ENGINE_PATH) as engine:
+        for pgn_path in pgn_paths:
+            print(f"Analyzing {pgn_path.name}...")
+            out_game = analyze_game(engine, limit, pgn_path, args.pv_length)
+            out_path = GAMES_OUT_DIR / pgn_path.name
+            out_path.write_text(str(out_game) + "\n", encoding="utf-8")
+            print(f"  -> {out_path}")
+
+
+if __name__ == "__main__":
+    main()
