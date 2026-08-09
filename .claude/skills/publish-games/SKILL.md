@@ -28,6 +28,17 @@ of them — never hand-edit files under `docs/`, always regenerate with the scri
 - `analyzed_games/*.pgn` — same games, re-analyzed independently with a local Stockfish engine by
   `scripts/analyze_games.py`. This is the preferred source for publishing.
 
+## Quick path: new games were added to daily_games/
+
+```bash
+scripts/update_games.sh
+```
+
+This just chains Step 1 and Step 2 below with no flags (both read `--player`/`--data-dir` from
+`.env`). Use it as the default response to "I added new games, publish them" / "process the new
+games". Reach for the individual steps below only when a custom flag is actually needed — e.g.
+`--force` to redo already-analyzed games, or `--depth` for a slower/more accurate pass.
+
 ## Step 1 (only when daily_games/ changed): re-analyze with Stockfish
 
 ```bash
@@ -37,6 +48,12 @@ of them — never hand-edit files under `docs/`, always regenerate with the scri
 
 (No flags needed if `.env` is configured — `CHESS_DATA_DIR` from there is used automatically. Add
 `--data-dir ...` only to override it for this run.)
+
+**Games that already have an `analyzed_games/<id>.pgn` are skipped automatically** — a game's source
+PGN never changes once added, so re-running this after adding new games only analyzes the new ones
+(the script prints how many it skipped). Pass `--force` to redo everything, which is needed after
+changing the analysis logic itself (`analyze_game()`, `classify()`, `classify_position()`, ...) so
+existing games pick up the change too - don't forget this when you've just edited that script.
 
 For every `daily_games/<id>.pgn` this writes `analyzed_games/<id>.pgn`: mainline moves only (the
 source's variations/NAGs stripped), with our own eval comment on every move (pawns, White's POV, e.g.

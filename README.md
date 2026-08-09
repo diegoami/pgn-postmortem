@@ -129,11 +129,27 @@ repo works too.
 If you're using a Claude Code skill (see `.claude/skills/publish-games/`) to automate steps 2–3, it
 relies on the same `.env` — configure that once and the skill needs no per-project edits.
 
-## Adding a new game
+## Adding new games
 
-1. Drop the PGN export into `daily_games/` (in whichever data dir you're using) as the next number,
+1. Drop each PGN export into `daily_games/` (in whichever data dir you're using) as the next number,
    e.g. `daily_games/3.pgn` — one game per file (see above).
-2. Run `scripts/analyze_games.py` to (re-)generate `analyzed_games/`.
-3. Run `scripts/publish_games.py --source analyzed_games` to regenerate `docs/` (reads `--player`
-   from `.env` if you've configured it, otherwise pass it explicitly).
-4. Review with `git status` / `git diff`, then commit and push.
+2. Run `scripts/update_games.sh` — a one-line wrapper for the two steps below, using `.env` for
+   `--player`/`--data-dir`:
+   ```bash
+   scripts/update_games.sh
+   ```
+3. Review with `git status` / `git diff` (in the data dir), then commit and push.
+
+`scripts/update_games.sh` just chains:
+```bash
+.venv/bin/python scripts/analyze_games.py
+.venv/bin/python scripts/publish_games.py --source analyzed_games
+```
+
+**Already-analyzed games are skipped automatically.** `analyze_games.py` treats a game as done once
+`analyzed_games/<id>.pgn` exists — the Stockfish pass is the slow part, and a game's own source PGN
+never changes once added, so re-running after adding new games only analyzes the new ones. Pass
+`--force` to redo everything (e.g. after changing the analysis logic itself, as happened a few times
+while building this). `publish_games.py` has no such skip — it's cheap, and always fully regenerating
+`docs/` means every page reflects the current script logic, not just whatever was true when it was
+first generated.

@@ -35,8 +35,15 @@ repo/directory holding just the games/analysis/docs, kept apart from these
 scripts. Resolved as: --data-dir, else CHESS_DATA_DIR (from .env or the real
 environment), else this repo's own checkout directory. See .env.example.
 
+A game already having an analyzed_games/<id>.pgn is treated as already
+processed and skipped - the Stockfish pass is the slow part, and a game's
+own source PGN doesn't change once added, so re-running this after adding
+new games only analyzes the new ones. Pass --force to redo everything (e.g.
+after changing the analysis logic itself).
+
 Usage:
     .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
+    .venv/bin/python scripts/analyze_games.py --force  # redo already-analyzed games too
     .venv/bin/python scripts/analyze_games.py --data-dir /path/to/games
     .venv/bin/python scripts/analyze_games.py   # reads CHESS_DATA_DIR from .env
 """
@@ -194,6 +201,11 @@ def main() -> None:
         "--pv-length", type=int, default=8, help="max half-moves of the refutation line to attach (default 8)"
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="re-analyze games that already have an analyzed_games/<id>.pgn (default: skip them)",
+    )
+    parser.add_argument(
         "--data-dir",
         default=None,
         help=f"directory holding daily_games/ and analyzed_games/ - your own repo, or a "
@@ -221,8 +233,21 @@ def main() -> None:
 
     games_out_dir.mkdir(exist_ok=True)
 
+    todo = []
+    for pgn_path in pgn_paths:
+        out_path = games_out_dir / pgn_path.name
+        if out_path.exists() and not args.force:
+            continue
+        todo.append(pgn_path)
+    skipped = len(pgn_paths) - len(todo)
+    if skipped:
+        print(f"Skipping {skipped} already-analyzed game(s) (use --force to redo them).")
+    if not todo:
+        print("Nothing new to analyze.")
+        return
+
     with chess.engine.SimpleEngine.popen_uci(ENGINE_PATH) as engine:
-        for pgn_path in pgn_paths:
+        for pgn_path in todo:
             source_game = read_single_game(pgn_path)
             if source_game is None:
                 continue
