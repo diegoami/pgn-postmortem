@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Independently re-analyze daily_games/*.pgn (from the chessgamescollection
-data repo) with a local Stockfish engine.
+"""Independently re-analyze a folder of PGN games with a local Stockfish
+engine, regardless of where they came from or who played them.
 
-chess.com's own PGN annotations turned out to attach side variations to
-whichever move it felt like ($9 "Miss" instead of the move actually being
-mistaken, punishment lines instead of alternatives, etc.) - not reliable
-enough to build blunder detection on. This script ignores all of that: it
-takes the mainline moves only (chess.com's variations and NAGs stripped),
-runs Stockfish on every resulting position itself, and writes a clean,
-consistently-annotated copy to analyzed_games/<id>.pgn:
+Some PGN sources attach their own move-quality review, but it can be
+inconsistent - e.g. chess.com's exports were found to attach side variations
+to whichever move it felt like ($9 "Miss" instead of the move actually being
+mistaken, punishment lines instead of alternatives, etc.), not reliable
+enough to build blunder detection on. This script ignores any of that: it
+takes the mainline moves only (the source's own variations and NAGs
+stripped), runs Stockfish on every resulting position itself, and writes a
+clean, consistently-annotated copy to analyzed_games/<id>.pgn:
 
   - every move gets an eval comment in pawns, from White's POV, e.g. {+0.23}
   - a move gets our own NAG ($2 Mistake / $4 Blunder / $6 Inaccuracy) when
@@ -27,17 +28,20 @@ consistently-annotated copy to analyzed_games/<id>.pgn:
     ±, ∓, +-, -+), read by publish_games.py to print the usual annotation
     symbol after the line
 
-Reads from and writes to a separate data repo (chessgamescollection), which by
-default is expected as a sibling directory of this repo's checkout
-(../chessgamescollection) - pass --data-dir to point elsewhere.
+Reads <data-dir>/daily_games/*.pgn and writes <data-dir>/analyzed_games/*.pgn.
+<data-dir> can be this same repo, or (as in this project's own setup) a
+separate sibling "data repo" holding just the games/analysis/docs, kept apart
+from these scripts. Resolved as: --data-dir, else $CHESS_DATA_DIR, else this
+repo's own checkout directory.
 
 Usage:
     .venv/bin/python scripts/analyze_games.py [--time 0.3] [--depth 18]
-    .venv/bin/python scripts/analyze_games.py --data-dir /path/to/chessgamescollection
+    .venv/bin/python scripts/analyze_games.py --data-dir /path/to/games
 """
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -47,12 +51,12 @@ import chess.engine
 import chess.pgn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATA_DIR = REPO_ROOT.parent / "chessgamescollection"
+DEFAULT_DATA_DIR = REPO_ROOT
 
 ENGINE_PATH = shutil.which("stockfish") or "/usr/games/stockfish"
 
 # Centipawn-loss thresholds for the side that played the move, roughly
-# mirroring chess.com's own categories.
+# mirroring chess.com's own move-quality categories.
 BLUNDER_CP = 300
 MISTAKE_CP = 100
 INACCURACY_CP = 50
@@ -188,17 +192,15 @@ def main() -> None:
     parser.add_argument(
         "--data-dir",
         default=None,
-        help=f"path to the chessgamescollection checkout (default: {DEFAULT_DATA_DIR})",
+        help=f"directory holding daily_games/ and analyzed_games/ - your own repo, or a "
+        f"separate data repo (default: $CHESS_DATA_DIR, else this repo's own checkout, "
+        f"currently {DEFAULT_DATA_DIR})",
     )
     args = parser.parse_args()
 
-    data_dir = Path(args.data_dir).resolve() if args.data_dir else DEFAULT_DATA_DIR
+    data_dir = Path(args.data_dir or os.environ.get("CHESS_DATA_DIR") or DEFAULT_DATA_DIR).resolve()
     if not data_dir.is_dir():
-        print(
-            f"error: data dir not found: {data_dir}\n"
-            "Clone chessgamescollection alongside this repo, or pass --data-dir.",
-            file=sys.stderr,
-        )
+        print(f"error: data dir not found: {data_dir}\nPass --data-dir, or set $CHESS_DATA_DIR.", file=sys.stderr)
         sys.exit(1)
     games_src_dir = data_dir / "daily_games"
     games_out_dir = data_dir / "analyzed_games"

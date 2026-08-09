@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Generate GitHub-viewable markdown pages for the games in the
-chessgamescollection data repo's daily_games/ (or another source directory of
-same-shaped PGNs there, e.g. analyzed_games/).
+"""Generate GitHub-viewable markdown pages for a folder of PGN games,
+highlighting every blunder a chosen player made (found via independent
+engine analysis - see analyze_games.py) with board diagrams, the engine's
+refutation, and how the game actually continued, plus an opening-theory
+breakdown. Works with any standard PGN collection, not tied to a particular
+source site or player.
 
-For every <data-dir>/<source>/<id>.pgn this writes, inside <data-dir>:
+Reads games from <data-dir>/<source>/*.pgn (source defaults to daily_games/,
+pass --source analyzed_games to use analyze_games.py's output instead) and
+writes, inside <data-dir>:
   docs/games/<id>.md            - game info page (result, opening, full PGN)
   docs/games/<id>/<id>.pgn      - copy of the source PGN, downloadable
   docs/games/<id>/blunder_*.svg - board position before each blunder
                                    (NAG $2 Mistake, $4 Blunder, or $9 Miss)
-                                   played by PLAYER_NAME
+                                   played by --player
 
 Whenever the source PGN attaches a side variation directly at a blunder's
 decision point, its full line (not just the first move) is rendered under
@@ -19,17 +24,20 @@ It also (re)writes docs/index.md, a table linking to every game page.
 The script is idempotent: docs/games/ is wiped and fully regenerated each
 run, so it always reflects exactly what's currently in the source directory.
 
-By default <data-dir> is expected as a sibling directory of this repo's
-checkout (../chessgamescollection) - pass --data-dir to point elsewhere.
+<data-dir> can be this same repo, or (as in this project's own setup) a
+separate sibling "data repo" holding just the games/analysis/docs, kept apart
+from these scripts. Resolved as: --data-dir, else $CHESS_DATA_DIR, else this
+repo's own checkout directory.
 
 Usage:
-    .venv/bin/python scripts/publish_games.py
-    .venv/bin/python scripts/publish_games.py --source analyzed_games
-    .venv/bin/python scripts/publish_games.py --data-dir /path/to/chessgamescollection
+    .venv/bin/python scripts/publish_games.py --player "Magnus Carlsen"
+    .venv/bin/python scripts/publish_games.py --player myusername --source analyzed_games
+    .venv/bin/python scripts/publish_games.py --player myusername --data-dir /path/to/games
 """
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -40,18 +48,18 @@ import chess.svg
 
 from openings import OpeningBook, load_book
 
-PLAYER_NAME = "diegoami"
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATA_DIR = REPO_ROOT.parent / "chessgamescollection"
+DEFAULT_DATA_DIR = REPO_ROOT
 
-# Populated at startup by main() from --data-dir/--source.
+# Populated at startup by main() from --player/--data-dir/--source.
+PLAYER_NAME: str
 GAMES_SRC_DIR: Path
 DOCS_DIR: Path
 GAMES_OUT_DIR: Path
 
-# chess.com marks its worst move categories with these PGN NAGs:
-# $2 = Mistake, $4 = Blunder, $9 = Miss. All three count as a "blunder" here.
+# Some PGN sources (e.g. chess.com exports) mark their worst move categories
+# with these NAGs: $2 = Mistake, $4 = Blunder, $9 = Miss (a non-standard
+# reuse of that code). All three count as a "blunder" here, when present.
 BLUNDER_NAGS = {chess.pgn.NAG_MISTAKE, chess.pgn.NAG_BLUNDER, 9}
 
 NAG_LABELS = {
@@ -270,7 +278,7 @@ def suggested_punishment_line(step: dict) -> str | None:
 def mainline_steps(game: chess.pgn.Game) -> list[dict]:
     """Flatten the mainline (the game as actually played) into a list of
     per-move steps, each retaining enough tree context to find the sibling
-    variation chess.com attached at that point."""
+    variation the source PGN attached at that point."""
     steps = []
     node = game
     while node.variations:
@@ -336,7 +344,8 @@ def format_headers_table(headers: chess.pgn.Headers) -> str:
     eco_url = headers.get("ECOUrl", "")
     opening = f"[{eco}]({eco_url})" if eco_url else (eco or "?")
     link = headers.get("Link", "")
-    source = f"[chess.com]({link})" if link else "?"
+    site = headers.get("Site", "").strip()
+    source = f"[{site or 'link'}]({link})" if link else "?"
 
     rows = [
         ("Date", headers.get("Date", "?")),
@@ -479,7 +488,7 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
 
 
 def write_index(entries: list[dict]) -> None:
-    lines = [f"# {PLAYER_NAME}'s Daily Games", "", "| # | Date | White | Black | Result | Opening | Blunders |", "|---|---|---|---|---|---|---|"]
+    lines = [f"# {PLAYER_NAME}'s Games", "", "| # | Date | White | Black | Result | Opening | Blunders |", "|---|---|---|---|---|---|---|"]
     for e in entries:
         h = e["headers"]
         eco = h.get("ECO", "")
@@ -500,6 +509,12 @@ def write_index(entries: list[dict]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
+        "--player",
+        default=os.environ.get("CHESS_PLAYER"),
+        help="whose blunders to report, matched against the PGN White/Black headers "
+        "(required; can also be set via $CHESS_PLAYER)",
+    )
+    parser.add_argument(
         "--source",
         default="daily_games",
         help="directory of source PGNs, relative to --data-dir (default: daily_games)",
@@ -507,20 +522,23 @@ def main() -> None:
     parser.add_argument(
         "--data-dir",
         default=None,
-        help=f"path to the chessgamescollection checkout (default: {DEFAULT_DATA_DIR})",
+        help=f"directory holding {{daily_games,analyzed_games,docs}}/ - your own repo, or a "
+        f"separate data repo (default: $CHESS_DATA_DIR, else this repo's own checkout, "
+        f"currently {DEFAULT_DATA_DIR})",
     )
     args = parser.parse_args()
 
-    data_dir = Path(args.data_dir).resolve() if args.data_dir else DEFAULT_DATA_DIR
-    if not data_dir.is_dir():
-        print(
-            f"error: data dir not found: {data_dir}\n"
-            "Clone chessgamescollection alongside this repo, or pass --data-dir.",
-            file=sys.stderr,
-        )
+    if not args.player:
+        print("error: --player is required (whose blunders to report), or set $CHESS_PLAYER", file=sys.stderr)
         sys.exit(1)
 
-    global GAMES_SRC_DIR, DOCS_DIR, GAMES_OUT_DIR
+    data_dir = Path(args.data_dir or os.environ.get("CHESS_DATA_DIR") or DEFAULT_DATA_DIR).resolve()
+    if not data_dir.is_dir():
+        print(f"error: data dir not found: {data_dir}\nPass --data-dir, or set $CHESS_DATA_DIR.", file=sys.stderr)
+        sys.exit(1)
+
+    global PLAYER_NAME, GAMES_SRC_DIR, DOCS_DIR, GAMES_OUT_DIR
+    PLAYER_NAME = args.player
     GAMES_SRC_DIR = data_dir / args.source
     DOCS_DIR = data_dir / "docs"
     GAMES_OUT_DIR = DOCS_DIR / "games"

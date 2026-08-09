@@ -5,9 +5,11 @@ description: Regenerate the docs/ pages (main index + one page per game) from an
 
 # Publish daily games
 
-The scripts live in this repo (chess_with_claude); the games, analysis, and generated pages live in a
-separate sibling repo, **chessgamescollection**, expected at `../chessgamescollection` by default (both
-scripts accept `--data-dir` to point elsewhere). If that directory doesn't exist, clone it first:
+The scripts in this repo (chess_with_claude) are generic — they take `--player` and `--data-dir` and
+don't assume any particular person or data location. In *this* project's setup, the player is always
+**diegoami** and the games/analysis/generated pages live in a separate sibling repo,
+**chessgamescollection**, so every command below passes `--player diegoami --data-dir
+../chessgamescollection` explicitly. If that directory doesn't exist, clone it first:
 `git clone git@github.com:diegoami/chessgamescollection.git ../chessgamescollection`.
 
 Inside chessgamescollection there are two source-of-truth directories, and `docs/` is generated from
@@ -23,8 +25,8 @@ one of them — never hand-edit files under `docs/`, always regenerate with the 
 ## Step 1 (only when daily_games/ changed): re-analyze with Stockfish
 
 ```bash
-.venv/bin/python scripts/analyze_games.py            # 0.3s of search per position (default)
-.venv/bin/python scripts/analyze_games.py --depth 18  # or a fixed depth instead
+.venv/bin/python scripts/analyze_games.py --data-dir ../chessgamescollection
+.venv/bin/python scripts/analyze_games.py --data-dir ../chessgamescollection --depth 18  # fixed depth instead
 ```
 
 For every `daily_games/<id>.pgn` this writes `analyzed_games/<id>.pgn`: mainline moves only (chess.com's
@@ -53,11 +55,12 @@ Stockfish pass isn't required just to rebuild the docs.
 ## Step 2: regenerate docs/ from analyzed_games/
 
 ```bash
-.venv/bin/python scripts/publish_games.py --source analyzed_games
+.venv/bin/python scripts/publish_games.py --player diegoami --data-dir ../chessgamescollection --source analyzed_games
 ```
 
 (Omit `--source` to fall back to raw `daily_games/` instead — same script, same output shape, just
-trusts chess.com's own annotations rather than the Stockfish pass.)
+trusts the source PGN's own annotations rather than the Stockfish pass. `--player` and `--data-dir` are
+required — the script has no defaults tied to this project.)
 
 For every `<source>/<id>.pgn` it writes:
 - `docs/games/<id>.md` — game info table, an **Opening theory** section, one section per blunder,
@@ -123,6 +126,6 @@ After running:
    push to GitHub on your own initiative. If you also changed the scripts themselves in this repo,
    that's a separate commit here, in chess_with_claude.
 
-If a PGN has no player named `diegoami` in the White/Black headers, the script still generates a page
-for it but notes that diegoami isn't a player and skips the blunder section — that's expected, not a
-bug to fix.
+If a PGN has no player named `diegoami` (the `--player` value used in this project) in the White/Black
+headers, the script still generates a page for it but notes that diegoami isn't a player and skips the
+blunder section — that's expected, not a bug to fix.
