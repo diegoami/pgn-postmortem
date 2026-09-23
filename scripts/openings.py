@@ -3,7 +3,7 @@
 Backed by the lichess-org/chess-openings dataset (data/openings/*.tsv):
 plain-text TSV files of eco, name, pgn (the exact move sequence for each
 named line), downloaded from
-https://github.com/lichess-org/chess-openings (MIT-ish, public data).
+https://github.com/lichess-org/chess-openings (CC0 public domain).
 
 A game position counts as "in book" if the exact move sequence played so
 far is a prefix of at least one row's move sequence - not just an exact

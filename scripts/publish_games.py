@@ -187,13 +187,21 @@ def analyze_opening(book: OpeningBook, steps: list[dict], colors: set[chess.Colo
                             (or never matched one at all)
       continuation_lines - a few example cataloged lines from that same
                             position, as "movetext (*name*, ECO)" strings
+      book_opening       - (eco, name) of the deepest cataloged line matched,
+                            or None
     """
     sans = [s["san"] for s in steps]
     result = book.find_deviation(sans)
     in_book_plies = result["in_book_plies"]
     opening = result["opening"]
 
-    empty = {"message": "", "opening_moves": "", "deviation_step": None, "continuation_lines": []}
+    empty = {
+        "message": "",
+        "opening_moves": "",
+        "deviation_step": None,
+        "continuation_lines": [],
+        "book_opening": opening,
+    }
 
     if opening is None:
         return {**empty, "message": "No cataloged named opening line matches this game's moves."}
@@ -227,6 +235,7 @@ def analyze_opening(book: OpeningBook, steps: list[dict], colors: set[chess.Colo
         "opening_moves": format_movetext(steps[:in_book_plies]),
         "deviation_step": dev_step,
         "continuation_lines": continuation_lines,
+        "book_opening": opening,
     }
 
 
@@ -373,14 +382,29 @@ def color_letter(color: chess.Color) -> str:
     return "w" if color == chess.WHITE else "b"
 
 
-def format_headers_table(headers: chess.pgn.Headers) -> str:
+def format_opening(headers: chess.pgn.Headers, book_opening: tuple[str, str] | None) -> str:
+    """Opening cell for the index/info tables: the deepest cataloged line
+    the game matched (see analyze_opening()) with that line's own ECO code,
+    else the source's ECO header (linked if it carries an ECOUrl). The
+    header's ECO isn't mixed with the book's name - a transposition can
+    make them disagree (e.g. an English move order reaching a King's
+    Indian)."""
+    if book_opening:
+        eco, name = book_opening
+        return f"{name} ({eco})"
+    eco = headers.get("ECO", "")
+    eco_url = headers.get("ECOUrl", "")
+    if eco and eco_url:
+        return f"[{eco}]({eco_url})"
+    return eco or "?"
+
+
+def format_headers_table(headers: chess.pgn.Headers, book_opening: tuple[str, str] | None) -> str:
     white = headers.get("White", "?")
     black = headers.get("Black", "?")
     white_elo = headers.get("WhiteElo", "?")
     black_elo = headers.get("BlackElo", "?")
-    eco = headers.get("ECO", "")
-    eco_url = headers.get("ECOUrl", "")
-    opening = f"[{eco}]({eco_url})" if eco_url else (eco or "?")
+    opening = format_opening(headers, book_opening)
     link = headers.get("Link", "")
     site = headers.get("Site", "").strip()
     source = f"[{site or 'link'}]({link})" if link else "?"
@@ -459,7 +483,7 @@ def write_game_markdown(
     black = headers.get("Black", "?")
 
     parts = [f"# Game {index}: {white} vs {black}", ""]
-    parts.append(format_headers_table(headers))
+    parts.append(format_headers_table(headers, opening["book_opening"]))
     parts.append("")
     parts.append(f"[Download PGN]({index}/{index}.pgn)")
     parts.append("")
@@ -560,26 +584,31 @@ def process_game(pgn_path: Path, game: chess.pgn.Game, book: OpeningBook) -> dic
     return {
         "index": index,
         "headers": game.headers,
+        "opening": format_opening(game.headers, opening["book_opening"]),
         "num_blunders": sum(1 for _, item in flagged_with_svg if not is_inaccuracy(item)),
+        "num_inaccuracies": sum(1 for _, item in flagged_with_svg if is_inaccuracy(item)),
     }
 
 
 def write_index(entries: list[dict]) -> None:
     title = "All Games" if PLAYER_NAME == ALL_PLAYERS else f"{PLAYER_NAME}'s Games"
-    lines = [f"# {title}", "", "| # | Date | White | Black | Result | Opening | Blunders |", "|---|---|---|---|---|---|---|"]
+    lines = [
+        f"# {title}",
+        "",
+        "| # | Date | White | Black | Result | Opening | Blunders | Inaccuracies |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
     for e in entries:
         h = e["headers"]
-        eco = h.get("ECO", "")
-        eco_url = h.get("ECOUrl", "")
-        opening = f"[{eco}]({eco_url})" if eco_url else (eco or "?")
         lines.append(
             f"| [{e['index']}](games/{e['index']}.md) "
             f"| {h.get('Date', '?')} "
             f"| {h.get('White', '?')} "
             f"| {h.get('Black', '?')} "
             f"| {h.get('Result', '?')} "
-            f"| {opening} "
-            f"| {e['num_blunders']} |"
+            f"| {e['opening']} "
+            f"| {e['num_blunders']} "
+            f"| {e['num_inaccuracies']} |"
         )
     (DOCS_DIR / "index.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

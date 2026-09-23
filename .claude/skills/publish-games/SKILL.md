@@ -21,7 +21,7 @@ this repo) rather than guessing or hardcoding a value into any command or file.
 There are two source-of-truth directories inside the data directory, and `docs/` is generated from one
 of them — never hand-edit files under `docs/`, always regenerate with the scripts below.
 
-- `daily_games/*.pgn` — raw source PGNs, one game per file (see the README's "Adding a new game"
+- `daily_games/*.pgn` — raw source PGNs, one game per file (see the README's "How it works"
   section for why). Whatever move-quality review the source attached (if any) is treated as unreliable
   for blunder detection — e.g. chess.com exports were found to attach side variations somewhat
   inconsistently (a punishment line rather than a genuine alternative for the flagged move).

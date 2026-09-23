@@ -1,0 +1,22 @@
+[project]
+name = "pgn-postmortem"
+version = "0.1.0"
+description = "Turn a folder of PGN chess games into browsable Markdown post-mortems of every blunder, analyzed locally with Stockfish."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["chess==1.11.2"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["analyze_games", "openings", "pgn_io", "publish_games"]
+
+[tool.pytest.ini_options]
+pythonpath = ["scripts"]
+testpaths = ["tests"]

@@ -1,170 +1,173 @@
 # pgn-postmortem
 
-Turns a folder of PGN chess games into a browsable set of GitHub-viewable Markdown pages, highlighting
-every blunder a chosen player made — with a board diagram before each one, the engine's refutation,
-how the game actually continued, and an opening-theory breakdown showing where (and if) the player
-left known theory.
+[![CI](https://github.com/diegoami/pgn-postmortem/actions/workflows/ci.yml/badge.svg)](https://github.com/diegoami/pgn-postmortem/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 
-Works with any standard PGN collection and any player name — nothing here is tied to a particular
-chess site, person, or data location; all of that is configuration (see below), not something baked
-into the repo. Move-quality detection comes from an independent local
-[Stockfish](https://stockfishchess.org/) analysis pass (see below), not from whatever annotations (if
-any) the source PGN happens to carry.
+Turn a folder of PGN chess games into a set of Markdown post-mortems you can browse on GitHub. Every
+blunder a chosen player made gets a board diagram, the move the engine preferred, how the mistake
+should have been punished, and an opening-theory breakdown showing where the game left known lines.
 
-## Workflow
+Everything runs locally with [Stockfish](https://stockfishchess.org/), and the output is plain Markdown
+and SVG. There's no account and no server, and the site lives in git.
 
-```
-daily_games/*.pgn  --[analyze_games.py]-->  analyzed_games/*.pgn  --[publish_games.py]-->  docs/
-```
+**[→ Browse the example output](examples/docs/index.md)**: five classic games, from Chigorin–Steinitz
+(1892) to Carlsen–Anand (2014).
 
-1. **`daily_games/<id>.pgn`** — your source PGNs, one file per game, numbered sequentially. Some PGN
-   sources attach their own move-quality review, but it can be inconsistent (e.g. chess.com exports
-   were found to attach a side variation demonstrating a punishment line rather than a genuine
-   alternative to the move it actually flagged) — not reliable enough to build blunder detection on
-   directly.
+<table>
+<tr>
+<td width="50%"><img src="examples/docs/games/1/blunder_4_move32w.svg" alt="Position before 32. Bb4"></td>
+<td>
 
-   **Each file must hold exactly one game.** Every output path these scripts generate
-   (`docs/games/<id>.md`, `docs/games/<id>/blunder_*.svg`, `analyzed_games/<id>.pgn`, ...) is derived
-   from just the source filename - there's no second index for "which game within the file", so a
-   second game packed into the same file has nowhere to go. Worse, `python-chess`'s PGN reader silently
-   reads only the *first* game in a multi-game file and drops the rest with no error - exactly the kind
-   of silent data loss that's easy to miss until a game is just... gone. Both scripts detect this case
-   and skip the whole file with a warning rather than guessing; split multi-game PGN exports into one
-   file per game before dropping them in.
+### Move 32. Bb4 by Mikhail Chigorin (Blunder)
 
-2. **`scripts/analyze_games.py`** re-analyzes each game independently with a local Stockfish engine
-   and writes a clean copy to **`analyzed_games/<id>.pgn`**: mainline moves only (the source's own
-   variations/NAGs stripped), an eval comment on every move (pawns, White's POV, e.g. `{+0.23}`), and
-   our own NAG when a move's **win percentage lost** crosses a threshold (`$6` Inaccuracy, `$2`
-   Mistake, `$4` Blunder). Win% (not raw centipawns) is the signal because the same centipawn swing
-   means very different things in an equal position versus an already-decided one — e.g. blundering a
-   mate-in-4 into a mate-in-9 loses ~0 win% despite a huge cp swing, and shouldn't count the same as
-   the same swing near equality. Centipawns are converted via the logistic fit
-   [lichess uses](https://lichess.org/page/accuracy) (fit to real game outcomes at various evals), and
-   thresholds default to lichess's own (10/20/30 win% points), overridable with
-   `--inaccuracy-threshold`/`--mistake-threshold`/`--blunder-threshold` (or `ANALYSIS_INACCURACY_PCT`/
-   `ANALYSIS_MISTAKE_PCT`/`ANALYSIS_BLUNDER_PCT` in `.env`), same for search effort via `--time`/`--depth`
-   (or `ANALYSIS_TIME`/`ANALYSIS_DEPTH`) — a flag always wins over `.env`. For a flagged move, two side
-   variations capture Stockfish's own view of the position, each ending in a standard PGN
-   position-evaluation NAG (`$10`/`$14`.../`$19`, i.e. `=`, `+=`, `=+`, `±`, `∓`, `+-`, `-+`, always
-   from White's POV, unaffected by the threshold change above — those describe the resulting
-   *position*, not the move that got there):
-   - off the position *before* the move: the engine's actual best move there and how it refutes the
-     blunder, e.g. `( 8. dxc6 Qxd1+ 9. Kxd1 bxc6 10. e4 Nd7 11. a3 Nb6 $10 )` — read on the page as
-     **Better was**
-   - off the move's own resulting position: the engine's best continuation from there, i.e. how the
-     blunder *should* have been punished, in case the real opponent missed it — read on the page as
-     **Best continuation**, shown even if it happens to match what the opponent actually played next
+**Moves since the previous diagram**: 29. Ne6+ Kf6 30. Re7 Rge2 31. d5 Rcd2
 
-   Both lines are capped at `--pv-length` half-moves (default 8).
+**Better was:** 32. Rxb7 Bh5 33. Rb3 Rxd5 34. Nf4 Rxd6 35. Nxh5+ Ke7 +-
 
-   ```bash
-   .venv/bin/python scripts/analyze_games.py            # 0.3s of search per position (default)
-   .venv/bin/python scripts/analyze_games.py --depth 18  # or a fixed depth instead
-   .venv/bin/python scripts/analyze_games.py --blunder-threshold 25 --mistake-threshold 15
-   ```
+**Best continuation:** 32... Rxh2+ 33. Kg1 Rdg2# -+
 
-   `analyzed_games/` is meant to be committed to git, so rebuilding the docs doesn't require
-   re-running the (slower) Stockfish pass unless `daily_games/` changed.
+<sub>Excerpt from [game 1](examples/docs/games/1.md): World Championship 1892, round 23. Chigorin was
+winning, then walked into mate in two.</sub>
 
-3. **`scripts/publish_games.py --player <name>`** reads a source directory of PGNs (default
-   `daily_games/`, but pass `--source analyzed_games` to use the Stockfish-analyzed version) and
-   writes **`docs/`**:
-   - `docs/index.md` — a table linking to every game, with date/players/result/opening/blunder count
-   - `docs/games/<id>.md` — per-game page: info table; an **Opening theory** section (see below); one
-     entry per flagged move by `<name>`, in move order — Mistakes/Blunders/Misses shown plainly,
-     Inaccuracies folded individually under a collapsible `<details>` block since they're one notch
-     below a real blunder — each showing the movetext since the previous diagram, the engine's
-     refutation under **Better was:** and its punishment line under **Best continuation:** (each with
-     its eval symbol) before the board diagram with a red arrow for the move played; and the full PGN
-     in a collapsible block
-   - `docs/games/<id>/<id>.pgn`, `docs/games/<id>/blunder_*.svg`, `docs/games/<id>/inaccuracy_*.svg`, and
-     `docs/games/<id>/opening_deviation.svg` — the downloadable PGN and board diagrams referenced above
+</td>
+</tr>
+</table>
 
-   `--player` is matched case-insensitively against the PGN's `White`/`Black` headers and is
-   **required** — there's no default. A game where that name isn't a player still gets a page, just
-   without a blunders section. Pass `--player '*'` to report blunders by *both* sides in every game
-   instead of filtering to one name — useful when neither side is "you", e.g. a folder of annotated
-   master games.
+## Features
 
-   The **Opening theory** section uses `scripts/openings.py`, backed by the
-   [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) dataset
-   (`data/openings/*.tsv`, downloaded once and committed to this repo). It shows, in order: the
-   **Opening moves** played while still in cataloged theory; a diagram of the position right before the
-   game left it; a sentence naming who played that first move — `<name>`, or the opponent (in which
-   case `<name>` never actually got the chance to deviate); and a few example cataloged lines that were
-   still available at that point. Note this only covers *named* lines in that dataset, not every
-   reasonable book move, so a "deviation" it reports isn't necessarily objectively bad — just unnamed
-   in this particular dataset.
+- **Independent engine analysis.** Stockfish re-evaluates every position itself. Any annotations the
+  PGN already carries are ignored, since site exports (chess.com's, for example) are inconsistent about
+  what they attach where.
+- **Judged by win probability, not raw centipawns.** Evals are converted to win % using
+  [lichess's logistic fit](https://lichess.org/page/accuracy), and a move is flagged by how many win %
+  points it threw away (default thresholds are lichess's own: 10 / 20 / 30 for Inaccuracy / Mistake /
+  Blunder). Going from mate-in-4 to mate-in-9 is a huge centipawn swing but costs nothing, so it isn't
+  flagged. The same swing in an equal position is.
+- **Two engine lines per mistake.** *Better was* is what should have been played. *Best continuation*
+  is how the mistake should have been punished, which is useful when the real opponent missed it.
+- **Opening theory.** Each game is matched against the ~3,800 named lines in
+  [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings). The page shows the
+  position where the game left known theory, who left it, and which named lines were still available
+  at that point.
+- **Any player, any collection.** Filter to one player (`--player yourname`) to review your own games,
+  or use `--player '*'` to annotate both sides of master games.
+- **Standard, reusable output.** The analyzed PGNs are ordinary PGN files: an eval comment on every
+  move, standard NAGs (`$2`/`$4`/`$6`), and engine lines as variations ending in position symbols (`±`,
+  `-+`, ...). They load into any chess GUI.
+- **Incremental and deterministic.** Only new games are sent to Stockfish. Pages are fully regenerated
+  on each run and the output is byte-identical, which the test suite checks against `examples/`.
 
-   ```bash
-   .venv/bin/python scripts/publish_games.py --player "Magnus Carlsen" --source analyzed_games
-   ```
+## Quickstart
 
-   Both scripts are idempotent — output directories are fully regenerated on each run, so they always
-   match exactly what's in the source directory. Neither script commits or pushes; review the diff
-   and push when ready.
-
-A "blunder" always means a move played by `--player` carrying NAG `$2` (Mistake), `$4` (Blunder), or
-`$9` (Miss).
-
-## Setup
+Requires Python 3.10+ and a `stockfish` binary on your `PATH` (`apt install stockfish`,
+`brew install stockfish`, ...).
 
 ```bash
+git clone https://github.com/diegoami/pgn-postmortem.git && cd pgn-postmortem
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+cp .env.example .env        # preconfigured for the bundled examples/
+scripts/update_games.sh     # analyze new games, then regenerate docs/
 ```
 
-`scripts/analyze_games.py` also needs the `stockfish` binary on the system (`/usr/games/stockfish` on
-Debian/Ubuntu — installed via `apt install stockfish`).
+### With your own games
+
+1. Edit `.env` and set `CHESS_PLAYER` to your username as it appears in the PGN `White`/`Black`
+   headers, and `CHESS_DATA_DIR` to a directory of your own.
+2. Put your games in `$CHESS_DATA_DIR/daily_games/` as `1.pgn`, `2.pgn`, ..., **one game per file**.
+3. Run `scripts/update_games.sh`, then open `$CHESS_DATA_DIR/docs/index.md`, or push the directory to
+   GitHub to browse it there.
+
+A handy setup is to keep your games in a **separate repository** (`daily_games/`, `analyzed_games/`,
+`docs/`), so this one stays pure tooling and your games repo can be published independently, for
+example with GitHub Pages.
+
+## How it works
+
+```
+daily_games/*.pgn ──analyze_games.py──▶ analyzed_games/*.pgn ──publish_games.py──▶ docs/
+   (your PGNs)        (Stockfish)         (evals + NAGs +        (Markdown)        index.md
+                                            engine lines)                           games/<id>.md + SVGs
+```
+
+**[`scripts/analyze_games.py`](scripts/analyze_games.py)** keeps only the mainline of each game,
+evaluates every position, and writes a clean annotated copy. For each flagged move it attaches two
+variations, each capped at `--pv-length` half-moves:
+
+```pgn
+32. Bb4 $4 { -999.98 } ( 32. Rxb7 Bh5 33. Rb3 Rxd5 34. Nf4 Rxd6 35. Nxh5+ Ke7 $18 )
+32... Rxh2+ { -999.99 } ( 32... Rxh2+ 33. Kg1 Rdg2# $19 ) 0-1
+```
+
+The first variation hangs off the position *before* the move (**Better was**). The second hangs off
+the position *after* it (**Best continuation**). Games already present in `analyzed_games/` are
+skipped; `--force` redoes them all.
+
+**[`scripts/publish_games.py`](scripts/publish_games.py)** reads the analyzed PGNs and writes:
+
+| Output | Contents |
+|---|---|
+| `docs/index.md` | One row per game: date, players, result, opening, blunder and inaccuracy counts |
+| `docs/games/<id>.md` | Game info, opening-theory section, every flagged move in order (inaccuracies folded under `<details>`), full PGN |
+| `docs/games/<id>/*.svg` | Board before each flagged move, with the move played as a red arrow, plus the opening-deviation position |
+
+A "blunder" on these pages means a move by `--player` rated Mistake (`$2`), Blunder (`$4`) or Miss
+(`$9`). Note that the opening matching only covers *named* lines in the dataset, so a "deviation" means
+"no longer in a named line", not "a bad move".
+
+Each source file must contain **exactly one game**. Every output path is derived from the filename, and
+python-chess silently reads only the first game of a multi-game file, so a file with more than one game
+is skipped with a warning rather than losing games without a trace.
 
 ## Configuration
 
-Both scripts need to know **who** (`--player`) and, optionally, **where your games live**
-(`--data-dir`, if not this repo's own checkout). Passing these as flags every time gets old fast, so
-either can also come from a `.env` file instead:
+Every setting can be passed as a flag or set in `.env` (see [`.env.example`](.env.example)). A flag
+always wins.
+
+| Flag | `.env` variable | Default | Meaning |
+|---|---|---|---|
+| `--player` | `CHESS_PLAYER` | *(required)* | Whose moves to review (case-insensitive), or `*` for both sides |
+| `--data-dir` | `CHESS_DATA_DIR` | repo root | Directory containing `daily_games/`; outputs are written next to it |
+| `--time` | `ANALYSIS_TIME` | `0.3` | Seconds of search per position |
+| `--depth` | `ANALYSIS_DEPTH` | — | Fixed search depth instead of a time limit |
+| `--inaccuracy-threshold` | `ANALYSIS_INACCURACY_PCT` | `10` | Win % points lost to flag an Inaccuracy |
+| `--mistake-threshold` | `ANALYSIS_MISTAKE_PCT` | `20` | … a Mistake |
+| `--blunder-threshold` | `ANALYSIS_BLUNDER_PCT` | `30` | … a Blunder |
+| `--pv-length` | — | `8` | Max half-moves per engine line |
+| `--force` | — | off | Re-analyze games already in `analyzed_games/` |
+| `--source` | — | `daily_games` | Which directory `publish_games.py` reads (`update_games.sh` uses `analyzed_games`) |
+
+## Claude Code skill
+
+[`.claude/skills/publish-games`](.claude/skills/publish-games/SKILL.md) is a
+[Claude Code](https://claude.com/claude-code) skill for this workflow. Say "I added new games, publish
+them" and it runs the pipeline using your `.env`.
+
+## Development
 
 ```bash
-cp .env.example .env
-# then edit .env:
-#   CHESS_PLAYER=yourusername   (or '*' to report blunders by both sides in every game)
-#   CHESS_DATA_DIR=/path/to/your/games   (omit to use this repo's own checkout)
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest          # unit tests, a golden-file test against examples/, and a Stockfish smoke test
+.venv/bin/ruff check .
 ```
 
-`.env` is gitignored — it's local machine config, never committed, and this repo never hardcodes a
-player name or a games location itself. A flag on the command line always overrides `.env`.
+If you intentionally change the page output, regenerate the golden files:
 
-`--data-dir` (or `CHESS_DATA_DIR`) just needs `daily_games/` in it; `analyzed_games/` and `docs/` get
-written alongside. It doesn't need to be this repo, or even a git repo at all — a common setup is a
-**separate sibling repo** holding just the games/analysis/generated pages, so this repo stays pure,
-reusable tooling with no game data of its own, and the games repo can be published under GitHub Pages
-independently. Nothing here assumes that split, though — dropping `daily_games/` straight into this
-repo works too.
-
-If you're using a Claude Code skill (see `.claude/skills/publish-games/`) to automate steps 2–3, it
-relies on the same `.env` — configure that once and the skill needs no per-project edits.
-
-## Adding new games
-
-1. Drop each PGN export into `daily_games/` (in whichever data dir you're using) as the next number,
-   e.g. `daily_games/3.pgn` — one game per file (see above).
-2. Run `scripts/update_games.sh` — a one-line wrapper for the two steps below, using `.env` for
-   `--player`/`--data-dir`:
-   ```bash
-   scripts/update_games.sh
-   ```
-3. Review with `git status` / `git diff` (in the data dir), then commit and push.
-
-`scripts/update_games.sh` just chains:
 ```bash
-.venv/bin/python scripts/analyze_games.py
-.venv/bin/python scripts/publish_games.py --source analyzed_games
+.venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games
 ```
 
-**Already-analyzed games are skipped automatically.** `analyze_games.py` treats a game as done once
-`analyzed_games/<id>.pgn` exists — the Stockfish pass is the slow part, and a game's own source PGN
-never changes once added, so re-running after adding new games only analyzes the new ones. Pass
-`--force` to redo everything (e.g. after changing the analysis logic itself, as happened a few times
-while building this). `publish_games.py` has no such skip — it's cheap, and always fully regenerating
-`docs/` means every page reflects the current script logic, not just whatever was true when it was
-first generated.
+## Credits
+
+- [python-chess](https://github.com/niklasf/python-chess) for PGN parsing, the engine protocol and the
+  SVG boards
+- [Stockfish](https://stockfishchess.org/) for the analysis
+- [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0) for the opening
+  names, bundled in `data/openings/`
+- [lichess's accuracy page](https://lichess.org/page/accuracy) for the win % model and default
+  thresholds
+
+## License
+
+[MIT](LICENSE)
