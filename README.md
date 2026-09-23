@@ -11,8 +11,8 @@ should have been punished, and an opening-theory breakdown showing where the gam
 Everything runs locally with [Stockfish](https://stockfishchess.org/), and the output is plain Markdown
 and SVG. There's no account and no server, and the site lives in git.
 
-**[→ Browse the example output](examples/docs/index.md)**: five classic games, from Chigorin–Steinitz
-(1892) to Carlsen–Anand (2014).
+**[→ Live demo](https://diegoami.github.io/pgn-postmortem/)**: five classic games, from Chigorin–Steinitz
+(1892) to Carlsen–Anand (2014). The same pages are also [browsable on GitHub](examples/docs/index.md).
 
 <table>
 <tr>
