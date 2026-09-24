@@ -84,8 +84,10 @@ bootstrap applies as written there — one review, not two stages.
   check** runs that cannot block it: `.github/workflows/pages.yml` builds and
   deploys the demo site from `examples/docs/` on a push to `main` that touches
   `examples/docs/**` or the workflow. It depends on network and GitHub
-  availability, so a red run is re-run once; a second red run is a defect,
-  handled by the defect path in `PRINCIPLES.md`.
+  availability, so a red run is re-run once. A second red run is
+  investigated: only a failure caused by this repository (the workflow or the
+  content of `examples/docs/`) is a defect, handled by the defect path in
+  `PRINCIPLES.md`; an outage of GitHub or the network is not.
 
   A change to the page output updates the golden files in the same commit:
   `.venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games`.
