@@ -15,6 +15,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 | F-3 | "then wire that into a pipeline that may fetch games from somewhere on the input or put the published files somewhere on the output" | requested | | Depends on F-1. Also in the owner's words: "as sources it must be able to parse a collection of games"; "if it has to be reusable we have to think about people who do not have a github, so output must be pluggable somehow"; "I am not maintaining their repository or web pages". `docs/book-plan.md`, *Layer 2*; the chess.com, lichess and git sources exist as spike code on `book-poc`. |
 | F-4 | "yes, queue the name matching improvement" | requested | | Raised in the owner's own trial run (2026-09-24), in the owner's words: "Why are there games that are not mine, they might be mislabeled". Reading the owner's 149 OTB games kept 140 and left out 8 of the owner's own, spelled `Amicabile Diego` and `Diego , Amicabile`, because player names match exactly except for letter case, so every spelling needs its own alias. The implementer's proposal, to be shaped when picked up: match names ignoring spacing, commas and word order; and have `read` report the names seen most often in the games it left out, so a missed alias is easy to spot. Touches F-1.1's reading; the owner decides at shaping whether it lands before F-1.3 or within it. |
 | F-5 | "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear." | accepted | 3 | Raised on the owner's own book (2026-09-24): 12 of the 148 OTB games, all from 2012, have no recorded result. Shaped below. |
+| F-6 | "I am looking at the games and I think there should be more diagrams, for instance in this game https://diegoami.github.io/chessgamescollection/games/2008-01-04-4e5d4e182f.html just an error is shown that did not affect the end result. It was move 40 that was deciding, not 31" | requested | | The owner's choices on 2026-09-24, when asked which extra moments should get a diagram: "Swings that changed the outcome" (a move that changes the expected result, e.g. winning → level or level → losing, even below the 20-point critical-moment line), not the other two options offered ("the deciding moment" and "inaccuracies too"); and when: "Right after F-5, before F-1.3". The owner's example game (Pedroni vs. Amicabile, Verona 2008) has only 31... Qa2? as a critical moment; 37... Rg2+ (25% → 41% for White) and 40. Ra4 (49% → 32%) changed the outcome but cost 16 and 17 points. Not shaped yet; it is shaped after F-5's shaping lands. |
 
 ## Accepted requests
 
@@ -123,12 +124,13 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   owner's own book that's 12 of the 148 over-the-board games. F-1.3's chapters (best wins, losses,
   draws) also need a result for every game.
 - **Scope:** for a game whose `Result` is `*` or missing, the book shows a result in this order:
-  1. **The board decides it** if the final position is checkmate (the mating side wins) or
-     stalemate (a draw). This applies whether or not the game is analyzed.
+  1. **The board decides it** if the final position is checkmate (the mating side wins), or is
+     stalemate or has insufficient material (a draw). This applies whether or not the game is
+     analyzed.
   2. **Otherwise it is presumed from the analysis,** if the game carries the library's analysis and
-     its final position has an eval: a win for the side with **at least 70% winning chances**,
-     using the same win-percentage model as the move grading (a forced mate counts as 100%), and a
-     draw otherwise.
+     its final position has an eval, whether in centipawns or a mate score (`[%eval #N]`): a win
+     for the side with **at least 70% winning chances**, using the same win-percentage model as the
+     move grading (a forced mate counts as 100%), and a draw otherwise.
   3. **Otherwise** the book says the result was not recorded.
 
   The result is **shown exactly like a recorded result**, with no marker, everywhere the site shows
@@ -137,24 +139,30 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   game's identity (which includes the result), its file names and its analysis don't change, and
   the article's PGN section shows the source as is.
 
-  The threshold is a library parameter with 70% as its default. It must be above 50%; a value of 50%
-  or below is rejected with an error.
+  The threshold is a library parameter with 70% as its default. It must be at least 55% and at most
+  95%; any other value is rejected with an error. The conclusion's wording must agree with the
+  result shown: a presumed win is never described as a result that "came from outside the position".
 
   The same change fixes a defect found in the owner's book: the conclusion's counts pluralize
   "inaccuracy" as "inaccuracys".
 - **Done when:** the gates pass, including tests on fixtures. These are small synthetic PGNs that
   carry the library's analysis marker header and hand-set `[%eval]` comments. They are written for
-  these tests and documented as synthetic, not produced by Stockfish. The tests check that:
+  these tests, not produced by Stockfish, and live in their own directory
+  (`tests/fixtures/site/synthetic/`), documented there as hand-written. They are not under the
+  generated `tests/fixtures/site/analyzed/`. The tests check that:
   1. an unrecorded game ending at about 72–75% for White shows 1–0 in the infobox, lead, end of the
      moves, conclusion and index;
-  2. one ending at about 25–28% for White shows 0–1;
+  2. one ending at about 25–28% for White shows 0–1, and one ending at about 32–35% for White shows
+     ½–½;
   3. one ending at about 65–68% for White shows ½–½, which proves the default threshold is 70%, not
      60%;
   4. the 72–75% game shows ½–½ when the threshold parameter is set to 80, which proves the parameter
      is used;
-  5. a threshold of 50 or below is rejected;
-  6. an unrecorded, unanalyzed game ending in checkmate shows the mating side's win, and one ending
-     in stalemate shows ½–½;
+  5. a threshold below 55 or above 95 is rejected;
+  6. an unrecorded, unanalyzed game ending in checkmate shows the mating side's win, and ones ending
+     in stalemate or with insufficient material show ½–½;
+  6a. an unrecorded, analyzed game whose final eval is a mate score (`[%eval #N]`, not checkmate on
+     the board) shows the win of the side with the mate;
   7. an unrecorded game that is neither analyzed nor ended on the board shows "not recorded" wording,
      and no bare "\*" appears anywhere outside the PGN section;
   8. the PGN `Result` header, the `PostmortemId` and the file names of all these games are unchanged;
@@ -165,9 +173,9 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 - **Out of scope:**
   - writing a presumed result into any PGN;
   - how F-1.3 uses presumed results in its selection (F-1.3's own shaping);
+  - diagrams for moves that changed the expected result, which is F-6;
   - presuming anything for a game whose `Result` is recorded, even if it contradicts the final
     position;
-  - F-6's diagrams.
 - **Depends on:** F-1.2 (landed).
 - **Open questions:** none remain. The owner decided on 2026-09-24, each against a recommended
   default:
