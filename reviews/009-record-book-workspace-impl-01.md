@@ -88,3 +88,15 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `126caf5` (pull request #9); the clean round, 01, covers `73b87b2`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36039791390.
+
+- **The decision is recorded as the owner's, dated, with its default and reason:** `docs/book-plan.md`, "Where Diego's own book lives".
+- **The open-work pointer names what is still open,** and review 004's deferred round-02 finding 1 is resolved.
+- **Only `docs/book-plan.md` and `CLAUDE.md` change,** plus this review record.
+
+Left for a later record change, as the owner accepted: findings 1–3. These are the licence missing from the open-work line's list, a settled decision placed under "open work", and the plan's status paragraph not mentioning the owner decisions it now holds.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
