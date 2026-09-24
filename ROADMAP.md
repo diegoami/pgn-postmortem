@@ -10,10 +10,11 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
 | id | request | status | iteration | notes |
 |---|---|---|---|---|
-| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1–4 (F-1.1 to F-1.4) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
+| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1, 2, 4, 5 (F-1.1 to F-1.4; iteration 3 is F-5) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
 | F-2 | "Yes, LLM, but of course Claude with API key would be too expensive, Deepseek is the realistic option, BYOK for other users" | requested | | The book's prose. Depends on F-1. `docs/book-plan.md`, *Prose*. |
 | F-3 | "then wire that into a pipeline that may fetch games from somewhere on the input or put the published files somewhere on the output" | requested | | Depends on F-1. Also in the owner's words: "as sources it must be able to parse a collection of games"; "if it has to be reusable we have to think about people who do not have a github, so output must be pluggable somehow"; "I am not maintaining their repository or web pages". `docs/book-plan.md`, *Layer 2*; the chess.com, lichess and git sources exist as spike code on `book-poc`. |
 | F-4 | "yes, queue the name matching improvement" | requested | | Raised in the owner's own trial run (2026-09-24), in the owner's words: "Why are there games that are not mine, they might be mislabeled". Reading the owner's 149 OTB games kept 140 and left out 8 of the owner's own, spelled `Amicabile Diego` and `Diego , Amicabile`, because player names match exactly except for letter case, so every spelling needs its own alias. The implementer's proposal, to be shaped when picked up: match names ignoring spacing, commas and word order; and have `read` report the names seen most often in the games it left out, so a missed alias is easy to spot. Touches F-1.1's reading; the owner decides at shaping whether it lands before F-1.3 or within it. |
+| F-5 | "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear." | accepted | 3 | Raised on the owner's own book (2026-09-24): 12 of the 148 OTB games, all from 2012, have no recorded result. Shaped below. |
 
 ## Accepted requests
 
@@ -113,6 +114,51 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   9. **Owner decision — selection weights** (before F-1.3). Default: tune them on fixtures and the
      demo collection in F-1.3; tuning on the owner's archive needs it analyzed, which happens only
      when the owner asks.
+
+### F-5 — A result for games whose result was not recorded
+
+- **Original request:** "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear."
+- **Player value:** every game in the book reads as finished. Today a game with an unrecorded result
+  shows "\*" in the infobox and "The game ended \* after …" in its conclusion. In the owner's own
+  book that's 12 of the 148 over-the-board games. F-1.3's chapters (best wins, losses, draws) also
+  need a result for every game.
+- **Scope:** when a game's `Result` is `*` or missing and the game carries the library's analysis,
+  the book presumes a result from the final analyzed position:
+  - a win for the side with **at least 70% winning chances** (the same win-percentage model as the
+    move grading), with a forced mate counting as 100%;
+  - a draw otherwise.
+
+  The presumed result is **shown exactly like a recorded result**, with no marker, wherever the
+  site shows a result: the infobox, the lead, the conclusion and the index. The game's PGN is
+  untouched: its `Result` header stays as the source had it, so the game's identity (which includes
+  the result) and its analysis are unchanged, and the article's PGN section shows the source as is.
+  A game with an unrecorded result and no analysis gets wording saying the result wasn't recorded,
+  never a bare "\*". The threshold is a library parameter with 70% as its default. The same change
+  fixes a defect found in the owner's book: the conclusion's counts pluralize "inaccuracy" as
+  "inaccuracys".
+- **Done when:** the gates pass, including tests that, on fixtures:
+  1. an unrecorded game ending at ≥70% for White shows 1–0 in the infobox, lead, conclusion and
+     index;
+  2. one ending at ≤30% for White shows 0–1;
+  3. one ending in between shows ½–½;
+  4. a final forced mate gives the win;
+  5. an unrecorded, unanalyzed game shows "not recorded" wording and no bare "\*";
+  6. the PGN `Result` header and `PostmortemId` of those games are unchanged;
+  7. counts read "inaccuracies".
+
+  Each new assertion is shown failing first. The golden files are regenerated where the output
+  changes.
+- **Out of scope:** writing a presumed result into any PGN; how F-1.3 uses presumed results in its
+  selection (F-1.3's own shaping); presuming results for games that ended by a rule the board shows
+  (checkmate or stalemate are already decided by the moves and need no presumption).
+- **Depends on:** F-1.2 (landed).
+- **Owner decisions** (2026-09-24), each put with a recommended default:
+  - **the presumed result is shown as the result, without a marker.** The recommended default was
+    to mark it "presumed"; the owner chose no marker;
+  - **the threshold is 70%.** The recommended default was 80%; any value from 60% to 85% gives the
+    same result for all 12 of the owner's games;
+  - **F-5 lands now, before F-1.3.**
+- **Mode:** Claude Code (the owner's standing choice).
 
 ## Statuses
 
