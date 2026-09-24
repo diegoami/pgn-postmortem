@@ -85,3 +85,13 @@ def test_the_installed_console_script_runs(tmp_path):
     assert read.stdout.strip().endswith("kept 4.")
     # main()'s return code reaches the shell through the entry point
     assert script("read", "no-such-dir").returncode == 1
+
+
+def test_site_builds_from_analyzed_games_as_a_subprocess(tmp_path):
+    analyzed = REPO_ROOT / "tests" / "fixtures" / "site" / "analyzed"
+    player = ["--player", "Ada Example", "--alias", "adaex", "--alias", "Example, Ada"]
+    result = run_cli("site", str(analyzed), *player, "--out", "site", cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert "Wrote 6 article(s) to site: 6 analyzed, 0 not analyzed yet, 4 critical moment(s)." in result.stdout
+    assert "<title>Games of Ada Example</title>" in (tmp_path / "site" / "index.html").read_text(encoding="utf-8")
+    assert len(list((tmp_path / "site" / "games").glob("*.html"))) == 6

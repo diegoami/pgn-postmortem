@@ -1,0 +1,14 @@
+[Event "Club championship"]
+[Site "Example Chess Club"]
+[Date "2019.04.02"]
+[Round "5"]
+[White "Enzo Opponent"]
+[Black "Example, Ada"]
+[Result "0-1"]
+[PostmortemId "5d1415e1ac"]
+[PostmortemAnalysis "Stockfish 16, depth 12"]
+
+1. e4 { [%eval 0.36] } 1... c5 { [%eval 0.39] } 2. Nf3 { [%eval 0.21] } 2... d6
+{ [%eval 0.44] } 3. d4 { [%eval 0.64] } 3... cxd4 { [%eval 0.60] } 4. Nxd4
+{ [%eval 0.51] } 4... Nf6 { [%eval 0.62] } 5. Nc3 { [%eval 0.42] } 5... a6
+{ [%eval 0.50] } 0-1

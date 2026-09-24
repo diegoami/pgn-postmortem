@@ -1,0 +1,13 @@
+[Event "Casual game"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "Ada Example"]
+[Black "Hugo Casual"]
+[Result "1-0"]
+[PostmortemId "5ce208cdcb"]
+[PostmortemAnalysis "Stockfish 16, depth 12"]
+
+1. e4 { [%eval 0.36] } 1... e5 { [%eval 0.37] } 2. Qh5 { [%eval -0.28] } 2...
+Ke7 $4 { [%eval #1] } ( 2... Nc6 3. Bc4 g6 4. Qf3 Nf6 5. Ne2 d6 6. Nbc3 $10 )
+3. Qxe5# ( 3. Qxe5# $18 ) 1-0

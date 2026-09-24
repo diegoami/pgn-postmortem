@@ -11,6 +11,12 @@
         Read the same way, then analyze with Stockfish every game that is not
         in DIR yet, writing it to DIR with [%eval] comments.
 
+    pgn-postmortem site INPUT... --out DIR [--player NAME] [--alias NAME]... [--title TEXT]
+        Read the same way, keeping the analysis of games that `analyze` wrote,
+        and write a static site to DIR: one article per game and an index by
+        year. Analyzed games get notes, diagrams and a "what would you play?"
+        question at each critical moment; the others get a plain article.
+
 Without --player or --alias, every game is kept.
 """
 
@@ -22,6 +28,7 @@ import sys
 from pgn_postmortem import __version__
 from pgn_postmortem.analysis import DEFAULT_TIME, EngineFailure, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection
+from pgn_postmortem.site import build_site, display_name
 
 
 def add_reading_options(parser: argparse.ArgumentParser) -> None:
@@ -32,8 +39,8 @@ def add_reading_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def read_collection(args: argparse.Namespace) -> Collection:
-    collection = Collection.read(args.inputs, player=args.player, aliases=args.alias)
+def read_collection(args: argparse.Namespace, keep_analysis: bool = False) -> Collection:
+    collection = Collection.read(args.inputs, player=args.player, aliases=args.alias, keep_analysis=keep_analysis)
     for warning in collection.report.warnings:
         print(f"warning: {warning}", file=sys.stderr)
     print(collection.report.summary())
@@ -69,6 +76,14 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_site(args: argparse.Namespace) -> int:
+    collection = read_collection(args, keep_analysis=True)
+    title = args.title or (f"Games of {display_name(args.player)}" if args.player else "Games")
+    report = build_site(collection, args.out, title=title)
+    print(report.summary(args.out))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pgn-postmortem", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -92,6 +107,12 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--workers", type=int, default=0, help="parallel Stockfish processes (default: one per CPU)")
     analyze.add_argument("--engine", metavar="PATH", help="the Stockfish binary (default: stockfish on PATH)")
     analyze.set_defaults(func=cmd_analyze)
+
+    site = sub.add_parser("site", help="write the static site: an article per game and an index")
+    add_reading_options(site)
+    site.add_argument("--out", metavar="DIR", required=True, help="where the site is written")
+    site.add_argument("--title", help='the site\'s title (default: "Games of <player>", or "Games")')
+    site.set_defaults(func=cmd_site)
     return parser
 
 

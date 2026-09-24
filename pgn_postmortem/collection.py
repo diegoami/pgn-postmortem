@@ -10,6 +10,12 @@ the analysis step writes: a game read back from the library's own output is
 a stripped game again, to be analyzed again wherever it is written. One
 header of our own is added: ``PostmortemId``, the game's content id.
 
+The one exception is ``Collection.read(..., keep_analysis=True)``, which the
+site uses (``pgn_postmortem.site``): a game carrying ``PostmortemAnalysis`` is
+then kept as the analysis step wrote it, with its ``[%eval]`` comments, NAGs
+and engine lines. A game without that header is still stripped, so a
+source's own ``[%eval]`` is never trusted (ROADMAP.md, F-1, *out of scope*).
+
 Games are identified by their content, not by where they were found, so the
 same game in two files is kept once, and a game read back from the library's
 own output has the same id as before it was analyzed.
@@ -47,6 +53,7 @@ from __future__ import annotations
 import glob
 import hashlib
 import io
+import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -192,16 +199,29 @@ def game_id(game: chess.pgn.Game) -> str:
     return hashlib.sha1("|".join(parts).encode()).hexdigest()[:10]
 
 
+def is_number(text: str) -> bool:
+    """Whether ``text`` is ASCII digits only. ``str.isdigit`` also accepts
+    digits such as ``²`` that ``int`` rejects and a file name should not carry."""
+    return re.fullmatch(r"[0-9]+", text) is not None
+
+
+def date_fields(date: str) -> tuple[str, str, str]:
+    """The year, month and day of a PGN ``Date`` as written (``""`` when missing)."""
+    y, m, d = (date.split(".") + ["", "", ""])[:3]
+    return y, m, d
+
+
 def file_stem(game: chess.pgn.Game, gid: str) -> str:
     """``<yyyy>-<mm>-<dd>-<id>`` from the ``Date`` header: month and day
     zero-padded to two digits (``2019.3.14`` gives ``2019-03-14``), an unknown
-    month or day as ``00``, and ``undated-<id>`` when the year is unknown. Only
-    the file name is normalized; the id keeps the header as written."""
-    date = game.headers.get("Date", "")
-    y, m, d = (date.split(".") + ["", "", ""])[:3]
-    if not y.isdigit():
+    month or day as ``00``, and ``undated-<id>`` when the year is unknown. A
+    year, month or day counts as known only when it is ASCII digits
+    (``is_number``), so ``²019.01.01`` is undated. Only the file name is
+    normalized; the id keeps the header as written."""
+    y, m, d = date_fields(game.headers.get("Date", ""))
+    if not is_number(y):
         return f"undated-{gid}"
-    return f"{y}-{m.zfill(2) if m.isdigit() else '00'}-{d.zfill(2) if d.isdigit() else '00'}-{gid}"
+    return f"{y}-{m.zfill(2) if is_number(m) else '00'}-{d.zfill(2) if is_number(d) else '00'}-{gid}"
 
 
 def strip_game(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:
@@ -245,6 +265,12 @@ def format_game(game: chess.pgn.Game) -> str:
     return game.accept(exporter) + "\n"
 
 
+def keep_analyzed(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:
+    """``game`` as the analysis step wrote it, with its ``PostmortemId``."""
+    game.headers[ID_HEADER] = gid
+    return game
+
+
 def player_names(player: str | None, aliases: Iterable[str]) -> set[str]:
     return {name.strip().casefold() for name in [player or "", *aliases] if name and name.strip()}
 
@@ -263,19 +289,26 @@ class Collection:
         inputs: str | Path | Iterable[str | Path],
         player: str | None = None,
         aliases: Iterable[str] = (),
+        keep_analysis: bool = False,
     ) -> Collection:
         """Read ``inputs`` (files, directories, globs; see ``find_pgn_files``).
 
         With a ``player`` or ``aliases``, only games where White or Black is
         one of those names (compared without regard to case or surrounding
         spaces) are kept; with neither, every game is.
+
+        With ``keep_analysis``, a game carrying the analysis step's
+        ``PostmortemAnalysis`` header keeps its analysis instead of being
+        stripped, and when a game is found both analyzed and not, the
+        analyzed copy is the one kept (in the place of the first copy read),
+        so a site can be built from the games and their analyses in any order.
         """
         if isinstance(inputs, str | Path):
             inputs = [inputs]
         names = player_names(player, aliases)
         report = ReadReport()
         games: list[CollectedGame] = []
-        seen: set[str] = set()
+        seen: dict[str, int] = {}  # id -> index in games
 
         for path in find_pgn_files(inputs):
             report.files += 1
@@ -290,11 +323,16 @@ class Collection:
                     report.empty += 1
                     continue
                 gid = game_id(game)
+                analyzed = keep_analysis and ANALYSIS_HEADER in game.headers
                 if gid in seen:
                     report.duplicates += 1
+                    first = seen[gid]
+                    if analyzed and ANALYSIS_HEADER not in games[first].game.headers:
+                        games[first] = CollectedGame(gid, keep_analyzed(game, gid), origin)
                     continue
-                seen.add(gid)
-                games.append(CollectedGame(gid, strip_game(game, gid), origin))
+                seen[gid] = len(games)
+                kept = keep_analyzed(game, gid) if analyzed else strip_game(game, gid)
+                games.append(CollectedGame(gid, kept, origin))
 
         report.kept = len(games)
         return cls(games, report)
@@ -338,3 +376,10 @@ class Collection:
         from pgn_postmortem.analysis import analyze_games
 
         return analyze_games(self.games, out_dir, **options)
+
+    def build_site(self, out_dir: str | Path, **options):
+        """Write the static site for these games to ``out_dir``; see
+        ``pgn_postmortem.site.build_site`` for the options."""
+        from pgn_postmortem.site import build_site
+
+        return build_site(self.games, out_dir, **options)

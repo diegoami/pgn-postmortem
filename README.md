@@ -141,15 +141,17 @@ always wins.
 ## The library (in progress)
 
 `pgn-postmortem` is growing into a Python library that turns a player's PGN collections into a
-Wikipedia-style site and an EPUB book ([`ROADMAP.md`](ROADMAP.md), F-1). Its first part reads and
-analyzes: multi-game files, directories and glob patterns in, the player's games kept once each with
-every source comment, variation and NAG stripped, then a parallel Stockfish pass that writes standard
-`[%eval]` comments and skips games it has already analyzed.
+Wikipedia-style site and an EPUB book ([`ROADMAP.md`](ROADMAP.md), F-1). So far it reads,
+analyzes and writes the site: multi-game files, directories and glob patterns in, the player's games
+kept once each with every source comment, variation and NAG stripped, then a parallel Stockfish pass
+that writes standard `[%eval]` comments and skips games it has already analyzed, then a static site
+with an article for every game.
 
 ```bash
 .venv/bin/pip install -e .
 pgn-postmortem read 'collections/**/*.pgn' --player "Ada Example" --alias adaex --out games/
 pgn-postmortem analyze games/ --out analyzed/ --workers 4
+pgn-postmortem site analyzed/ --player "Ada Example" --alias adaex --out site/
 ```
 
 ```python
@@ -157,6 +159,7 @@ from pgn_postmortem import Collection
 
 games = Collection.read(["collections/**/*.pgn"], player="Ada Example", aliases=["adaex"])
 games.analyze("analyzed/", depth=18, workers=4)
+Collection.read("analyzed/", keep_analysis=True).build_site("site/", title="Games of Ada Example")
 ```
 
 Quote a `**` pattern so the library, not the shell, expands it. The scripts above are unchanged by it.
@@ -184,6 +187,26 @@ once. A `FEN` header that spells out the standard starting position counts the s
 
 The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.py).
 
+### The site
+
+`pgn-postmortem site` writes `index.html` (the games by year), one `games/<date>-<id>.html` article
+per game and one stylesheet. Open `index.html` in a browser, or copy the folder to a phone: every link
+is relative, nothing loads from the network, there is no JavaScript, and the colours follow the
+system's light or dark mode. Each article has an infobox with the final position, a lead paragraph,
+the moves, a conclusion and the PGN, all in template prose.
+
+For an analyzed game the moves carry notes (`?!` inaccuracy, `?` mistake, `??` blunder), and each
+**critical moment** gets a diagram and a question, "What would you play?", with the answer hidden
+until you tap it. A critical moment is a move that cost its side at least 20 points of winning chances
+(a mistake or a blunder), computed from the `[%eval]` comments that `analyze` wrote, with the same win
+percentage and thresholds that grade the moves. Games that have not been analyzed, or whose only
+evaluations came from their source, still get an article, without notes or questions. Pass the games
+and their analysis together (`site games/ analyzed/`) and the analyzed copy of each game is used.
+Building again into the same folder removes the pages it wrote before for games that are no longer in
+the collection; a file it did not write is never touched.
+
+The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html).
+
 ## Claude Code skill
 
 [`.claude/skills/publish-games`](.claude/skills/publish-games/SKILL.md) is a
@@ -204,10 +227,16 @@ If you intentionally change the page output, regenerate the golden files:
 .venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games
 ```
 
+and for the library's site (the fixture's analysis is committed, so this needs no Stockfish):
+
+```bash
+.venv/bin/python -m pgn_postmortem site tests/fixtures/site/analyzed --player "Ada Example" --alias adaex --alias "Example, Ada" --out tests/golden/site
+```
+
 ## Credits
 
 - [python-chess](https://github.com/niklasf/python-chess) for PGN parsing, the engine protocol and the
-  SVG boards
+  SVG boards, and the piece set by Colin M.L. Burnett that the site's diagrams use
 - [Stockfish](https://stockfishchess.org/) for the analysis
 - [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0) for the opening
   names, bundled in `data/openings/`

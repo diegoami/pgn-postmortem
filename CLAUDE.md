@@ -66,8 +66,10 @@ bootstrap applies as written there — one review, not two stages.
   `pgn_postmortem/` for the library's; `README.md` for what a
   stranger needs. Generated, never edited by hand or cited as a source:
   `examples/docs/**` (written by `scripts/publish_games.py`) and
-  `examples/analyzed_games/**` (written by `scripts/analyze_games.py`); change
-  the scripts and regenerate. `data/openings/*.tsv` is a copy of the
+  `examples/analyzed_games/**` (written by `scripts/analyze_games.py`),
+  `tests/golden/site/**` (written by `pgn-postmortem site`, command below) and
+  `tests/fixtures/site/analyzed/**` (written once by `pgn-postmortem analyze`,
+  command in `tests/test_site.py`); change the code and regenerate. `data/openings/*.tsv` is a copy of the
   third-party lichess-org/chess-openings dataset (CC0): refresh it from
   upstream, never edit it.
 - **paths to normally ignore:** `.venv/` (the local environment),
@@ -89,7 +91,7 @@ bootstrap applies as written there — one review, not two stages.
   | gate | command | covers | when | repeats | failure model |
   |---|---|---|---|---|---|
   | lint | `.venv/bin/python -m ruff check .` | style, import order, bugbear, pyupgrade (rules in `pyproject.toml`) | every change, locally; CI on every push to `main` and every pull request | 1 | deterministic |
-  | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached); the library (`pgn_postmortem/`) on the fixture collection in `tests/fixtures/collection/`: reading (multi-game files, globs across directories, player aliases, duplicates kept once by the owner's identity rule, comments, variations and NAGs stripped, file names with zero-padded dates that list in date order), analysis (a forced mate flagged in `[%eval]` output, nothing analyzed on a second run while games only read into the output directory are still analyzed, analyses kept when games are read into the output directory again, also under a file name from before the padding, the same output with two workers as with one, a stop at the first engine failure) and its command line run end to end as a subprocess, through `python -m` and through the installed `pgn-postmortem` script | every change, locally; CI on Python 3.11 and 3.13 with Stockfish and the package (`pip install -e .`) installed | 1 | deterministic; the Stockfish tests search to a fixed depth, and each game starts from a fresh engine state (`ucinewgame`), so the output does not depend on which worker analyzed which game; they are skipped locally when no `stockfish` binary is found (CI always installs it) |
+  | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached); the library (`pgn_postmortem/`) on the fixture collection in `tests/fixtures/collection/`: reading (multi-game files, globs across directories, player aliases, duplicates kept once by the owner's identity rule, comments, variations and NAGs stripped, file names with zero-padded dates that list in date order), analysis (a forced mate flagged in `[%eval]` output, nothing analyzed on a second run while games only read into the output directory are still analyzed, analyses kept when games are read into the output directory again, also under a file name from before the padding, the same output with two workers as with one, a stop at the first engine failure) and its command line run end to end as a subprocess, through `python -m` and through the installed `pgn-postmortem` script; the site (`pgn_postmortem/site.py`) built from the already-analyzed fixture in `tests/fixtures/site/` (no Stockfish): a golden-file test that it renders to `tests/golden/site/` byte for byte, one article per game with every link relative and resolving (files and anchors), the fixture's critical moments as listed by hand, each with its question and an answer hidden in a closed `<details>`, games without analysis (a source's own `[%eval]` included) built with no critical moment, the analyzed copy of a game preferred when read with its unanalyzed one, headers with `<`, `>`, `&` and quotes escaped into well-formed pages, a malformed `Date` (`²019.01.01`) filed as undated instead of stopping the build, a rebuild removing the stale pages it wrote whatever their names and never a file it did not write, and the `site` subcommand as a subprocess | every change, locally; CI on Python 3.11 and 3.13 with Stockfish and the package (`pip install -e .`) installed | 1 | deterministic; the Stockfish tests search to a fixed depth, and each game starts from a fresh engine state (`ucinewgame`), so the output does not depend on which worker analyzed which game; they are skipped locally when no `stockfish` binary is found (CI always installs it) |
 
 
   Only the two gates above decide a merge. After a merge, one **post-merge
@@ -102,7 +104,10 @@ bootstrap applies as written there — one review, not two stages.
   `PRINCIPLES.md`; an outage of GitHub or the network is not.
 
   A change to the page output updates the golden files in the same commit:
-  `.venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games`.
+  `.venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games`
+  for the Markdown pipeline, and
+  `.venv/bin/python -m pgn_postmortem site tests/fixtures/site/analyzed --player "Ada Example" --alias adaex --alias "Example, Ada" --out tests/golden/site`
+  for the library's site.
 - **conventions:** English everywhere: page and book text, comments,
   commits, records. Commit messages are an imperative summary line and a body
   saying why. Dependencies are pinned in `requirements*.txt`. Nothing is

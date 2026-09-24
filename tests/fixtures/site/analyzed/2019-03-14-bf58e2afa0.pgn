@@ -1,0 +1,17 @@
+[Event "Club championship"]
+[Site "Example Chess Club"]
+[Date "2019.03.14"]
+[Round "3"]
+[White "Ada Example"]
+[Black "Bruno Rival"]
+[Result "1/2-1/2"]
+[PostmortemId "bf58e2afa0"]
+[PostmortemAnalysis "Stockfish 16, depth 12"]
+
+1. e4 { [%eval 0.36] } 1... e5 { [%eval 0.37] } 2. Nf3 { [%eval 0.34] } 2...
+Nc6 { [%eval 0.29] } 3. Bc4 { [%eval 0.30] } 3... Bc5 { [%eval 0.25] } 4. c3
+{ [%eval 0.06] } 4... Nf6 { [%eval 0.33] } 5. d3 { [%eval 0.02] } 5... d6
+{ [%eval 0.23] } 6. O-O { [%eval 0.22] } 6... O-O { [%eval 0.24] } 7. Re1
+{ [%eval -0.27] } 7... a6 { [%eval 0.23] } 8. Bb3 { [%eval 0.21] } 8... Ba7
+{ [%eval 0.39] } 9. h3 { [%eval 0.27] } 9... h6 { [%eval 0.26] } 10. Nbd2
+{ [%eval 0.28] } 10... Re8 { [%eval 0.26] } 1/2-1/2
