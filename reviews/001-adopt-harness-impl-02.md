@@ -33,3 +33,19 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `7f54e2f` (pull request #1); the last clean round, 02, covers `2584897`. The done-when items of r4 `ADOPT.md` §6:
+
+- **Every chosen harness file exists:** `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `PLAN.md`, `ROADMAP.md`, `design/README.md`, `reviews/README.md` and `verification/README.md` are on `main` at `7f54e2f`.
+- **The slot is filled from this repository:** the product, paths, never-echo list, `merge: owner`, `design: required` and the gates table are in `CLAUDE.md`. Both review rounds checked them against the repository.
+- **The gates table names commands that run here:** `ruff check .` passed and `pytest -q` gave 30 passed, locally and in the reviews. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/35972646748.
+- **The adapters carry only mode-specific text:** `AGENTS.md` is verbatim r4, and `CLAUDE.md` changes only inside the slot. Checked in rounds 01 and 02.
+- **Every collision is reported:** `PLAN.md` from `book-poc` was split into `ROADMAP.md` F-1 to F-3 and `docs/book-plan.md`, as the pull request body records.
+- **The review records and provenance exist:** `reviews/001-adopt-harness-impl-01.md` and `-02.md` are both posted on #1. The provenance (r4, `39c29e3`, 2026-09-24) is in the slot. There's no design record in Claude mode (r4 `PRINCIPLES.md`), as the pull request body explains.
+- **Nothing else changed:** the diff from the merge base contains only the harness files, `docs/book-plan.md` and the review records.
+
+Left open: the round-02 wording point about the post-merge Pages check goes into a separate change, as the owner decided.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
