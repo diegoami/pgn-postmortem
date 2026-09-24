@@ -76,3 +76,17 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `7476e54` (pull request #3); the last clean round, 03, covers `f6e41b4`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/35985173971.
+
+- **F-1's block has every field of the block format:** `ROADMAP.md`, *Accepted requests*, on `main`. Checked in rounds 01–03.
+- **Every slice fits one iteration and has runnable done-when checks:** F-1.1 to F-1.4, with the owner-verdict and PyPI items tightened in rounds 01–02.
+- **The original wording is quoted unchanged:** confirmed byte for byte in round 01. The owner confirmed the added quotes on 2026-09-24, and the merge is its check.
+- **Only `ROADMAP.md` and `PLAN.md` change,** plus the review records: the pull request's file list.
+- **The gates:** `ruff check .` passed and `pytest -q` gave 30 passed at every round.
+
+Left open by the owner's decision, to settle when F-1.4 is shaped for its session: round-03 findings 1 (a failed PyPI release after the merge goes through the defect path, and the release workflow is declared as a post-merge check) and 2 (what the clean-install demo build is built from, and whether it needs Stockfish). Finding 3 (sign owner verdict comments) is a habit for the owner, not a change.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
