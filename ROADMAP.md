@@ -6,6 +6,8 @@
 
 ## The queue
 
+The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the owner's own.
+
 | id | request | status | iteration | notes |
 |---|---|---|---|---|
 | F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | requested | | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |

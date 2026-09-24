@@ -1,8 +1,10 @@
 # Plan: a library that turns a PGN collection into a book
 
 Status: **planning**. This is the direction behind requests F-1 to F-3 in
-[`ROADMAP.md`](../ROADMAP.md); it is not a shaped request, and nothing in it is agreed for
-implementation. Each request is shaped (and, in OpenCode mode, designed and agreed) before any work
+[`ROADMAP.md`](../ROADMAP.md); it is not a shaped request. The owner's settled choices are the ones
+listed under *decided, and not to be re-opened* in the `CLAUDE.md` project slot (for example
+DeepSeek with bring-your-own-key, the chapters, English, library before pipeline); everything else
+here is direction, not agreed for implementation. Each request is shaped (and, in OpenCode mode, designed and agreed) before any work
 starts. Nothing below is implemented yet, except what the "Existing spike" section lists (on the
 `book-poc` branch).
 

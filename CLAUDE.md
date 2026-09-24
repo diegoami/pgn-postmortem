@@ -42,7 +42,7 @@ bootstrap applies as written there — one review, not two stages.
   player, with a pipeline around it that fetches games and publishes the
   output. It is for chess players who want to reread their own games, on a
   phone and offline, without operating a chess GUI. The owner is its first
-  user, with his own archive (github.com/diegoami/DA_chessgames, chess.com,
+  user, with their own archive (github.com/diegoami/DA_chessgames, chess.com,
   lichess). The direction is in [`docs/book-plan.md`](docs/book-plan.md) and the
   queued work in [`ROADMAP.md`](ROADMAP.md).
 - **harness:** adopted from `harness_template` release `r4` (commit
@@ -69,7 +69,7 @@ bootstrap applies as written there — one review, not two stages.
   owner's player name and local data paths); the value of any API-key variable
   (`DEEPSEEK_API_KEY`, or whatever a config names in `api_key_env`); `~/.ssh/`
   and `gh` credentials; absolute paths of the owner's machine (e.g. the
-  location of his games repository) in any committed file.
+  location of the owner's games repository) in any committed file.
 - **merge:** owner
 - **design:** required
 - **the gates table:**
@@ -78,7 +78,14 @@ bootstrap applies as written there — one review, not two stages.
   |---|---|---|---|---|---|
   | lint | `.venv/bin/python -m ruff check .` | style, import order, bugbear, pyupgrade (rules in `pyproject.toml`) | every change, locally; CI on every push to `main` and every pull request | 1 | deterministic |
   | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached) | every change, locally; CI on Python 3.10 and 3.12 with Stockfish installed | 1 | deterministic; the Stockfish test searches to a fixed depth on a forced mate, and is skipped locally when no `stockfish` binary is found (CI always installs it) |
-  | pages | `.github/workflows/pages.yml` | the demo site builds and deploys from `examples/docs/` | on push to `main` touching `examples/docs/**` or the workflow | 1 | network and GitHub availability; re-run once before treating it as a defect |
+
+
+  Only the two gates above decide a merge. After a merge, one **post-merge
+  check** runs that cannot block it: `.github/workflows/pages.yml` builds and
+  deploys the demo site from `examples/docs/` on a push to `main` that touches
+  `examples/docs/**` or the workflow. It depends on network and GitHub
+  availability, so a red run is re-run once; a second red run is a defect,
+  handled by the defect path in `PRINCIPLES.md`.
 
   A change to the page output updates the golden files in the same commit:
   `.venv/bin/python scripts/publish_games.py --player '*' --data-dir examples --source analyzed_games`.
@@ -88,7 +95,7 @@ bootstrap applies as written there — one review, not two stages.
   hand-edited in generated output. **Planning is not building**: while the
   owner is planning, the output is records (roadmap rows, design records,
   owner decisions), never code; a long or costly run on the owner's data (for
-  example analyzing his whole archive with Stockfish) starts only when he
+  example analyzing the whole archive with Stockfish) starts only when the owner
   asks for it.
 - **decided, and not to be re-opened:**
   - Moves are graded by win % lost (lichess's logistic fit and its 10/20/30
