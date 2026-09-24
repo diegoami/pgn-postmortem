@@ -47,7 +47,16 @@ bootstrap applies as written there — one review, not two stages.
   queued work in [`ROADMAP.md`](ROADMAP.md).
 - **harness:** adopted from `harness_template` release `r4` (commit
   `39c29e3`) on 2026-09-24. Modes: both; the owner picks the mode of each
-  change when it starts (the iteration table in [`PLAN.md`](PLAN.md)).
+  change when it starts (the iteration table in [`PLAN.md`](PLAN.md)). The
+  owner's usual way of working is Claude Code mode, with releases reviewed
+  by a model that is not Claude. Those milestone reviews are not in `r4`:
+  they are on `harness_template`'s untagged `main`, and the owner plans to
+  take them from its next tagged release (expected to be `r5`), adopted as
+  its own reviewed change before F-1's first release at the end of F-1.4
+  (owner, 2026-09-24). Since those rules want a release's claims written
+  before its work, F-1's claims are its done-when items in `ROADMAP.md`,
+  fixed when #3 landed (`7476e54`) before any F-1 work began; with no earlier
+  tag, F-1's first milestone review covers the range from that commit.
 - **paths to inspect:** `scripts/` (the code), `tests/`, `README.md`,
   `docs/book-plan.md`, `ROADMAP.md`, `.claude/skills/publish-games/SKILL.md`,
   `.github/workflows/`. The unmerged spike toward the book is on the branch
