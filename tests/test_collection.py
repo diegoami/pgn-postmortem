@@ -100,6 +100,19 @@ def test_the_same_moves_and_result_on_different_dates_are_kept_twice(tmp_path):
     assert (collection.report.kept, collection.report.duplicates) == (2, 0)
 
 
+def test_dates_written_differently_are_two_games_with_the_same_padded_file_date(tmp_path):
+    # The id takes the Date header as written (owner decision, 2026-09-24): only the file
+    # name pads it, so 2019.3.14 and 2019.03.14 are two games, both named 2019-03-14-<id>.pgn
+    # (review 007, round 01, finding 1).
+    path = tmp_path / "padding.pgn"
+    path.write_text(pgn(LONG, date="2019.3.14") + pgn(LONG, date="2019.03.14"), encoding="utf-8")
+    collection = Collection.read(path, **PLAYER)
+    assert (collection.report.kept, collection.report.duplicates) == (2, 0)
+    first, second = collection
+    assert first.id != second.id
+    assert [item.filename for item in collection] == [f"2019-03-14-{first.id}.pgn", f"2019-03-14-{second.id}.pgn"]
+
+
 def test_an_explicit_standard_start_is_the_same_as_none(tmp_path):
     path = tmp_path / "fen.pgn"
     standard = f'[SetUp "1"]\n[FEN "{chess.STARTING_FEN}"]\n'
