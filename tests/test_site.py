@@ -272,6 +272,14 @@ def test_the_analyzed_copy_of_a_game_is_the_one_kept(order):
     ]  # in the place of the first copy read
 
 
+def test_keep_analysis_still_strips_a_source_that_the_library_did_not_analyze():
+    annotated = COLLECTION / "club" / "2019.pgn"  # Fritz-era comments, a source [%eval], a variation, NAGs
+    collection = Collection.read(annotated, keep_analysis=True)
+    nodes = [node for item in collection for node in (item.game, *item.game.mainline())]
+    assert nodes and not any(node.comment or node.nags or len(node.variations) > 1 for node in nodes)
+    assert not any(item.game.headers.get("Annotator") for item in collection)
+
+
 def test_without_keep_analysis_the_analysis_is_stripped():
     collection = Collection.read(ANALYZED)
     assert all("PostmortemAnalysis" not in item.game.headers for item in collection)
