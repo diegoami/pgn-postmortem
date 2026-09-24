@@ -63,3 +63,16 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `930dd2e` (pull request #4); the last clean round, 02, covers `dd97d55`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/35988242537.
+
+- **Each answered question records the owner's decision and the date, with the question and its default unchanged:** F-1 questions 1, 3, 5 and 6 in `ROADMAP.md`. Checked in rounds 01 and 02.
+- **F-1.1's mode and design record are in the iteration table:** `PLAN.md` iteration 1, OpenCode, `design/001-f1-1-read-and-analyze.md`.
+- **Only the stated files change:** `ROADMAP.md` and `PLAN.md`, plus the `CLAUDE.md` and `docs/book-plan.md` lines widened in round 01, and the review records.
+- **The gates:** `ruff check .` passed and `pytest -q` gave 30 passed at both rounds.
+
+Left open by the owner's decision: round-02 finding 1. The `CLAUDE.md` open-work line should point to the two decisions still open in `docs/book-plan.md` (whether the pipeline is a separate package, and where the owner's own book lives); fix it in the change that settles either one.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
