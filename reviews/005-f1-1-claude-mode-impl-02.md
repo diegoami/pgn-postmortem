@@ -104,3 +104,16 @@ addressed, and the fix brings no rule from the untagged harness into this projec
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `5dd4a02` (pull request #5); the last clean round, 02, covers `f338729`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/35997304808.
+
+- **Iteration 1's mode, design record and reviewer match the owner's decision:** `PLAN.md` iteration 1 is Claude Code, with no design record and a fresh-context reviewer.
+- **The slot records how milestone reviews will arrive, and when:** the `CLAUDE.md` harness line, answered in round 01.
+- **Only `PLAN.md` and `CLAUDE.md` change,** plus the review records.
+- **The gates:** `ruff check .` passed and `pytest -q` gave 30 passed at both rounds.
+
+Left open by the owner's decision, to settle in the change that adopts the milestone rules (expected r5): round-02 finding 1 ("before any F-1 work landed on `main`") and finding 2 (mark the claims and range choices as the owner's, and handle the PyPI-install check, which can only run after the tag).
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
