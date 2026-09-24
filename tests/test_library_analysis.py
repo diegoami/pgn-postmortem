@@ -1,14 +1,16 @@
-"""The library's Stockfish step (pgn_postmortem.analysis). Every test here
-searches to a fixed depth, and is skipped when no Stockfish binary is found
-(CI always installs one)."""
+"""The library's Stockfish step (pgn_postmortem.analysis). Every test that
+runs Stockfish searches to a fixed depth, and is skipped when no Stockfish
+binary is found (CI always installs one)."""
 
+import time
 from pathlib import Path
 
+import chess.engine
 import chess.pgn
 import pytest
 
-from pgn_postmortem import Collection, analyze_games
-from pgn_postmortem.analysis import default_engine_path
+from pgn_postmortem import CollectedGame, Collection, analysis, analyze_games
+from pgn_postmortem.analysis import EngineFailure, default_engine_path
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "collection"
 PLAYER = {"player": "Ada Example", "aliases": ["adaex", "Example, Ada"]}
@@ -91,3 +93,34 @@ def test_two_workers_give_the_same_output_as_one(tmp_path):
     one, two = contents(tmp_path / "one"), contents(tmp_path / "two")
     assert len(one) == 3
     assert one == two
+
+
+def test_an_engine_failure_stops_the_run_at_the_first_failed_game(tmp_path, monkeypatch):
+    # No Stockfish needed: a stand-in engine, and an analysis whose first game fails
+    # the way a crashed engine does (review 006, finding 5).
+    class StandInEngine:
+        id = {"name": "Stand-in"}
+        options = {}
+
+        def configure(self, options):
+            pass
+
+        def quit(self):
+            pass
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda *args, **kwargs: StandInEngine())
+    started = []
+
+    def analyze_game(engine, limit, source, engine_game, *args):
+        started.append(engine_game)
+        if len(started) == 1:
+            raise chess.engine.EngineTerminatedError("engine process died unexpectedly (exit code: 1)")
+        time.sleep(0.5)
+        return source
+
+    monkeypatch.setattr(analysis, "analyze_game", analyze_game)
+    games = [CollectedGame(f"g{i:02d}", chess.pgn.Game(), f"fake.pgn#{i + 1}") for i in range(20)]
+    with pytest.raises(EngineFailure, match="failed on fake.pgn#1"):
+        analyze_games(games, tmp_path, workers=1)
+    # the queued games are cancelled, not each tried against a dead engine first
+    assert len(started) <= 2

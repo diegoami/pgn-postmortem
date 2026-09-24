@@ -13,7 +13,7 @@ The same steps from the command line are ``pgn-postmortem read`` and
 ``pgn-postmortem analyze`` (see ``pgn_postmortem.cli``).
 """
 
-from pgn_postmortem.analysis import AnalysisReport, Thresholds, analyze_games
+from pgn_postmortem.analysis import AnalysisReport, EngineFailure, Thresholds, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection, ReadReport, find_pgn_files
 
 __version__ = "0.1.0"
@@ -22,6 +22,7 @@ __all__ = [
     "AnalysisReport",
     "CollectedGame",
     "Collection",
+    "EngineFailure",
     "ReadReport",
     "Thresholds",
     "__version__",

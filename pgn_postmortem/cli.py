@@ -20,7 +20,7 @@ import argparse
 import sys
 
 from pgn_postmortem import __version__
-from pgn_postmortem.analysis import DEFAULT_TIME, analyze_games
+from pgn_postmortem.analysis import DEFAULT_TIME, EngineFailure, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection
 
 
@@ -97,6 +97,6 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except FileNotFoundError as err:
+    except (FileNotFoundError, EngineFailure) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1

@@ -3,6 +3,7 @@ collection into a directory, then `analyze` that directory, each as a
 separate process."""
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -53,3 +54,11 @@ def test_a_missing_input_fails_with_a_message(tmp_path):
     result = run_cli("read", "no-such-dir", cwd=tmp_path)
     assert result.returncode == 1
     assert "error: no such file or directory: no-such-dir" in result.stderr
+
+
+@pytest.mark.skipif(shutil.which("false") is None, reason="needs a `false` binary")
+def test_an_engine_that_is_not_uci_fails_with_a_message(tmp_path):
+    result = run_cli("analyze", str(FIXTURES), "--out", "analyzed", "--engine", shutil.which("false"), cwd=tmp_path)
+    assert result.returncode == 1
+    assert result.stderr.startswith("error: could not start the engine ")
+    assert len(result.stderr.strip().splitlines()) == 1, result.stderr  # one line, no traceback

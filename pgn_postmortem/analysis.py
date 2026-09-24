@@ -70,6 +70,15 @@ class Thresholds(NamedTuple):
 LICHESS_THRESHOLDS = Thresholds()
 
 
+class EngineFailure(RuntimeError):
+    """The engine could not be started, or failed while analyzing a game.
+    The run stops at the first failure; the games already written stay, and
+    a rerun picks up the rest."""
+
+
+ENGINE_ERRORS = (chess.engine.EngineError, chess.engine.EngineTerminatedError)
+
+
 @dataclass
 class AnalysisReport:
     analyzed: int = 0
@@ -245,6 +254,8 @@ def analyze_games(
         engine = engines.get()
         try:
             analyzed = analyze_game(engine, limit, item.game, item.id, pv_plies, thresholds)
+        except ENGINE_ERRORS as err:
+            raise EngineFailure(f"the engine failed on {item.origin}: {err}") from err
         finally:
             engines.put(engine)
         path = out_dir / item.filename
@@ -259,18 +270,30 @@ def analyze_games(
             try:
                 engine = chess.engine.SimpleEngine.popen_uci(engine_path)
             except FileNotFoundError as err:
-                raise FileNotFoundError(f"Stockfish not found at {engine_path} (install it, or pass its path)") from err
+                raise EngineFailure(f"Stockfish not found at {engine_path} (install it, or pass its path)") from err
+            except (OSError, *ENGINE_ERRORS) as err:
+                raise EngineFailure(f"could not start the engine {engine_path}: {err}") from err
             engines.put(engine)
-            engine.configure({"Threads": 1, "Hash": 64})
+            # only the options this engine has: another UCI engine may lack Stockfish's
+            engine.configure({k: v for k, v in {"Threads": 1, "Hash": 64}.items() if k in engine.options})
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {pool.submit(run, item): item for item in todo}
-            for done, future in enumerate(as_completed(futures), start=1):
-                report.written.append(future.result())
-                report.analyzed += 1
-                if progress:
-                    progress(done, len(todo), futures[future])
+            try:
+                for done, future in enumerate(as_completed(futures), start=1):
+                    report.written.append(future.result())
+                    report.analyzed += 1
+                    if progress:
+                        progress(done, len(todo), futures[future])
+            except BaseException:
+                # Fail fast: drop the queued games instead of trying each one first.
+                pool.shutdown(wait=True, cancel_futures=True)
+                raise
     finally:
         while not engines.empty():
-            engines.get().quit()
+            engine = engines.get()
+            try:
+                engine.quit()
+            except ENGINE_ERRORS:
+                pass  # it already died
     report.written.sort()
     return report
