@@ -136,6 +136,9 @@ bootstrap applies as written there — one review, not two stages.
   - Architecture: first a library (PGN collections in, site and EPUB out),
     then a pipeline around it (fetch in, publish out).
 - **open work:** [`ROADMAP.md`](ROADMAP.md), including F-1's open questions
-  (the licence among them); the direction in [`docs/book-plan.md`](docs/book-plan.md).
+  (the licence among them); the direction, and the decisions still open there
+  (whether the pipeline is a separate package, the Markdown pages, the
+  selection weights), in [`docs/book-plan.md`](docs/book-plan.md). The owner's
+  own book lives in `diegoami/chessgamescollection` (decided 2026-09-24).
 
 <!-- SLOT:END -->
