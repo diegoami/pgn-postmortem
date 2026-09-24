@@ -177,6 +177,11 @@ than one source were merged, and one broken game was skipped.
   separate package or repository.
 - **License.** python-chess is GPL-3.0. MIT code can depend on it, but anything that bundles it, such
   as a Docker image, is subject to GPL. Options: keep MIT, or switch to GPL-3.0 for simplicity.
-- **Where Diego's own book lives:** a new repo, `chessgamescollection`, or local only.
+- **Where Diego's own book lives.** Decided by the owner on 2026-09-24: in
+  [`diegoami/chessgamescollection`](https://github.com/diegoami/chessgamescollection), reused as the
+  owner's personal workspace. It installs the library like any other user would and holds the
+  owner's configuration, the analyzed games and the book. This repository stays generic tooling with
+  no personal data. `DA_chessgames` stays a read-only source. (Recommended default, chosen by the
+  owner. Reason: the repository already exists and already holds the owner's games.)
 - **The Markdown pages:** keep them or retire them.
 - **Selection weights:** tune them on DA_chessgames once analysis is allowed to run.
