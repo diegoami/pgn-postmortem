@@ -12,6 +12,11 @@ no test here runs Stockfish.
   tests/golden/site/              the site built from them, byte for byte.
                                   After an intended change to the pages,
                                   regenerate it with the command in REGENERATE.
+  tests/fixtures/site/odd.pgn     three unanalyzed games with awkward headers:
+                                  <, >, & and quotes in the names, event, site
+                                  and more; a Date whose year starts with a
+                                  superscript digit (²019); a three-digit month
+                                  (2019.123.05)
 """
 
 from html.parser import HTMLParser
@@ -23,11 +28,12 @@ import pytest
 from pgn_postmortem import Collection, critical_moments
 from pgn_postmortem.cli import main
 from pgn_postmortem.collection import file_stem
-from pgn_postmortem.site import move_label
+from pgn_postmortem.site import build_site, move_label
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
 SITE_GAMES = FIXTURES / "site" / "games.pgn"
+ODD = FIXTURES / "site" / "odd.pgn"
 ANALYZED = FIXTURES / "site" / "analyzed"
 COLLECTION = FIXTURES / "collection"
 GOLDEN = REPO_ROOT / "tests" / "golden" / "site"
@@ -185,15 +191,88 @@ def test_the_site_has_one_article_per_game_and_no_broken_links(tmp_path, inputs,
     assert check_links(tmp_path) > len(expected) * 3
 
 
-def test_an_earlier_build_leaves_no_stale_article(tmp_path):
+def test_a_stale_page_the_builder_wrote_is_removed_whatever_its_name(tmp_path):
+    collection = Collection.read(ODD)
+    collection.build_site(tmp_path)
+    odd = [path.name for path in (tmp_path / "games").iterdir() if path.name.startswith("2019-123-05-")]
+    assert len(odd) == 1  # the three-digit month stays in the name, as file_stem writes it
+    kept = [item for item in collection if item.game.headers["Date"] != "2019.123.05"]
+    build_site(kept, tmp_path)  # that game has left the collection
+    assert sorted(path.name for path in (tmp_path / "games").iterdir()) == sorted(
+        f"{file_stem(item.game, item.id)}.html" for item in kept
+    )
+
+
+def test_a_file_the_builder_did_not_write_is_never_removed(tmp_path):
     (tmp_path / "games").mkdir()
-    stale = tmp_path / "games" / "2000-01-01-0123456789.html"
-    stale.write_text("an article of a game no longer in the collection", encoding="utf-8")
-    mine = tmp_path / "games" / "notes.html"
-    mine.write_text("not an article", encoding="utf-8")
+    foreign = tmp_path / "games" / "2000-01-01-0123456789.html"  # named like an article, but not ours
+    foreign.write_text("<!DOCTYPE html>\n<title>My own notes</title>\n", encoding="utf-8")
+    notes = tmp_path / "games" / "notes.html"
+    notes.write_text("not an article", encoding="utf-8")
     build([ANALYZED], tmp_path, *PLAYER)
-    assert not stale.exists()
-    assert mine.exists()  # only files named like articles are removed
+    assert foreign.exists()
+    assert notes.exists()
+
+
+# --- awkward headers ------------------------------------------------------------------
+
+TAGS = {
+    "html", "head", "meta", "title", "link", "body", "header", "main", "footer", "article", "nav", "section",
+    "h1", "h2", "p", "b", "i", "span", "a", "ol", "li", "pre", "table", "caption", "tr", "th", "td", "div",
+    "figure", "figcaption", "details", "summary",
+}  # fmt: skip
+ATTRIBUTES = {
+    "lang", "charset", "name", "content", "rel", "href", "class", "id", "role", "aria-label", "colspan",
+    "data-r", "data-f",
+}  # fmt: skip
+
+
+def test_names_with_markup_characters_are_escaped(tmp_path):
+    build([ODD], tmp_path, "--title", 'Ada\'s <games> & "notes"')
+    headers = next(item for item in Collection.read(ODD) if item.game.headers["Date"] == "2022.02.02").game.headers
+    article = tmp_path / "games" / f"2022-02-02-{headers['PostmortemId']}.html"
+    for path in [tmp_path / "index.html", *(tmp_path / "games").iterdir()]:
+        dom = parse(path)  # well-formed: every element closed, in order
+        # nothing in a header became an element or an attribute
+        assert {e.tag for e in dom.iter()} - {"#document"} <= TAGS, path.name
+        assert {name for e in dom.iter() for name in e.attrs} <= ATTRIBUTES, path.name
+        text = path.read_text(encoding="utf-8")
+        for raw in ("<GM>", "<Open>", "<Pub>", "<2400>", "<draw>", "<games>", "<i>Italian", "1 & 2", "Smith & "):
+            assert raw not in text, f"{path.name}: {raw!r} is not escaped"
+
+    dom = parse(article)
+    assert dom.find_all("h1")[0].text() == 'Alberic <GM> O\'Kelly vs. Smith & "Jones" <b>, 2022'
+    infobox = {row.find_all("th")[0].text(): row.find_all("td")[0].text() for row in dom.find_all("tr")[1:]}
+    assert infobox["Event"] == headers["Event"] == 'Club <Open> & "Rapid"'
+    assert infobox["Site"] == "O'Brien's <Pub> & Grill"
+    assert infobox["Round"] == "1 & 2"
+    assert infobox["White"] == "Alberic <GM> O'Kelly (<2400>)"
+    assert infobox["Opening"] == "<i>Italian</i> & 'more'"
+    assert infobox["Termination"] == 'agreed <draw> & "shook hands"'
+    assert "Alberic &lt;GM&gt; O'Kelly" in article.read_text(encoding="utf-8")
+    assert parse(tmp_path / "index.html").find_all("h1")[0].text() == 'Ada\'s <games> & "notes"'
+
+
+# --- odd dates ---------------------------------------------------------------------
+
+
+def test_a_malformed_date_still_gets_an_article_filed_as_undated(tmp_path):
+    collection = Collection.read(ODD)
+    report = collection.build_site(tmp_path)
+    assert len(report.articles) == len(collection) == 3
+    superscript = next(item for item in collection if item.game.headers["Date"] == "²019.01.01")
+    # file_stem's convention for a date with no year: undated-<id>; "²019" is not a year of ASCII digits
+    name = f"undated-{superscript.id}.html"
+    assert (tmp_path / "games" / name).is_file()
+    index = parse(tmp_path / "index.html")
+    (undated,) = [s for s in index.find_all("section") if s.attrs.get("id") == "undated"]
+    assert [a.attrs["href"] for a in undated.find_all("a")] == [f"games/{name}"]
+    assert "its date is not recorded" in parse(tmp_path / "games" / name).find_all("p", "lead")[0].text()
+    # a month out of range is left out of the prose, the year kept
+    long_month = next(item for item in collection if item.game.headers["Date"] == "2019.123.05")
+    page = parse(tmp_path / "games" / f"{file_stem(long_month.game, long_month.id)}.html")
+    assert "played on 2019," in page.find_all("p", "lead")[0].text()
+    assert check_links(tmp_path) > 0
 
 
 # --- the revision mode --------------------------------------------------------------

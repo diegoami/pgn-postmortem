@@ -53,6 +53,7 @@ from __future__ import annotations
 import glob
 import hashlib
 import io
+import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -198,16 +199,29 @@ def game_id(game: chess.pgn.Game) -> str:
     return hashlib.sha1("|".join(parts).encode()).hexdigest()[:10]
 
 
+def is_number(text: str) -> bool:
+    """Whether ``text`` is ASCII digits only. ``str.isdigit`` also accepts
+    digits such as ``²`` that ``int`` rejects and a file name should not carry."""
+    return re.fullmatch(r"[0-9]+", text) is not None
+
+
+def date_fields(date: str) -> tuple[str, str, str]:
+    """The year, month and day of a PGN ``Date`` as written (``""`` when missing)."""
+    y, m, d = (date.split(".") + ["", "", ""])[:3]
+    return y, m, d
+
+
 def file_stem(game: chess.pgn.Game, gid: str) -> str:
     """``<yyyy>-<mm>-<dd>-<id>`` from the ``Date`` header: month and day
     zero-padded to two digits (``2019.3.14`` gives ``2019-03-14``), an unknown
-    month or day as ``00``, and ``undated-<id>`` when the year is unknown. Only
-    the file name is normalized; the id keeps the header as written."""
-    date = game.headers.get("Date", "")
-    y, m, d = (date.split(".") + ["", "", ""])[:3]
-    if not y.isdigit():
+    month or day as ``00``, and ``undated-<id>`` when the year is unknown. A
+    year, month or day counts as known only when it is ASCII digits
+    (``is_number``), so ``²019.01.01`` is undated. Only the file name is
+    normalized; the id keeps the header as written."""
+    y, m, d = date_fields(game.headers.get("Date", ""))
+    if not is_number(y):
         return f"undated-{gid}"
-    return f"{y}-{m.zfill(2) if m.isdigit() else '00'}-{d.zfill(2) if d.isdigit() else '00'}-{gid}"
+    return f"{y}-{m.zfill(2) if is_number(m) else '00'}-{d.zfill(2) if is_number(d) else '00'}-{gid}"
 
 
 def strip_game(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:

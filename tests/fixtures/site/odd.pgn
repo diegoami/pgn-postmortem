@@ -1,0 +1,30 @@
+[Event "Club <Open> & "Rapid""]
+[Site "O'Brien's <Pub> & Grill"]
+[Date "2022.02.02"]
+[Round "1 & 2"]
+[White "O'Kelly, Alberic <GM>"]
+[Black "Smith & "Jones" <b>"]
+[Result "1/2-1/2"]
+[WhiteElo "<2400>"]
+[Opening "<i>Italian</i> & 'more'"]
+[Termination "agreed <draw> & "shook hands""]
+
+1. e4 e5 2. Nf3 Nc6 1/2-1/2
+
+[Event "Superscript date"]
+[Site "?"]
+[Date "²019.01.01"]
+[White "Ada Example"]
+[Black "Odd Date"]
+[Result "1-0"]
+
+1. d4 d5 1-0
+
+[Event "Three-digit month"]
+[Site "?"]
+[Date "2019.123.05"]
+[White "Ada Example"]
+[Black "Long Month"]
+[Result "0-1"]
+
+1. c4 e5 0-1

@@ -56,7 +56,15 @@ import chess.pgn
 import chess.svg
 
 from pgn_postmortem.analysis import LICHESS_THRESHOLDS, MATE_SCORE, Thresholds, classify, win_percent
-from pgn_postmortem.collection import ANALYSIS_HEADER, CollectedGame, file_stem, format_game, strip_game
+from pgn_postmortem.collection import (
+    ANALYSIS_HEADER,
+    CollectedGame,
+    date_fields,
+    file_stem,
+    format_game,
+    is_number,
+    strip_game,
+)
 
 GRADES = {
     chess.pgn.NAG_DUBIOUS_MOVE: ("inaccuracy", "An inaccuracy", "?!"),
@@ -71,7 +79,7 @@ MONTHS = [
 ]  # fmt: skip
 NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 NBSP = "\u00a0"  # between a move number and its move, so a line never breaks between them
-ARTICLE_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2}|undated)-[0-9a-f]{10}\.html$")
+GENERATOR = '<meta name="generator" content="pgn-postmortem">'  # in every page; marks what a rebuild may delete
 
 
 # --- reading the analysis ---------------------------------------------------
@@ -204,10 +212,12 @@ def plural(n: int, word: str, words: str | None = None) -> str:
 
 
 def date_parts(date: str | None) -> tuple[int | None, int | None, int | None]:
-    y, m, d = ((date or "").split(".") + ["", "", ""])[:3]
-    year = int(y) if y.isdigit() else None
-    month = int(m) if m.isdigit() and 1 <= int(m) <= 12 else None
-    day = int(d) if d.isdigit() and 1 <= int(d) <= 31 and month else None
+    """The year, month and day as numbers, each None unless it is ASCII digits
+    (as ``file_stem`` reads them) and, for the month and day, in range."""
+    y, m, d = date_fields(date or "")
+    year = int(y) if is_number(y) else None
+    month = int(m) if is_number(m) and 1 <= int(m) <= 12 else None
+    day = int(d) if is_number(d) and 1 <= int(d) <= 31 and month else None
     return year, month, day
 
 
@@ -419,6 +429,7 @@ def page(title: str, body: str, *, root: str, site_title: str) -> str:
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         '<meta name="color-scheme" content="light dark">\n'
+        f"{GENERATOR}\n"
         f"<title>{esc(title)}</title>\n"
         f'<link rel="stylesheet" href="{root}assets/style.css">\n'
         "</head>\n"
@@ -853,6 +864,14 @@ def write_text(path: Path, text: str) -> None:
     path.write_bytes(text.encode("utf-8"))  # "\n" line ends on every OS, for byte-for-byte golden files
 
 
+def is_generated(path: Path) -> bool:
+    """Whether ``path`` is a page this builder wrote: it carries the
+    ``GENERATOR`` line in its head, where ``page`` puts it."""
+    with path.open("rb") as handle:
+        head = handle.read(1024)
+    return f"\n{GENERATOR}\n".encode() in head
+
+
 def build_site(
     games: Iterable[CollectedGame],
     out_dir: str | Path,
@@ -866,9 +885,10 @@ def build_site(
 
     Games read with ``Collection.read(..., keep_analysis=True)`` from the
     analysis step's output get notes, critical moments and questions; any
-    other game gets an article without them. An article that an earlier
-    build left in ``out_dir/games/`` for a game not in ``games`` is removed
-    (only files named like articles), so the site has one article per game.
+    other game gets an article without them. A page that an earlier build
+    wrote in ``out_dir/games/`` for a game no longer in ``games`` is removed,
+    whatever its name, so the site has one article per game; a file there
+    that the builder did not write (no ``GENERATOR`` line) is never touched.
     The output depends only on the games and the options: building twice
     gives the same bytes.
     """
@@ -893,7 +913,7 @@ def build_site(
 
     written = {path.name for path in report.articles}
     for path in sorted((out_dir / "games").glob("*.html")):
-        if ARTICLE_NAME.match(path.name) and path.name not in written:
+        if path.name not in written and is_generated(path):
             path.unlink()
             report.removed.append(path)
     return report
