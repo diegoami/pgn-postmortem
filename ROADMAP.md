@@ -19,7 +19,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 ### F-1 — A library: from a PGN collection to a Wikipedia-style site and an EPUB
 
 - **Original request:** "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection"
-- **Also in the owner's words** (the same session, 2026-09-24): "I would like to read a book about
+- **Also in the owner's words** (the same session, 2026-09-24; confirmed by the owner that day): "I would like to read a book about
   me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a
   bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia
   style."; "in English, German comments are from old engines, strip comments and variants from
@@ -28,8 +28,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 - **Player value:** a player gets to reread years of their own games as a book about themselves,
   the way the classic "My Memorable Games" collections read, from whatever PGN files they already
   have, offline and on a phone, without operating a chess GUI or a website. The owner's own case is
-  about 1,800 games from 2005 onwards, scattered across a git repository of PGN collections,
-  chess.com and lichess.
+  about 1,800 games (as counted by the spike on `book-poc`), scattered across a git repository of
+  PGN collections, chess.com and lichess.
 - **Scope:** after F-1 lands, an installable Python library (API and command line) takes one or more
   PGN collections and a player (a name plus aliases) and writes:
   - a **static Wikipedia-style site**: a career article about the player (an infobox, career by
@@ -41,20 +41,23 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - an **EPUB 3** of the same book.
 
   Its input handling: multi-game files are read in full; the player's games are kept by name or
-  alias; duplicates are kept once, by content; source comments, variations and NAGs are stripped.
-  Analysis is an optional step that runs Stockfish where the user runs the library, in parallel and
-  incrementally, and writes standard `[%eval]` comments; games that already carry `[%eval]` are not
-  re-analyzed; without any evals the book still builds (every game gets an article; no selection,
-  no critical moments). All prose comes from templates (the LLM is F-2). It is released on PyPI.
+  alias; duplicates are kept once, by content; everything the source attaches to the moves —
+  comments (including any `[%eval]`), variations and NAGs — is stripped. **Every game is
+  re-analyzed by the library itself** (the slot's *decided* list): analysis runs Stockfish where
+  the user runs the library, in parallel, and is incremental only in that a game the library has
+  already analyzed (in its own output) is not analyzed again. The library's output carries standard
+  `[%eval]` comments. The site can also be built from games not analyzed yet: every game still gets
+  an article, with no selection and no critical moments. All prose comes from templates (the LLM is
+  F-2). It is released on PyPI.
 - **The split** — F-1 is larger than one iteration, so it lands as four, in this order; each is one
   session, one branch, one review, one merge (`PLAN.md`):
 
   | slice | lands | done when |
   |---|---|---|
-  | **F-1.1** — read and analyze | the library package with its API and command line; reading PGN collections (files, directories, globs) with player aliases, content-based duplicate removal and stripping; the optional parallel, incremental Stockfish step writing `[%eval]`, skipped for games that carry it | `ruff check .` and `pytest` pass, including new tests that: read a multi-game file whole; keep only the player's games under any alias; keep a game found in two files once; strip comments, variations and NAGs; parse and skip `[%eval]`; analyze a forced mate and flag it (Stockfish test, as today). Each new assertion is shown failing before it passes (`PRINCIPLES.md`) |
-  | **F-1.2** — every game as an article | the static site: an article for every game, the game index by year, the diagrams (HTML/CSS boards), the template prose, the revision mode; a site built from a collection with no evals | the gates pass, including a golden-file test that a small fixture collection renders to committed pages byte for byte, and a test that the site has one article per game and no broken internal links; the owner opens the fixture site on a phone and from `file://` and says it reads well |
-  | **F-1.3** — the book around the games | the career article; the selection of best wins, best losses and best draws; the chapters | the gates pass, including tests that the selection ranks hand-made fixture games as intended (a hard-fought loss above a loss decided by one early blunder; a draw saved from a lost position; no game in two chapters) and a golden-file test of the career article on the fixture; the owner reads a book built from the demo collection and agrees with the chapter picks, or records what to change |
-  | **F-1.4** — EPUB and release | the EPUB 3 writer; packaging, documentation, the demo book; the PyPI release | the gates pass, including a test that the EPUB validates (`epubcheck` in CI); the owner opens the demo EPUB in the e-reader apps of open question 8; `pip install <name>` in a clean environment builds the demo book; the release is on PyPI |
+  | **F-1.1** — read and analyze | the library package with its API and command line; reading PGN collections (files, directories, globs) with player aliases, content-based duplicate removal and stripping; the parallel, incremental Stockfish step writing `[%eval]`; the Python version of open question 3 in `pyproject.toml`, the CI matrix and the gates table | the gates pass, including new tests that: read a multi-game file whole; collect files through a glob across directories; keep only the player's games under any alias; keep a game found in two files once; strip comments (a source `[%eval]` included), variations and NAGs; analyze a forced mate and flag it with `[%eval]` output (Stockfish test, as today); analyze nothing on a second run over the same games. Each new assertion is shown failing before it passes (`PRINCIPLES.md`) |
+  | **F-1.2** — every game as an article | the static site: an article for every game, the game index by year, the diagrams (HTML/CSS boards), the template prose, the revision mode; building from games not analyzed yet | the gates pass, including: a golden-file test that a small fixture collection renders to committed pages byte for byte; a test that the site has one article per game and no broken internal links; a test that every critical moment in the fixture has its revision-mode question and hidden answer; a test that a fixture with no analysis still builds one article per game with no critical moments. Then the owner opens the fixture site on a phone and from `file://`; the owner's verdict is recorded in the slice's completion note, and a "no" sends the slice back to the builder |
+  | **F-1.3** — the book around the games | the career article; the selection of best wins, best losses and best draws; the chapters; the demo collection of open question 7, committed with its source named | the gates pass, including tests that the selection ranks hand-made fixture games as intended (a hard-fought loss above a loss decided by one early blunder; a draw saved from a lost position; no game in two chapters) and a golden-file test of the career article on the fixture. Then the owner reads the book built from the demo collection; agreement with the chapter picks is recorded in the completion note, and a "no" sends the slice back with what to change |
+  | **F-1.4** — EPUB and release | the EPUB 3 writer; packaging and documentation; the demo book; a new `epub` gate (`epubcheck`, the Ubuntu package, installed in CI; the test is skipped locally when `epubcheck` is missing, as the Stockfish test is), added to the gates table in the same change; the release | the gates pass, the `epub` gate included; the owner opens the demo EPUB in the e-readers of open question 8, the verdict recorded in the completion note; `pip install <name>` in a clean environment builds the demo book. **The owner publishes the release** — uploading it, or pushing the tag of a tag-triggered trusted-publishing workflow that this slice adds; the builder never handles PyPI credentials |
 
 - **Done when:** all four slices have landed as above.
 - **Out of scope** (recorded so it is not lost):
@@ -63,6 +66,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     publishing to folders, cloud storage, GitHub Pages or e-mail, a Docker image, a GitHub
     template repository, scheduling — F-3.
   - PDF output and a single-file HTML version — later, not yet requested.
+  - Trusting evals that source PGNs already carry: it would re-open *every game is re-analyzed*
+    (the `CLAUDE.md` slot), so it is not proposed.
   - Analyzing the owner's whole archive: it runs only when the owner asks (`CLAUDE.md`,
     *conventions*); fixtures and the demo collection are enough to build and test F-1.
   - Book languages other than English.
@@ -70,33 +75,36 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     what open question 4 decides.
 - **Depends on:** nothing. (The harness is adopted; `book-poc` holds spike code that F-1.1 may reuse,
   see open question 5.)
-- **Open questions** — owner decisions, each with a recommended default and its reason:
-  1. **Owner decision — package name.** Default: **`pgn-postmortem`**, the current repository name
-     — no rename of the repository, the demo URL or the README, and it was free on PyPI on
-     2026-09-24. Alternatives: `pgnbook`, `pgn-memoir`, `chess-memoir` (also free then); a name
-     that says "book" describes the product better.
-  2. **Owner decision — licence.** Default: **keep MIT**. python-chess is GPL-3.0+; a PyPI package
-     that depends on it without bundling it can be MIT. Revisit in F-3 if a Docker image bundles
-     it. Alternative: GPL-3.0, which removes the question.
-  3. **Owner decision — Python version.** Default: **3.11 or newer** — what the spike on `book-poc`
-     already needs; 3.10 reaches end of life in October 2026.
-  4. **Owner decision — the current Markdown pipeline.** Default: **keep it unchanged until F-1.4
-     lands**, then decide whether to retire it or keep it as a second renderer; the live demo keeps
-     working meanwhile.
-  5. **Owner decision — the spike on `book-poc`.** Default: **F-1.1 reuses the reading, duplicate
-     removal and parallel analysis code** (already run on real data), reviewed like any new code,
-     and leaves the fetching and config code for F-3.
-  6. **Owner decision — the evals format.** Default: **the library writes standard `[%eval]`
-     comments**; the current scripts keep their own `{ +0.23 }` comments, so their golden files do
-     not change.
-  7. **Owner decision — the demo collection.** Default: **Capablanca's games** from a public
-     source whose terms allow redistribution, named in the README; the source is picked in F-1.4
-     and put to the owner then.
-  8. **Owner decision — the e-readers the EPUB must work in.** Default: **Apple Books and
-     Kindle** (via Send to Kindle), which the owner names or changes.
-  9. **Owner decision — selection weights.** Default: tune them on fixtures and the demo
-     collection in F-1.3; tuning on the owner's archive needs it analyzed, which happens only when
-     the owner asks.
+- **Open questions** — owner decisions, each with a recommended default, its reason, and the slice
+  that cannot start before it is answered:
+  1. **Owner decision — package name** (before F-1.1). Default: **`pgn-postmortem`**, the current
+     repository name — no rename of the repository, the demo URL or the README, and it was free on
+     PyPI on 2026-09-24. Alternatives: `pgnbook`, `pgn-memoir`, `chess-memoir` (also free then); a
+     name that says "book" describes the product better.
+  2. **Owner decision — licence** (before F-1.4). Default: **keep MIT**. python-chess is GPL-3.0+;
+     a PyPI package that depends on it without bundling it can be MIT. Revisit in F-3 if a Docker
+     image bundles it. Alternative: GPL-3.0, which removes the question.
+  3. **Owner decision — Python version** (before F-1.1). Default: **3.11 or newer**: Python 3.10
+     reaches its end of life in October 2026, before F-1 can be released. F-1.1 then moves the CI
+     matrix and the gates table from 3.10/3.12 to 3.11/3.13. Alternative: keep 3.10 until F-1.4.
+  4. **Owner decision — the current Markdown pipeline** (before F-1.4). Default: **keep it
+     unchanged until F-1.4 lands**, then decide whether to retire it or keep it as a second
+     renderer; the live demo keeps working meanwhile.
+  5. **Owner decision — the spike on `book-poc`** (before F-1.1). Default: **F-1.1 reuses the
+     reading, duplicate removal and parallel analysis code** (already run on real data), reviewed
+     like any new code, and leaves the fetching and config code for F-3.
+  6. **Owner decision — the evals format** (before F-1.1). Default: **the library writes standard
+     `[%eval]` comments** in its own output; the current scripts keep their own `{ +0.23 }`
+     comments, so their golden files do not change.
+  7. **Owner decision — the demo collection** (before F-1.3). Default: **Capablanca's games** from a
+     public source whose terms allow redistribution; the builder proposes the source when F-1.3 is
+     shaped for its session, and it is named in the README.
+  8. **Owner decision — the e-readers the EPUB must work in** (before F-1.4). Default: **Apple
+     Books and Kindle** (via Send to Kindle). Alternative: add Google Play Books, which
+     `docs/book-plan.md` lists too.
+  9. **Owner decision — selection weights** (before F-1.3). Default: tune them on fixtures and the
+     demo collection in F-1.3; tuning on the owner's archive needs it analyzed, which happens only
+     when the owner asks.
 
 ## Statuses
 
