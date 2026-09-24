@@ -11,10 +11,12 @@ from pathlib import Path
 import chess.pgn
 import pytest
 
+from pgn_postmortem import __version__
 from pgn_postmortem.analysis import default_engine_path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "collection"
+CONSOLE_SCRIPT = Path(sys.executable).parent / "pgn-postmortem"  # installed by `pip install -e .`
 
 
 def run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess:
@@ -62,3 +64,18 @@ def test_an_engine_that_is_not_uci_fails_with_a_message(tmp_path):
     assert result.returncode == 1
     assert result.stderr.startswith("error: could not start the engine ")
     assert len(result.stderr.strip().splitlines()) == 1, result.stderr  # one line, no traceback
+
+
+@pytest.mark.skipif(not CONSOLE_SCRIPT.exists(), reason="the package is not installed in this environment")
+def test_the_installed_console_script_runs(tmp_path):
+    def script(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run([str(CONSOLE_SCRIPT), *args], cwd=tmp_path, capture_output=True, text=True, timeout=60)
+
+    version = script("--version")
+    assert version.returncode == 0
+    assert version.stdout.strip() == f"pgn-postmortem {__version__}"
+    read = script("read", str(FIXTURES))
+    assert read.returncode == 0
+    assert read.stdout.strip().endswith("kept 4.")
+    # main()'s return code reaches the shell through the entry point
+    assert script("read", "no-such-dir").returncode == 1

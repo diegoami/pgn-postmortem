@@ -49,6 +49,9 @@ def test_a_forced_mate_is_flagged_with_eval_comments(tmp_path):
     # every move but the mating one carries a standard eval, and nothing else is a comment
     assert all(node.eval() is not None for node in nodes[:-1])
     assert all(node.comment.startswith("[%eval ") and node.comment.endswith("]") for node in nodes[:-1])
+    # the mating move carries no eval at all, as in lichess's exports
+    assert nodes[-1].board().is_checkmate()
+    assert nodes[-1].comment == ""
 
 
 @needs_stockfish
