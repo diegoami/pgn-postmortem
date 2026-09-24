@@ -107,3 +107,17 @@ round 01, and the code has not changed since. The gates are green locally and in
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `d90a102` (pull request #7); the clean round, 02, covers `263d4c4`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36010343488.
+
+- **The defect is fixed with the assertion that would have caught it:** output file names zero-pad month and day (`2019.3.14` gives `2019-03-14-<id>.pgn`), and the new tests were red on the unfixed code (round 01).
+- **The owner's identity rule is unchanged and now pinned:** `2019.3.14` and `2019.03.14` stay two games. Only that test goes red when `game_id` hashes a normalized date (round 02, three breaks).
+- **No duplicate or lost analysis:** `Collection.write` skips a game already analyzed anywhere in the directory. The reviewer reproduced it with an old-name directory.
+- **`.gitignore` and the `CLAUDE.md` ignore list** include `.claude/worktrees/`.
+- **The gates:** `ruff check .` is clean, and `pytest -q` gives 57 passed with none skipped.
+
+Left out, as the owner decided: round-01 finding 2 (a directory holding only stripped copies under old names can end up with two files for one game; no data is lost).
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
