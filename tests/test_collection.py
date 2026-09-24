@@ -100,6 +100,19 @@ def test_the_same_moves_and_result_on_different_dates_are_kept_twice(tmp_path):
     assert (collection.report.kept, collection.report.duplicates) == (2, 0)
 
 
+def test_dates_written_differently_are_two_games_with_the_same_padded_file_date(tmp_path):
+    # The id takes the Date header as written (owner decision, 2026-09-24): only the file
+    # name pads it, so 2019.3.14 and 2019.03.14 are two games, both named 2019-03-14-<id>.pgn
+    # (review 007, round 01, finding 1).
+    path = tmp_path / "padding.pgn"
+    path.write_text(pgn(LONG, date="2019.3.14") + pgn(LONG, date="2019.03.14"), encoding="utf-8")
+    collection = Collection.read(path, **PLAYER)
+    assert (collection.report.kept, collection.report.duplicates) == (2, 0)
+    first, second = collection
+    assert first.id != second.id
+    assert [item.filename for item in collection] == [f"2019-03-14-{first.id}.pgn", f"2019-03-14-{second.id}.pgn"]
+
+
 def test_an_explicit_standard_start_is_the_same_as_none(tmp_path):
     path = tmp_path / "fen.pgn"
     standard = f'[SetUp "1"]\n[FEN "{chess.STARTING_FEN}"]\n'
@@ -143,3 +156,38 @@ def test_the_library_output_reads_back_with_the_same_ids(tmp_path):
     collection.write(tmp_path)
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(item.filename for item in collection)
     assert sorted(item.id for item in Collection.read(tmp_path)) == sorted(item.id for item in collection)
+
+
+def test_file_names_are_zero_padded_so_a_listing_is_chronological(tmp_path):
+    # A Date written without zero-padding (2019.3.14) must still give 2019-03-14 in the file
+    # name, or 2019-3-14 sorts after 2019-12-01 (review 006, round 03, finding 14). Unknown
+    # parts stay 00, and a game without a year stays undated.
+    dates = ["2019.12.1", "2020.1.2", "2019.3.14", "2019.3.??", "????.??.??", "2019.??.??", "2019.03.9"]
+    path = tmp_path / "dates.pgn"
+    path.write_text("".join(pgn(SHORT, date=date) for date in dates), encoding="utf-8")
+    collection = Collection.read(path, **PLAYER)
+    assert len(collection) == len(dates)
+    stems = {item.game.headers["Date"]: item.filename.removesuffix(f"-{item.id}.pgn") for item in collection}
+    assert stems == {
+        "2019.12.1": "2019-12-01",
+        "2020.1.2": "2020-01-02",
+        "2019.3.14": "2019-03-14",
+        "2019.3.??": "2019-03-00",
+        "????.??.??": "undated",
+        "2019.??.??": "2019-00-00",
+        "2019.03.9": "2019-03-09",
+    }
+
+    # a plain listing of the written files is in date order, the undated game last
+    out = tmp_path / "out"
+    collection.write(out)
+    date_of = {item.filename: item.game.headers["Date"] for item in collection}
+    assert [date_of[name] for name in sorted(p.name for p in out.iterdir())] == [
+        "2019.??.??",
+        "2019.3.??",
+        "2019.03.9",
+        "2019.3.14",
+        "2019.12.1",
+        "2020.1.2",
+        "????.??.??",
+    ]

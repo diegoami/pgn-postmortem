@@ -2,6 +2,7 @@
 runs Stockfish searches to a fixed depth, and is skipped when no Stockfish
 binary is found (CI always installs one)."""
 
+import io
 import time
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import pytest
 
 from pgn_postmortem import CollectedGame, Collection, analysis, analyze_games
 from pgn_postmortem.analysis import EngineFailure, default_engine_path
+from pgn_postmortem.collection import ANALYSIS_HEADER, format_game
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "collection"
 PLAYER = {"player": "Ada Example", "aliases": ["adaex", "Example, Ada"]}
@@ -108,6 +110,34 @@ def test_reading_again_into_an_analyzed_directory_keeps_the_analysis(tmp_path):
     third = Collection.read(games).analyze(games, depth=DEPTH, engine_path="/nonexistent/stockfish")
     assert (third.analyzed, third.skipped) == (0, 3)
     assert all("[%eval" in text for text in contents(games).values())
+
+
+def test_a_game_analyzed_under_an_unpadded_file_name_is_left_alone(tmp_path):
+    # Before file names were zero-padded (review 006, round 03, finding 14), a Date of
+    # 2019.3.14 was written to 2019-3-14-<id>.pgn. That analysis must still count: reading
+    # the game into the directory again writes no second copy under the padded name, and
+    # analyzing it again does nothing. No Stockfish needed: the engine is never started.
+    source = tmp_path / "source.pgn"
+    source.write_text(
+        '[Date "2019.3.14"]\n[White "Ada Example"]\n[Black "Rival"]\n[Result "1-0"]\n\n'
+        "1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+        encoding="utf-8",
+    )
+    (item,) = Collection.read(source)
+    assert item.filename == f"2019-03-14-{item.id}.pgn"
+    analyzed = chess.pgn.read_game(io.StringIO(format_game(item.game)))
+    analyzed.headers[ANALYSIS_HEADER] = "Stockfish 16, depth 8"
+    games = tmp_path / "games"
+    games.mkdir()
+    old = games / f"2019-3-14-{item.id}.pgn"
+    old.write_text(format_game(analyzed), encoding="utf-8")
+    before = old.read_text(encoding="utf-8")
+
+    assert Collection.read(source).write(games) == []
+    report = Collection.read(source).analyze(games, engine_path="/nonexistent/stockfish")
+    assert (report.analyzed, report.skipped) == (0, 1)
+    assert [path.name for path in games.iterdir()] == [old.name]
+    assert old.read_text(encoding="utf-8") == before
 
 
 @needs_stockfish
