@@ -8,8 +8,8 @@ open questions of F-1 in `ROADMAP.md`, and the entries marked "Decided by the ow
 decisions* below (the package name, where the owner's book lives); everything else here is
 direction, not agreed for implementation. Each request is shaped (and, in OpenCode mode, designed and agreed) before any work
 starts. Implemented so far: F-1.1 (reading and analysis) and F-1.2 (the site, one article per
-game), both merged on `main`; the "Existing spike" section lists what the `book-poc` branch holds
-beyond that.
+game), both merged on `main`. The "Existing spike" section describes the `book-poc` branch; F-1.1
+reused parts of it.
 
 ## Goal
 

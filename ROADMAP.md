@@ -119,46 +119,70 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
 - **Original request:** "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear."
 - **Player value:** every game in the book reads as finished. Today a game with an unrecorded result
-  shows "\*" in the infobox and "The game ended \* after …" in its conclusion. In the owner's own
-  book that's 12 of the 148 over-the-board games. F-1.3's chapters (best wins, losses, draws) also
-  need a result for every game.
-- **Scope:** when a game's `Result` is `*` or missing and the game carries the library's analysis,
-  the book presumes a result from the final analyzed position:
-  - a win for the side with **at least 70% winning chances** (the same win-percentage model as the
-    move grading), with a forced mate counting as 100%;
-  - a draw otherwise.
+  shows "\*" in the infobox, at the end of its moves and in "The game ended \* after …". In the
+  owner's own book that's 12 of the 148 over-the-board games. F-1.3's chapters (best wins, losses,
+  draws) also need a result for every game.
+- **Scope:** for a game whose `Result` is `*` or missing, the book shows a result in this order:
+  1. **The board decides it** if the final position is checkmate (the mating side wins) or
+     stalemate (a draw). This applies whether or not the game is analyzed.
+  2. **Otherwise it is presumed from the analysis,** if the game carries the library's analysis and
+     its final position has an eval: a win for the side with **at least 70% winning chances**,
+     using the same win-percentage model as the move grading (a forced mate counts as 100%), and a
+     draw otherwise.
+  3. **Otherwise** the book says the result was not recorded.
 
-  The presumed result is **shown exactly like a recorded result**, with no marker, wherever the
-  site shows a result: the infobox, the lead, the conclusion and the index. The game's PGN is
-  untouched: its `Result` header stays as the source had it, so the game's identity (which includes
-  the result) and its analysis are unchanged, and the article's PGN section shows the source as is.
-  A game with an unrecorded result and no analysis gets wording saying the result wasn't recorded,
-  never a bare "\*". The threshold is a library parameter with 70% as its default. The same change
-  fixes a defect found in the owner's book: the conclusion's counts pluralize "inaccuracy" as
-  "inaccuracys".
-- **Done when:** the gates pass, including tests that, on fixtures:
-  1. an unrecorded game ending at ≥70% for White shows 1–0 in the infobox, lead, conclusion and
-     index;
-  2. one ending at ≤30% for White shows 0–1;
-  3. one ending in between shows ½–½;
-  4. a final forced mate gives the win;
-  5. an unrecorded, unanalyzed game shows "not recorded" wording and no bare "\*";
-  6. the PGN `Result` header and `PostmortemId` of those games are unchanged;
-  7. counts read "inaccuracies".
+  The result is **shown exactly like a recorded result**, with no marker, everywhere the site shows
+  a result outside the PGN section: the infobox, the lead, the end of the moves, the conclusion and
+  the index. The game's PGN is untouched. Its `Result` header stays as the source had it, so the
+  game's identity (which includes the result), its file names and its analysis don't change, and
+  the article's PGN section shows the source as is.
+
+  The threshold is a library parameter with 70% as its default. It must be above 50%; a value of 50%
+  or below is rejected with an error.
+
+  The same change fixes a defect found in the owner's book: the conclusion's counts pluralize
+  "inaccuracy" as "inaccuracys".
+- **Done when:** the gates pass, including tests on fixtures. These are small synthetic PGNs that
+  carry the library's analysis marker header and hand-set `[%eval]` comments. They are written for
+  these tests and documented as synthetic, not produced by Stockfish. The tests check that:
+  1. an unrecorded game ending at about 72–75% for White shows 1–0 in the infobox, lead, end of the
+     moves, conclusion and index;
+  2. one ending at about 25–28% for White shows 0–1;
+  3. one ending at about 65–68% for White shows ½–½, which proves the default threshold is 70%, not
+     60%;
+  4. the 72–75% game shows ½–½ when the threshold parameter is set to 80, which proves the parameter
+     is used;
+  5. a threshold of 50 or below is rejected;
+  6. an unrecorded, unanalyzed game ending in checkmate shows the mating side's win, and one ending
+     in stalemate shows ½–½;
+  7. an unrecorded game that is neither analyzed nor ended on the board shows "not recorded" wording,
+     and no bare "\*" appears anywhere outside the PGN section;
+  8. the PGN `Result` header, the `PostmortemId` and the file names of all these games are unchanged;
+  9. counts read "inaccuracies" when there are two or more.
 
   Each new assertion is shown failing first. The golden files are regenerated where the output
   changes.
-- **Out of scope:** writing a presumed result into any PGN; how F-1.3 uses presumed results in its
-  selection (F-1.3's own shaping); presuming results for games that ended by a rule the board shows
-  (checkmate or stalemate are already decided by the moves and need no presumption).
+- **Out of scope:**
+  - writing a presumed result into any PGN;
+  - how F-1.3 uses presumed results in its selection (F-1.3's own shaping);
+  - presuming anything for a game whose `Result` is recorded, even if it contradicts the final
+    position;
+  - F-6's diagrams.
 - **Depends on:** F-1.2 (landed).
-- **Owner decisions** (2026-09-24), each put with a recommended default:
-  - **the presumed result is shown as the result, without a marker.** The recommended default was
-    to mark it "presumed"; the owner chose no marker;
-  - **the threshold is 70%.** The recommended default was 80%; any value from 60% to 85% gives the
-    same result for all 12 of the owner's games;
-  - **F-5 lands now, before F-1.3.**
-- **Mode:** Claude Code (the owner's standing choice).
+- **Open questions:** none remain. The owner decided on 2026-09-24, each against a recommended
+  default:
+  - **Owner decision: a presumed result is shown as the result, without a marker.**
+    - Recommended default: mark it "presumed", so the book doesn't state as fact what the source
+      didn't record.
+    - Owner's choice: no marker, so the book reads as complete. The source's "\*" stays visible in
+      each article's PGN section.
+  - **Owner decision: the threshold is 70%.**
+    - Recommended default: 80% (about +3.8 pawns), so that only clearly won positions become wins.
+    - Owner's choice: 70% (about +2.3 pawns). Any value from 55% to 85% gives the same results for
+      all 12 of the owner's games.
+  - **Owner decision: F-5 lands now, before F-1.3.**
+    - Recommended default: the same.
+    - Reason: F-1.3's selection of best wins, losses and draws needs a result for every game.
 
 ## Statuses
 
