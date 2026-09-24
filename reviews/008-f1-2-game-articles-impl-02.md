@@ -135,3 +135,23 @@ requires.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `05c6270` (pull request #8); the last clean round, 02, covers `91d6795`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36038852177. F-1.2's done-when (`ROADMAP.md`, F-1's block):
+
+- **The gates pass:** `ruff check .` is clean, and `pytest -q` gives 75 passed.
+- **The golden fixture site renders byte for byte,** with a documented regeneration command. Checked in rounds 01 and 02.
+- **The site structure:** one article per game, and no broken internal links.
+- **Revision mode:** every critical moment in the fixture has its question and hidden answer.
+- **Building before analysis:** a fixture with no analysis builds one article per game with no critical moments.
+- **Every new assertion was shown failing first,** reproduced by the reviewer's own breaks.
+- **The owner's verdict:** the owner opened the fixture site on a phone, from a private copy at `91d6795`, and posted on the pull request "Looks great, thank you. Diego." (https://github.com/diegoami/pgn-postmortem/pull/8#issuecomment-5819458437). That verdict does not mention `file://`. The reviewer rendered the site from `file://` at 390 px and 1100 px in round 01. The owner merged.
+
+Left open:
+- round-02 finding 7 (a directory named `*.html` under `games/` makes the cleanup fail), carried into F-1.3 by the owner's decision;
+- finding 8 (informational);
+- round-01 findings 2 (the "never trusted" wording versus a forged marker header) and 6 (titles use the alias the PGN used), left as they are by the owner's decision;
+- finding 5 (the piece-set licence), recorded under F-1's open question 2.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
