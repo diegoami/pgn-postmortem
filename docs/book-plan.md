@@ -3,8 +3,10 @@
 Status: **planning**. This is the direction behind requests F-1 to F-3 in
 [`ROADMAP.md`](../ROADMAP.md); it is not a shaped request. The owner's settled choices are the ones
 listed under *decided, and not to be re-opened* in the `CLAUDE.md` project slot (for example
-DeepSeek with bring-your-own-key, the chapters, English, library before pipeline); everything else
-here is direction, not agreed for implementation. Each request is shaped (and, in OpenCode mode, designed and agreed) before any work
+DeepSeek with bring-your-own-key, the chapters, English, library before pipeline), the answered
+open questions of F-1 in `ROADMAP.md`, and the entries marked "Decided by the owner" in *Open
+decisions* below (the package name, where the owner's book lives); everything else here is
+direction, not agreed for implementation. Each request is shaped (and, in OpenCode mode, designed and agreed) before any work
 starts. Nothing below is implemented yet, except what the "Existing spike" section lists (on the
 `book-poc` branch).
 
