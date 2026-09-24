@@ -10,6 +10,7 @@ collection in tests/fixtures/collection/:
 
 from pathlib import Path
 
+import chess
 import chess.pgn
 import pytest
 
@@ -69,6 +70,42 @@ def test_a_game_found_in_two_files_is_kept_once():
     assert draws[0].origin == f"{CLUB}#1"  # the first file it was found in
     assert collection.report.duplicates == 1
     assert collection.report.kept == 3
+
+
+# A game's identity is its moves, result, date and start position, for every game length
+# (owner decision, 2026-09-24); the players' names are not part of it.
+SHORT = "1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0"
+LONG = (
+    "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3 d6 6. O-O O-O 7. Re1 a6 8. Bb3 Ba7 9. h3 h6"
+    " 10. Nbd2 Re8 1-0"
+)
+
+
+def pgn(moves: str, date: str = "2020.06.01", white: str = "Ada Example", extra: str = "") -> str:
+    result = moves.rsplit(" ", 1)[-1]
+    return f'[Date "{date}"]\n[White "{white}"]\n[Black "Rival"]\n[Result "{result}"]\n{extra}\n{moves}\n\n'
+
+
+def test_the_same_game_under_two_aliases_is_kept_once(tmp_path):
+    path = tmp_path / "aliases.pgn"
+    path.write_text(pgn(SHORT, white="Ada Example") + pgn(SHORT, white="adaex"), encoding="utf-8")
+    collection = Collection.read(path, **PLAYER)
+    assert (collection.report.kept, collection.report.duplicates) == (1, 1)
+
+
+def test_the_same_moves_and_result_on_different_dates_are_kept_twice(tmp_path):
+    path = tmp_path / "dates.pgn"
+    path.write_text(pgn(LONG, date="2015.01.01") + pgn(LONG, date="2021.01.01"), encoding="utf-8")
+    collection = Collection.read(path, **PLAYER)
+    assert (collection.report.kept, collection.report.duplicates) == (2, 0)
+
+
+def test_an_explicit_standard_start_is_the_same_as_none(tmp_path):
+    path = tmp_path / "fen.pgn"
+    standard = f'[SetUp "1"]\n[FEN "{chess.STARTING_FEN}"]\n'
+    path.write_text(pgn(LONG) + pgn(LONG, extra=standard), encoding="utf-8")
+    collection = Collection.read(path, **PLAYER)
+    assert (collection.report.kept, collection.report.duplicates) == (1, 1)
 
 
 def test_comments_variations_and_nags_are_stripped():

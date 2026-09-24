@@ -168,11 +168,17 @@ Every game the library writes is named `<date>-<id>.pgn` and carries two headers
   `analyze` skips a game when a file in its output directory carries that game's id and this header,
   so games that `read --out` only stripped are still analyzed, even in the same directory.
 
-Two copies of a game count as one when they have the same start position, result and moves. For a
-game shorter than 20 half-moves, the date and the players' names must match too. As a result, two
-different long games that repeat the same moves and result are kept as one, and a short game whose
-copies spell a player's name differently is kept twice. The exact rule is in
-[`pgn_postmortem/collection.py`](pgn_postmortem/collection.py).
+Two copies of a game count as one when they have the same start position, moves, result and date.
+The players' names are not compared, so a game exported under two of your names or aliases is kept
+once. A `FEN` header that spells out the standard starting position counts the same as none. The
+`Result` and `Date` headers are compared exactly as written, which has two consequences:
+
+- Copies with a missing, partial or differently written date (`2019.??.??` and `2019.03.14`, or
+  `2019.3.14`) are kept twice. The same goes for copies with different results (`1-0` and `*`).
+- Two different games with the same moves and result on the same day are kept as one. That can
+  happen with a short trap, or an agreed draw in a well-known line, played against two opponents.
+
+The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.py).
 
 ## Claude Code skill
 
