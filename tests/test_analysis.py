@@ -6,7 +6,7 @@ from pathlib import Path
 import chess.pgn
 import pytest
 
-from analyze_games import (
+from pgn_postmortem.analysis import (
     DEFAULT_BLUNDER_PCT,
     DEFAULT_INACCURACY_PCT,
     DEFAULT_MISTAKE_PCT,

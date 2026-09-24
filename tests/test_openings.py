@@ -1,6 +1,6 @@
 import pytest
 
-from openings import load_book
+from pgn_postmortem.openings import load_book
 
 
 @pytest.fixture(scope="module")

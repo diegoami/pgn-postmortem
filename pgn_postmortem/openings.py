@@ -2,7 +2,7 @@
 
 Backed by the lichess-org/chess-openings dataset (data/openings/*.tsv):
 plain-text TSV files of eco, name, pgn (the exact move sequence for each
-named line), downloaded from
+named line), bundled in pgn_postmortem/data/openings/ from
 https://github.com/lichess-org/chess-openings (CC0 public domain).
 
 A game position counts as "in book" if the exact move sequence played so
@@ -16,8 +16,7 @@ import csv
 import re
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-OPENINGS_DIR = REPO_ROOT / "data" / "openings"
+OPENINGS_DIR = Path(__file__).resolve().parent / "data" / "openings"
 
 _MOVE_NUMBER_RE = re.compile(r"^\d+\.+$")
 

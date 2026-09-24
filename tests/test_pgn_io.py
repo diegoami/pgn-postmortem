@@ -1,6 +1,6 @@
 import os
 
-from pgn_io import load_dotenv, read_single_game
+from pgn_postmortem.pgn_io import load_dotenv, read_single_game
 
 GAME = '[White "A"]\n[Black "B"]\n[Result "*"]\n\n1. e4 e5 *\n'
 

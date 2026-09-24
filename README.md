@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/diegoami/pgn-postmortem/actions/workflows/ci.yml/badge.svg)](https://github.com/diegoami/pgn-postmortem/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
 Turn a folder of PGN chess games into a set of Markdown post-mortems you can browse on GitHub. Every
 blunder a chosen player made gets a board diagram, the move the engine preferred, how the mistake
@@ -60,7 +60,7 @@ winning, then walked into mate in two.</sub>
 
 ## Quickstart
 
-Requires Python 3.10+ and a `stockfish` binary on your `PATH` (`apt install stockfish`,
+Requires Python 3.11+ and a `stockfish` binary on your `PATH` (`apt install stockfish`,
 `brew install stockfish`, ...).
 
 ```bash

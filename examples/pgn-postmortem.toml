@@ -1,0 +1,59 @@
+# pgn-postmortem workspace config. Copy this file into an empty directory,
+# edit it, and run `pgn-postmortem run` there: games/, analyzed/ and site/
+# are created next to it.
+
+[player]
+name = "Diego Amicabile"
+# Every spelling of your name found in PGN White/Black headers - online
+# handles, "Surname, Name" exports, ... (matched case-insensitively).
+aliases = ["diegoami", "Amicabile, Diego", "Amicabile"]
+
+# Sources are read in order; a game found in several of them is kept once.
+# Any source can carry a `label`, used to group games in the book.
+
+# A PGN collection: a local file or directory, an http(s) URL to a .pgn file,
+# or a git repository (cloned into .cache/ and pulled on every run).
+[[sources]]
+type = "pgn"
+path = "https://github.com/diegoami/DA_chessgames"
+include = ["otb/*.pgn"]
+label = "Over the board"
+
+[[sources]]
+type = "pgn"
+path = "https://github.com/diegoami/DA_chessgames"
+include = ["correspondence/*.pgn"]
+label = "Correspondence"
+
+[[sources]]
+type = "pgn"
+path = "https://github.com/diegoami/DA_chessgames"
+include = ["standard/*.pgn"]
+label = "Online"
+
+[[sources]]
+type = "chesscom"
+username = "diegoami"
+label = "chess.com"
+
+[[sources]]
+type = "lichess"
+username = "diegoami"
+label = "lichess"
+
+[analysis]
+time = 0.3        # seconds of Stockfish search per position (or set depth = 18)
+workers = 0       # parallel engines; 0 = one per CPU
+
+# Optional: prose written by an LLM, through any OpenAI-compatible API. Bring
+# your own key - only the *name* of the environment variable goes here.
+# Without a key the book falls back to template-written prose.
+[llm]
+base_url = "https://api.deepseek.com"
+model = "deepseek-chat"
+api_key_env = "DEEPSEEK_API_KEY"
+
+[book]
+title = "My Memorable Games"
+best = 12          # games per chapter: best wins, best losses, best draws
+min_moves = 20     # shorter games never make a chapter (they still get a page)
