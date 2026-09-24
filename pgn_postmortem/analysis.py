@@ -26,7 +26,10 @@ is not analyzed again. "Analyzed" means a file there carries the game's
 writes (the engine and the search limit, e.g. ``Stockfish 16, depth 18``).
 The file name alone is not enough: ``Collection.write`` uses the same
 ``<date>-<id>.pgn`` names for games it has only stripped, so reading into a
-directory and then analyzing in place analyzes every game. It runs one
+directory and then analyzing in place analyzes every game. Nor is the file
+name needed: the test goes by the id (``analyzed_ids``), so a game analyzed
+under an older name (``2019-3-14-<id>.pgn``, before dates in names were
+zero-padded) is not analyzed again. It runs one
 single-threaded Stockfish process per worker, and each game starts with a
 fresh engine state (``ucinewgame``), so a game's output does not depend on
 which worker analyzed it or on what that worker analyzed before.
@@ -48,7 +51,7 @@ import chess
 import chess.engine
 import chess.pgn
 
-from pgn_postmortem.collection import ANALYSIS_HEADER, CollectedGame, analyzed_id, format_game
+from pgn_postmortem.collection import ANALYSIS_HEADER, CollectedGame, analyzed_ids, format_game
 
 FALLBACK_ENGINE_PATH = "/usr/games/stockfish"  # where Debian and Ubuntu install it, off the default PATH
 
@@ -201,14 +204,6 @@ def analyze_game(
 def describe_analysis(engine: chess.engine.SimpleEngine, limit: chess.engine.Limit) -> str:
     budget = f"depth {limit.depth}" if limit.depth else f"{limit.time:g}s per position"
     return f"{engine.id.get('name', 'UCI engine')}, {budget}"
-
-
-def analyzed_ids(out_dir: Path) -> set[str]:
-    """The ids of the games already analyzed into ``out_dir``: the
-    ``PostmortemId`` of each file there whose first game carries the
-    ``PostmortemAnalysis`` marker. A file without it (a game that was only
-    stripped, or anything else) does not count."""
-    return {gid for path in out_dir.glob("*.pgn") if (gid := analyzed_id(path))}
 
 
 def analyze_games(

@@ -71,7 +71,8 @@ class CollectedGame:
 
     @property
     def filename(self) -> str:
-        """``<date>-<id>.pgn``, so a plain directory listing is chronological."""
+        """``<date>-<id>.pgn``, the date zero-padded (``2019-03-14``), so a
+        plain directory listing is chronological (see ``file_stem``)."""
         return f"{file_stem(self.game, self.id)}.pgn"
 
 
@@ -192,11 +193,15 @@ def game_id(game: chess.pgn.Game) -> str:
 
 
 def file_stem(game: chess.pgn.Game, gid: str) -> str:
+    """``<yyyy>-<mm>-<dd>-<id>`` from the ``Date`` header: month and day
+    zero-padded to two digits (``2019.3.14`` gives ``2019-03-14``), an unknown
+    month or day as ``00``, and ``undated-<id>`` when the year is unknown. Only
+    the file name is normalized; the id keeps the header as written."""
     date = game.headers.get("Date", "")
     y, m, d = (date.split(".") + ["", "", ""])[:3]
     if not y.isdigit():
         return f"undated-{gid}"
-    return f"{y}-{m if m.isdigit() else '00'}-{d if d.isdigit() else '00'}-{gid}"
+    return f"{y}-{m.zfill(2) if m.isdigit() else '00'}-{d.zfill(2) if d.isdigit() else '00'}-{gid}"
 
 
 def strip_game(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:
@@ -223,6 +228,15 @@ def analyzed_id(path: Path) -> str | None:
     if headers is None or ANALYSIS_HEADER not in headers:
         return None
     return headers.get(ID_HEADER)
+
+
+def analyzed_ids(out_dir: Path) -> set[str]:
+    """The ids of the games already analyzed into ``out_dir``: the
+    ``PostmortemId`` of each file there whose first game carries the
+    ``PostmortemAnalysis`` marker, whatever the file is called. A file
+    without it (a game that was only stripped, or anything else) does not
+    count."""
+    return {gid for path in out_dir.glob("*.pgn") if (gid := analyzed_id(path))}
 
 
 def format_game(game: chess.pgn.Game) -> str:
@@ -295,20 +309,25 @@ class Collection:
         """Write every game, stripped, to ``out_dir/<date>-<id>.pgn``, and
         return the paths written.
 
-        A game whose file there already holds the library's analysis of the
-        same game is left alone, so reading new games into an analysis
-        directory never throws away analysis already done. "The same game"
-        means the file's first game carries the ``PostmortemAnalysis`` marker
-        and a ``PostmortemId`` equal to this game's content id (``game_id``:
-        start position, moves, result and date). Any other file at that name
-        (a stripped copy, or something else) is overwritten."""
+        A game already analyzed into ``out_dir`` is not written, so reading
+        new games into an analysis directory never throws away analysis
+        already done, nor adds a stripped copy next to it. "Already analyzed"
+        is the analysis step's own test (``analyzed_ids``): a file there whose
+        first game carries the ``PostmortemAnalysis`` marker and a
+        ``PostmortemId`` equal to this game's content id (``game_id``: start
+        position, moves, result and date). It goes by the id, not the file
+        name, so a game analyzed under an older name (before dates in names
+        were zero-padded, ``2019-3-14-<id>.pgn``) still counts. Any other
+        file at the game's name (a stripped copy, or something else) is
+        overwritten."""
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
+        done_ids = analyzed_ids(out_dir)
         paths = []
         for item in self.games:
-            path = out_dir / item.filename
-            if path.is_file() and analyzed_id(path) == item.id:
+            if item.id in done_ids:
                 continue
+            path = out_dir / item.filename
             path.write_text(format_game(item.game), encoding="utf-8")
             paths.append(path)
         return paths
