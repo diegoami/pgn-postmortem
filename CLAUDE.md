@@ -86,7 +86,7 @@ bootstrap applies as written there — one review, not two stages.
   | gate | command | covers | when | repeats | failure model |
   |---|---|---|---|---|---|
   | lint | `.venv/bin/python -m ruff check .` | style, import order, bugbear, pyupgrade (rules in `pyproject.toml`) | every change, locally; CI on every push to `main` and every pull request | 1 | deterministic |
-  | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached) | every change, locally; CI on Python 3.10 and 3.12 with Stockfish installed | 1 | deterministic; the Stockfish test searches to a fixed depth on a forced mate, and is skipped locally when no `stockfish` binary is found (CI always installs it) |
+  | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached) | every change, locally; CI on Python 3.11 and 3.13 with Stockfish installed | 1 | deterministic; the Stockfish test searches to a fixed depth on a forced mate, and is skipped locally when no `stockfish` binary is found (CI always installs it) |
 
 
   Only the two gates above decide a merge. After a merge, one **post-merge
