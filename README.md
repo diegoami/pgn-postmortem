@@ -168,7 +168,9 @@ Every game the library writes is named `<date>-<id>.pgn` and carries two headers
   `analyze` skips a game when a file in its output directory carries that game's id and this header,
   so games that `read --out` only stripped are still analyzed, even in the same directory. In turn,
   `read --out` leaves such a file alone, so reading new games into an analysis directory keeps the
-  analysis already there.
+  analysis already there. The skip ignores which engine and search limit the header records: to redo
+  a game with other settings (a deeper search, a newer Stockfish), delete its file and run `analyze`
+  again.
 
 Two copies of a game count as one when they have the same start position, moves, result and date.
 The players' names are not compared, so a game exported under two of your names or aliases is kept
