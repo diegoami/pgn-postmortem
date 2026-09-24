@@ -202,6 +202,8 @@ until you tap it. A critical moment is a move that cost its side at least 20 poi
 percentage and thresholds that grade the moves. Games that have not been analyzed, or whose only
 evaluations came from their source, still get an article, without notes or questions. Pass the games
 and their analysis together (`site games/ analyzed/`) and the analyzed copy of each game is used.
+Building again into the same folder removes the pages it wrote before for games that are no longer in
+the collection; a file it did not write is never touched.
 
 The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html).
 
