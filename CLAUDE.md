@@ -59,9 +59,11 @@ bootstrap applies as written there — one review, not two stages.
   tag, F-1's first milestone review covers the range from that commit.
 - **paths to inspect:** `scripts/` (the code), `tests/`, `README.md`,
   `docs/book-plan.md`, `ROADMAP.md`, `.claude/skills/publish-games/SKILL.md`,
-  `.github/workflows/`. The unmerged spike toward the book is on the branch
-  `book-poc` (package `pgn_postmortem/`), not on `main`.
-- **the canonical source:** `scripts/*.py` for behaviour; `README.md` for what a
+  `.github/workflows/`, `pgn_postmortem/` (the library of F-1). The older
+  spike toward the book, which F-1.1 reused parts of, is on the branch
+  `book-poc`, not on `main`.
+- **the canonical source:** `scripts/*.py` for the Markdown pipeline's behaviour,
+  `pgn_postmortem/` for the library's; `README.md` for what a
   stranger needs. Generated, never edited by hand or cited as a source:
   `examples/docs/**` (written by `scripts/publish_games.py`) and
   `examples/analyzed_games/**` (written by `scripts/analyze_games.py`); change
@@ -86,7 +88,7 @@ bootstrap applies as written there — one review, not two stages.
   | gate | command | covers | when | repeats | failure model |
   |---|---|---|---|---|---|
   | lint | `.venv/bin/python -m ruff check .` | style, import order, bugbear, pyupgrade (rules in `pyproject.toml`) | every change, locally; CI on every push to `main` and every pull request | 1 | deterministic |
-  | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached) | every change, locally; CI on Python 3.10 and 3.12 with Stockfish installed | 1 | deterministic; the Stockfish test searches to a fixed depth on a forced mate, and is skipped locally when no `stockfish` binary is found (CI always installs it) |
+  | tests | `.venv/bin/python -m pytest -q` | unit tests (win %, move and position classification, openings lookup, PGN reading, `.env` loading); a golden-file test that regenerating `examples/` reproduces `examples/docs/` byte for byte; the single-player filter; a Stockfish smoke test (a forced mate must be flagged with both engine lines attached); the library (`pgn_postmortem/`) on the fixture collection in `tests/fixtures/collection/`: reading (multi-game files, globs across directories, player aliases, duplicates kept once by the owner's identity rule, comments, variations and NAGs stripped), analysis (a forced mate flagged in `[%eval]` output, nothing analyzed on a second run while games only read into the output directory are still analyzed, analyses kept when games are read into the output directory again, the same output with two workers as with one, a stop at the first engine failure) and its command line run end to end as a subprocess, through `python -m` and through the installed `pgn-postmortem` script | every change, locally; CI on Python 3.11 and 3.13 with Stockfish and the package (`pip install -e .`) installed | 1 | deterministic; the Stockfish tests search to a fixed depth, and each game starts from a fresh engine state (`ucinewgame`), so the output does not depend on which worker analyzed which game; they are skipped locally when no `stockfish` binary is found (CI always installs it) |
 
 
   Only the two gates above decide a merge. After a merge, one **post-merge

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/diegoami/pgn-postmortem/actions/workflows/ci.yml/badge.svg)](https://github.com/diegoami/pgn-postmortem/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
 Turn a folder of PGN chess games into a set of Markdown post-mortems you can browse on GitHub. Every
 blunder a chosen player made gets a board diagram, the move the engine preferred, how the mistake
@@ -60,7 +60,7 @@ winning, then walked into mate in two.</sub>
 
 ## Quickstart
 
-Requires Python 3.10+ and a `stockfish` binary on your `PATH` (`apt install stockfish`,
+Requires Python 3.11+ and a `stockfish` binary on your `PATH` (`apt install stockfish`,
 `brew install stockfish`, ...).
 
 ```bash
@@ -138,6 +138,52 @@ always wins.
 | `--force` | — | off | Re-analyze games already in `analyzed_games/` |
 | `--source` | — | `daily_games` | Which directory `publish_games.py` reads (`update_games.sh` uses `analyzed_games`) |
 
+## The library (in progress)
+
+`pgn-postmortem` is growing into a Python library that turns a player's PGN collections into a
+Wikipedia-style site and an EPUB book ([`ROADMAP.md`](ROADMAP.md), F-1). Its first part reads and
+analyzes: multi-game files, directories and glob patterns in, the player's games kept once each with
+every source comment, variation and NAG stripped, then a parallel Stockfish pass that writes standard
+`[%eval]` comments and skips games it has already analyzed.
+
+```bash
+.venv/bin/pip install -e .
+pgn-postmortem read 'collections/**/*.pgn' --player "Ada Example" --alias adaex --out games/
+pgn-postmortem analyze games/ --out analyzed/ --workers 4
+```
+
+```python
+from pgn_postmortem import Collection
+
+games = Collection.read(["collections/**/*.pgn"], player="Ada Example", aliases=["adaex"])
+games.analyze("analyzed/", depth=18, workers=4)
+```
+
+Quote a `**` pattern so the library, not the shell, expands it. The scripts above are unchanged by it.
+
+Every game the library writes is named `<date>-<id>.pgn` and carries two headers of its own:
+
+- `PostmortemId`, the game's content id;
+- `PostmortemAnalysis`, only on analyzed games: the engine and search limit, e.g. `Stockfish 16, depth 18`.
+  `analyze` skips a game when a file in its output directory carries that game's id and this header,
+  so games that `read --out` only stripped are still analyzed, even in the same directory. In turn,
+  `read --out` leaves such a file alone, so reading new games into an analysis directory keeps the
+  analysis already there. The skip ignores which engine and search limit the header records: to redo
+  a game with other settings (a deeper search, a newer Stockfish), delete its file and run `analyze`
+  again.
+
+Two copies of a game count as one when they have the same start position, moves, result and date.
+The players' names are not compared, so a game exported under two of your names or aliases is kept
+once. A `FEN` header that spells out the standard starting position counts the same as none. The
+`Result` and `Date` headers are compared exactly as written, which has two consequences:
+
+- Copies with a missing, partial or differently written date (`2019.??.??` and `2019.03.14`, or
+  `2019.3.14`) are kept twice. The same goes for copies with different results (`1-0` and `*`).
+- Two different games with the same moves and result on the same day are kept as one. That can
+  happen with a short trap, or an agreed draw in a well-known line, played against two opponents.
+
+The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.py).
+
 ## Claude Code skill
 
 [`.claude/skills/publish-games`](.claude/skills/publish-games/SKILL.md) is a
@@ -147,8 +193,8 @@ them" and it runs the pipeline using your `.env`.
 ## Development
 
 ```bash
-.venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest          # unit tests, a golden-file test against examples/, and a Stockfish smoke test
+.venv/bin/pip install -r requirements-dev.txt -e .
+.venv/bin/pytest          # unit tests, a golden-file test against examples/, and the Stockfish tests
 .venv/bin/ruff check .
 ```
 
