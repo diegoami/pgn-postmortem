@@ -5,8 +5,10 @@ Stripping keeps the headers and the mainline moves only. Every comment
 (a source ``[%eval]`` included), variation and NAG is dropped: the library
 re-analyzes every game itself, and old collections carry stale engine notes
 (CLAUDE.md, *decided*). The headers that only describe such notes
-(``DROPPED_HEADERS``) go too, and one header of our own is added:
-``PostmortemId``, the game's content id.
+(``DROPPED_HEADERS``) go too, and so does ``PostmortemAnalysis``, the marker
+the analysis step writes: a game read back from the library's own output is
+a stripped game again, to be analyzed again wherever it is written. One
+header of our own is added: ``PostmortemId``, the game's content id.
 
 Games are identified by their content, not by where they were found, so the
 same game in two files is kept once, and a game read back from the library's
@@ -25,8 +27,9 @@ from pathlib import Path
 import chess
 import chess.pgn
 
-DROPPED_HEADERS = {"Annotator", "PlyCount", "CurrentPosition"}
 ID_HEADER = "PostmortemId"
+ANALYSIS_HEADER = "PostmortemAnalysis"  # written only by the analysis step (pgn_postmortem.analysis)
+DROPPED_HEADERS = {"Annotator", "PlyCount", "CurrentPosition", ANALYSIS_HEADER}
 
 # Below this many half-moves the moves alone are not distinctive enough to
 # identify a game (the same short trap is played in many games), so the date

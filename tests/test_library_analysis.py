@@ -67,6 +67,23 @@ def test_a_second_run_over_the_same_games_analyzes_nothing(tmp_path):
 
 
 @needs_stockfish
+def test_games_only_read_into_the_output_directory_are_still_analyzed(tmp_path):
+    # `read --out games` then `analyze games --out games`: the stripped files have the
+    # library's own file names, but nothing has analyzed them yet (review 006, finding 1).
+    games = tmp_path / "games"
+    Collection.read(FIXTURES, **PLAYER).write(games)
+    report = Collection.read(games).analyze(games, depth=DEPTH, workers=2)
+    assert (report.analyzed, report.skipped) == (3, 0)
+    assert all("[%eval" in path.read_text(encoding="utf-8") for path in games.glob("*.pgn"))
+
+    # Reading strips the analysis marker with everything else, so analyzed games read
+    # into another directory are analyzed again there.
+    elsewhere = tmp_path / "elsewhere"
+    Collection.read(games).write(elsewhere)
+    assert Collection.read(elsewhere).analyze(elsewhere, depth=DEPTH, workers=2).analyzed == 3
+
+
+@needs_stockfish
 def test_two_workers_give_the_same_output_as_one(tmp_path):
     collection = Collection.read(FIXTURES, **PLAYER)
     collection.analyze(tmp_path / "one", depth=DEPTH, workers=1)

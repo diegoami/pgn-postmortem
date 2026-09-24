@@ -20,8 +20,13 @@ stripped whatever the source attached):
   ("how to punish it"). Each line's last move carries a position NAG ($10 to
   $19: =, +=, =+, and so on).
 
-The step is incremental: a game whose output file (named by its content id)
-is already in the output directory is not analyzed again. It runs one
+The step is incremental: a game already analyzed into the output directory
+is not analyzed again. "Analyzed" means a file there carries the game's
+``PostmortemId`` and the ``PostmortemAnalysis`` header, which only this step
+writes (the engine and the search limit, e.g. ``Stockfish 16, depth 18``).
+The file name alone is not enough: ``Collection.write`` uses the same
+``<date>-<id>.pgn`` names for games it has only stripped, so reading into a
+directory and then analyzing in place analyzes every game. It runs one
 single-threaded Stockfish process per worker, and each game starts with a
 fresh engine state (``ucinewgame``), so a game's output does not depend on
 which worker analyzed it or on what that worker analyzed before.
@@ -29,6 +34,7 @@ which worker analyzed it or on what that worker analyzed before.
 
 from __future__ import annotations
 
+import io
 import math
 import os
 import queue
@@ -43,7 +49,7 @@ import chess
 import chess.engine
 import chess.pgn
 
-from pgn_postmortem.collection import CollectedGame, format_game
+from pgn_postmortem.collection import ANALYSIS_HEADER, ID_HEADER, CollectedGame, format_game, read_text
 
 FALLBACK_ENGINE_PATH = "/usr/games/stockfish"  # where Debian and Ubuntu install it, off the default PATH
 
@@ -134,10 +140,12 @@ def analyze_game(
     thresholds: Thresholds = LICHESS_THRESHOLDS,
 ) -> chess.pgn.Game:
     """The analyzed copy of ``source`` (its headers, its mainline, our
-    comments, NAGs and lines). ``engine_game`` identifies the game to the
-    engine: a new value makes python-chess send ``ucinewgame`` first."""
+    comments, NAGs and lines, and the ``PostmortemAnalysis`` marker).
+    ``engine_game`` identifies the game to the engine: a new value makes
+    python-chess send ``ucinewgame`` first."""
     out = chess.pgn.Game()
     out.headers = source.headers.copy()
+    out.headers[ANALYSIS_HEADER] = describe_analysis(engine, limit)
     board = out.board()
     node: chess.pgn.GameNode = out
 
@@ -182,10 +190,22 @@ def analyze_game(
     return out
 
 
+def describe_analysis(engine: chess.engine.SimpleEngine, limit: chess.engine.Limit) -> str:
+    budget = f"depth {limit.depth}" if limit.depth else f"{limit.time:g}s per position"
+    return f"{engine.id.get('name', 'UCI engine')}, {budget}"
+
+
 def analyzed_ids(out_dir: Path) -> set[str]:
-    """The ids of the games already analyzed into ``out_dir``, from the
-    library's own file names (``<date>-<id>.pgn``)."""
-    return {path.stem.rsplit("-", 1)[-1] for path in out_dir.glob("*.pgn")}
+    """The ids of the games already analyzed into ``out_dir``: the
+    ``PostmortemId`` of each file there whose first game carries the
+    ``PostmortemAnalysis`` marker. A file without it (a game that was only
+    stripped, or anything else) does not count."""
+    ids = set()
+    for path in out_dir.glob("*.pgn"):
+        headers = chess.pgn.read_headers(io.StringIO(read_text(path)))
+        if headers is not None and ANALYSIS_HEADER in headers and ID_HEADER in headers:
+            ids.add(headers[ID_HEADER])
+    return ids
 
 
 def analyze_games(
