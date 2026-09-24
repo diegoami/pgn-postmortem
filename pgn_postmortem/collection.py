@@ -13,6 +13,23 @@ header of our own is added: ``PostmortemId``, the game's content id.
 Games are identified by their content, not by where they were found, so the
 same game in two files is kept once, and a game read back from the library's
 own output has the same id as before it was analyzed.
+
+The duplicate rule, exactly (``game_id``, from the spike on ``book-poc``):
+the id is the first 10 hex digits of the SHA-1 of the ``FEN`` header (empty
+for the standard start), the ``Result`` header (``*`` when missing) and the
+mainline moves in UCI; for a game of fewer than 20 half-moves, also the
+``Date`` header and the ``White`` and ``Black`` names in lower case. Two games
+with the same id are one game, and the first one read is kept (inputs in the
+order given, files sorted within a directory or a pattern, games in file
+order). What follows from it:
+
+- two different games of 20 half-moves or more with the same start, moves and
+  result are taken as one: a drawn line or a trap repeated in another year or
+  against another opponent is dropped as a duplicate;
+- a game of fewer than 20 half-moves is kept twice when its copies differ in
+  date or in how a player's name is spelled (``Ada Example`` and ``adaex``);
+- any game is kept twice when its copies differ in the ``Result`` header or
+  in a move.
 """
 
 from __future__ import annotations
@@ -156,7 +173,8 @@ def iter_games(path: Path, report: ReadReport) -> Iterator[tuple[str, chess.pgn.
 
 def game_id(game: chess.pgn.Game) -> str:
     """A short id computed from the game's content (start position, result,
-    moves; plus the date and players for a short game). Comments, variations,
+    moves; plus the date and players for a short game; the exact rule and
+    what follows from it are in the module docstring). Comments, variations,
     NAGs and the headers stripping drops or adds do not change it."""
     moves = [move.uci() for move in game.mainline_moves()]
     headers = game.headers

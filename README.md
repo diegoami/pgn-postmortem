@@ -161,6 +161,19 @@ games.analyze("analyzed/", depth=18, workers=4)
 
 Quote a `**` pattern so the library, not the shell, expands it. The scripts above are unchanged by it.
 
+Every game the library writes is named `<date>-<id>.pgn` and carries two headers of its own:
+
+- `PostmortemId`, the game's content id;
+- `PostmortemAnalysis`, only on analyzed games: the engine and search limit, e.g. `Stockfish 16, depth 18`.
+  `analyze` skips a game when a file in its output directory carries that game's id and this header,
+  so games that `read --out` only stripped are still analyzed, even in the same directory.
+
+Two copies of a game count as one when they have the same start position, result and moves. For a
+game shorter than 20 half-moves, the date and the players' names must match too. As a result, two
+different long games that repeat the same moves and result are kept as one, and a short game whose
+copies spell a player's name differently is kept twice. The exact rule is in
+[`pgn_postmortem/collection.py`](pgn_postmortem/collection.py).
+
 ## Claude Code skill
 
 [`.claude/skills/publish-games`](.claude/skills/publish-games/SKILL.md) is a
