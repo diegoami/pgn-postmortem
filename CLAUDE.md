@@ -118,7 +118,7 @@ bootstrap applies as written there — one review, not two stages.
     user runs the tool.
   - Architecture: first a library (PGN collections in, site and EPUB out),
     then a pipeline around it (fetch in, publish out).
-- **open work:** [`ROADMAP.md`](ROADMAP.md); the direction and its open
-  decisions (package name, licence) in [`docs/book-plan.md`](docs/book-plan.md).
+- **open work:** [`ROADMAP.md`](ROADMAP.md), including F-1's open questions
+  (the licence among them); the direction in [`docs/book-plan.md`](docs/book-plan.md).
 
 <!-- SLOT:END -->

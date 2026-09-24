@@ -81,21 +81,25 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
      repository name — no rename of the repository, the demo URL or the README, and it was free on
      PyPI on 2026-09-24. Alternatives: `pgnbook`, `pgn-memoir`, `chess-memoir` (also free then); a
      name that says "book" describes the product better.
+     **Decided by the owner on 2026-09-24: `pgn-postmortem`** (the default).
   2. **Owner decision — licence** (before F-1.4). Default: **keep MIT**. python-chess is GPL-3.0+;
      a PyPI package that depends on it without bundling it can be MIT. Revisit in F-3 if a Docker
      image bundles it. Alternative: GPL-3.0, which removes the question.
   3. **Owner decision — Python version** (before F-1.1). Default: **3.11 or newer**: Python 3.10
      reaches its end of life in October 2026, before F-1 can be released. F-1.1 then moves the CI
      matrix and the gates table from 3.10/3.12 to 3.11/3.13. Alternative: keep 3.10 until F-1.4.
+     **Decided by the owner on 2026-09-24: 3.11 or newer** (the default).
   4. **Owner decision — the current Markdown pipeline** (before F-1.4). Default: **keep it
      unchanged until F-1.4 lands**, then decide whether to retire it or keep it as a second
      renderer; the live demo keeps working meanwhile.
   5. **Owner decision — the spike on `book-poc`** (before F-1.1). Default: **F-1.1 reuses the
      reading, duplicate removal and parallel analysis code** (already run on real data), reviewed
      like any new code, and leaves the fetching and config code for F-3.
+     **Decided by the owner on 2026-09-24: reuse those parts** (the default).
   6. **Owner decision — the evals format** (before F-1.1). Default: **the library writes standard
      `[%eval]` comments** in its own output; the current scripts keep their own `{ +0.23 }`
      comments, so their golden files do not change.
+     **Decided by the owner on 2026-09-24: standard `[%eval]`** (the default).
   7. **Owner decision — the demo collection** (before F-1.3). Default: **Capablanca's games** from a
      public source whose terms allow redistribution; the builder proposes the source when F-1.3 is
      shaped for its session, and it is named in the README.

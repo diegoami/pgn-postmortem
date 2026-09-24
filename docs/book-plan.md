@@ -172,10 +172,9 @@ than one source were merged, and one broken game was skipped.
 3. **Pipeline:** sources, outputs, config, Docker image, GitHub template repo.
 
 ## Open decisions
-- **Package name.** All free on PyPI as of 2026-09-24: `pgnbook`, `pgn-book`, `pgn2book`,
-  `chessbook`, `pgn-memoir`, `chess-memoir`, `memorable-games`, `pgnwiki`, `pgn-postmortem`.
-  - Should the library keep this repo's name or get its own?
-  - Is the pipeline a separate package or repo?
+- **Package name.** Decided by the owner on 2026-09-24: the library is `pgn-postmortem`, this
+  repository's name (`ROADMAP.md`, F-1 open question 1). Still open: whether the pipeline (F-3) is a
+  separate package or repository.
 - **License.** python-chess is GPL-3.0. MIT code can depend on it, but anything that bundles it, such
   as a Docker image, is subject to GPL. Options: keep MIT, or switch to GPL-3.0 for simplicity.
 - **Where Diego's own book lives:** a new repo, `chessgamescollection`, or local only.

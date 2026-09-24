@@ -35,10 +35,10 @@ so; the exception is recorded, never improvised.
 
 | iteration | request | done when | out of scope | mode | design record | effort | reviewer |
 |---|---|---|---|---|---|---|---|
-| 1 | F-1.1 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.1 in F-1's block in `ROADMAP.md` | F-1.2 to F-1.4, F-2, F-3 | chosen by the owner when the iteration starts | written when the iteration starts (OpenCode mode) | medium | the assignment table (OpenCode) or a fresh-context session (Claude) |
-| 2 | F-1.2 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.2 in F-1's block | F-1.3, F-1.4, F-2, F-3 | chosen by the owner | as above | large | as above |
-| 3 | F-1.3 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.3 in F-1's block | F-1.4, F-2, F-3 | chosen by the owner | as above | large | as above |
-| 4 | F-1.4 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.4 in F-1's block | F-2, F-3 | chosen by the owner | as above | medium | as above |
+| 1 | F-1.1 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.1 in F-1's block in `ROADMAP.md` | F-1.2 to F-1.4, F-2, F-3 | OpenCode (owner, 2026-09-24) | `design/001-f1-1-read-and-analyze.md`, written by the implementer when the iteration starts and agreed before any code | medium | the assignment table (OpenCode) |
+| 2 | F-1.2 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.2 in F-1's block | F-1.3, F-1.4, F-2, F-3 | chosen by the owner | written when the iteration starts (OpenCode mode) | large | the assignment table (OpenCode) or a fresh-context session (Claude) |
+| 3 | F-1.3 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.3 in F-1's block | F-1.4, F-2, F-3 | chosen by the owner | written when the iteration starts (OpenCode mode) | large | the assignment table (OpenCode) or a fresh-context session (Claude) |
+| 4 | F-1.4 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.4 in F-1's block | F-2, F-3 | chosen by the owner | written when the iteration starts (OpenCode mode) | medium | the assignment table (OpenCode) or a fresh-context session (Claude) |
 | 5+ | the first unblocked roadmap request, in the owner's order | that request's block in `ROADMAP.md` | the other requests | chosen by the owner | written when the request is shaped (OpenCode mode) | per request | as above |
 
 F-1 was split into F-1.1 to F-1.4 when it was shaped (`ROADMAP.md`, *Size it
