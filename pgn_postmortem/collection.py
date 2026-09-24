@@ -252,3 +252,10 @@ class Collection:
             path.write_text(format_game(item.game), encoding="utf-8")
             paths.append(path)
         return paths
+
+    def analyze(self, out_dir: str | Path, **options):
+        """Analyze the games with Stockfish into ``out_dir``; see
+        ``pgn_postmortem.analysis.analyze_games`` for the options."""
+        from pgn_postmortem.analysis import analyze_games
+
+        return analyze_games(self.games, out_dir, **options)
