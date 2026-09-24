@@ -85,6 +85,9 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   2. **Owner decision — licence** (before F-1.4). Default: **keep MIT**. python-chess is GPL-3.0+;
      a PyPI package that depends on it without bundling it can be MIT. Revisit in F-3 if a Docker
      image bundles it. Alternative: GPL-3.0, which removes the question.
+     Settled with it, before F-1.4: the licence of the board pieces' artwork that every generated
+     site embeds (Colin M.L. Burnett's set as bundled with python-chess; unverified, since
+     python-chess ships no notice for it; review 008, finding 5).
   3. **Owner decision — Python version** (before F-1.1). Default: **3.11 or newer**: Python 3.10
      reaches its end of life in October 2026, before F-1 can be released. F-1.1 then moves the CI
      matrix and the gates table from 3.10/3.12 to 3.11/3.13. Alternative: keep 3.10 until F-1.4.
