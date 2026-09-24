@@ -1,11 +1,21 @@
 [project]
 name = "pgn-postmortem"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Turn a folder of PGN chess games into browsable Markdown post-mortems of every blunder, analyzed locally with Stockfish."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = ["chess==1.11.2"]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pgn_postmortem*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pgn_postmortem.__version__" }
 
 [tool.ruff]
 line-length = 120
@@ -15,8 +25,8 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["analyze_games", "openings", "pgn_io", "publish_games"]
+known-first-party = ["analyze_games", "openings", "pgn_io", "publish_games", "pgn_postmortem"]
 
 [tool.pytest.ini_options]
-pythonpath = ["scripts"]
+pythonpath = ["scripts", "."]
 testpaths = ["tests"]

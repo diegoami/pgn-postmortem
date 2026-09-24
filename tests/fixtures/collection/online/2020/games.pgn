@@ -1,0 +1,18 @@
+[Event "Online blitz"]
+[Site "example.org"]
+[Date "2020.06.01"]
+[White "Fabio Quick"]
+[Black "AdaEx"]
+[Result "1-0"]
+
+1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0
+
+[Event "Club ch."]
+[Site "Example Chess Club"]
+[Date "2019.03.14"]
+[White "Ada Example"]
+[Black "Bruno Rival"]
+[Result "1/2-1/2"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3 d6 6. O-O O-O 7. Re1 a6 8. Bb3
+Ba7 9. h3 h6 10. Nbd2 Re8 1/2-1/2
