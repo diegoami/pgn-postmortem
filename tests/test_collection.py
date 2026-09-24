@@ -37,6 +37,13 @@ def test_a_directory_is_searched_recursively():
     assert find_pgn_files([FIXTURES]) == [CLUB, ONLINE]
 
 
+def test_an_existing_path_with_glob_characters_is_read_as_that_file(tmp_path):
+    literal = tmp_path / "games [2019] *?.pgn"
+    literal.write_text(CLUB.read_text(encoding="utf-8"), encoding="utf-8")
+    assert find_pgn_files([str(literal)]) == [literal]
+    assert len(Collection.read(str(literal))) == 3
+
+
 def test_a_missing_input_is_an_error_not_an_empty_collection(tmp_path):
     with pytest.raises(FileNotFoundError):
         find_pgn_files([tmp_path / "nope.pgn"])

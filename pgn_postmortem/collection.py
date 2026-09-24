@@ -77,9 +77,11 @@ def find_pgn_files(inputs: Iterable[str | Path]) -> list[Path]:
 
     Each input is a file (taken whatever its extension), a directory (every
     ``*.pgn`` below it, recursively) or a glob pattern (``**`` crosses
-    directories). A path that does not exist, or a pattern that matches
-    nothing, raises ``FileNotFoundError``: a typo should not read as an
-    empty collection.
+    directories). An existing path is always taken as that path, even when
+    its name contains ``*``, ``?`` or ``[``; only an input that does not
+    exist is expanded as a pattern. A path that does not exist, or a pattern
+    that matches nothing, raises ``FileNotFoundError``: a typo should not read
+    as an empty collection.
     """
     found: list[Path] = []
     seen: set[Path] = set()
@@ -96,7 +98,8 @@ def find_pgn_files(inputs: Iterable[str | Path]) -> list[Path]:
 
     for item in inputs:
         text = str(item)
-        if GLOB_CHARS & set(text):
+        path = Path(text).expanduser()
+        if GLOB_CHARS & set(text) and not path.exists():
             matches = sorted(Path(p) for p in glob.glob(text, recursive=True))
             if not matches:
                 raise FileNotFoundError(f"no file matches {text}")
@@ -106,7 +109,6 @@ def find_pgn_files(inputs: Iterable[str | Path]) -> list[Path]:
                 else:
                     add(match)
             continue
-        path = Path(text).expanduser()
         if path.is_dir():
             add_dir(path)
         elif path.is_file():
