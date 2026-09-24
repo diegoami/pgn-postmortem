@@ -44,7 +44,9 @@ bootstrap applies as written there — one review, not two stages.
   phone and offline, without operating a chess GUI. The owner is its first
   user, with their own archive (github.com/diegoami/DA_chessgames, chess.com,
   lichess). The direction is in [`docs/book-plan.md`](docs/book-plan.md) and the
-  queued work in [`ROADMAP.md`](ROADMAP.md).
+  queued work in [`ROADMAP.md`](ROADMAP.md). The owner's own book lives in
+  `diegoami/chessgamescollection`, the owner's workspace that uses the library
+  (decided 2026-09-24, `docs/book-plan.md`).
 - **harness:** adopted from `harness_template` release `r4` (commit
   `39c29e3`) on 2026-09-24. Modes: both; the owner picks the mode of each
   change when it starts (the iteration table in [`PLAN.md`](PLAN.md)). The
@@ -137,8 +139,7 @@ bootstrap applies as written there — one review, not two stages.
     then a pipeline around it (fetch in, publish out).
 - **open work:** [`ROADMAP.md`](ROADMAP.md), including F-1's open questions
   (the licence among them); the direction, and the decisions still open there
-  (whether the pipeline is a separate package, the Markdown pages, the
-  selection weights), in [`docs/book-plan.md`](docs/book-plan.md). The owner's
-  own book lives in `diegoami/chessgamescollection` (decided 2026-09-24).
+  (the licence, whether the pipeline is a separate package, the Markdown
+  pages, the selection weights), in [`docs/book-plan.md`](docs/book-plan.md).
 
 <!-- SLOT:END -->
