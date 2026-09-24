@@ -132,3 +132,34 @@ fixture draw share their date).
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `ccc0f89` (pull request #6); the clean round, 03, covers `a82bb82`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36005762329. F-1.1's done-when (`ROADMAP.md`, F-1's block):
+
+- **The gates pass:** `ruff check .` is clean, and `pytest -q` gives 54 passed with none skipped, locally at `a82bb82`, on `main` after the merge, and in CI.
+- **The new tests cover every item:**
+  - reading a multi-game file whole
+  - collecting files through a glob across directories
+  - keeping only the player's games under any alias
+  - keeping a game found in two files once (under the owner's identity rule of 2026-09-24: moves, result, date and a normalized start position)
+  - stripping comments (a source `[%eval]` included), variations and NAGs
+  - analyzing a forced mate and flagging it, with `[%eval]` output
+  - analyzing nothing on a second run
+  - the same output with two workers as with one
+  - the command line run end to end as a subprocess
+
+  All were checked in rounds 01–03, the reviewer breaking the code and watching them go red.
+- **Every new assertion was shown failing first:** 84 breaks, each red on its intended assertion. The table is in the pull request body.
+- **The Python 3.11+ move:** `pyproject.toml`, the CI matrix (3.11/3.13) and the gates table in `CLAUDE.md`.
+
+Beyond the contract, from the reviews:
+- two data-loss defects fixed: the skip treating stripped files as analyzed, and a re-read overwriting analyses
+- literal paths containing glob characters
+- a cp1252 fallback decoding
+- a one-line error on engine failure
+- a tested console script
+
+Left open, to fix in a follow-up change: round-03 finding 14 (file-name dates aren't zero-padded, so a listing isn't always chronological). Finding 13 (a future change to the id rule orphans analyzed files) is noted for any such change. Finding 12 (the owner's identity decision) is recorded in the pull request body with its default and reason, and the owner's merge confirms it.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
