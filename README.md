@@ -138,6 +138,29 @@ always wins.
 | `--force` | — | off | Re-analyze games already in `analyzed_games/` |
 | `--source` | — | `daily_games` | Which directory `publish_games.py` reads (`update_games.sh` uses `analyzed_games`) |
 
+## The library (in progress)
+
+`pgn-postmortem` is growing into a Python library that turns a player's PGN collections into a
+Wikipedia-style site and an EPUB book ([`ROADMAP.md`](ROADMAP.md), F-1). Its first part reads and
+analyzes: multi-game files, directories and glob patterns in, the player's games kept once each with
+every source comment, variation and NAG stripped, then a parallel Stockfish pass that writes standard
+`[%eval]` comments and skips games it has already analyzed.
+
+```bash
+.venv/bin/pip install -e .
+pgn-postmortem read 'collections/**/*.pgn' --player "Ada Example" --alias adaex --out games/
+pgn-postmortem analyze games/ --out analyzed/ --workers 4
+```
+
+```python
+from pgn_postmortem import Collection
+
+games = Collection.read(["collections/**/*.pgn"], player="Ada Example", aliases=["adaex"])
+games.analyze("analyzed/", depth=18, workers=4)
+```
+
+Quote a `**` pattern so the library, not the shell, expands it. The scripts above are unchanged by it.
+
 ## Claude Code skill
 
 [`.claude/skills/publish-games`](.claude/skills/publish-games/SKILL.md) is a
@@ -147,8 +170,8 @@ them" and it runs the pipeline using your `.env`.
 ## Development
 
 ```bash
-.venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest          # unit tests, a golden-file test against examples/, and a Stockfish smoke test
+.venv/bin/pip install -r requirements-dev.txt -e .
+.venv/bin/pytest          # unit tests, a golden-file test against examples/, and the Stockfish tests
 .venv/bin/ruff check .
 ```
 

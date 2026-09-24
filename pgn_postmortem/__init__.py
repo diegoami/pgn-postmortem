@@ -8,6 +8,9 @@ The library API::
     games = Collection.read(["games/**/*.pgn"], player="Ada Example", aliases=["adaex"])
     games.write("games-clean/")                     # optional: one stripped PGN per game
     games.analyze("analyzed/", depth=18, workers=4)  # Stockfish, [%eval] comments, incremental
+
+The same steps from the command line are ``pgn-postmortem read`` and
+``pgn-postmortem analyze`` (see ``pgn_postmortem.cli``).
 """
 
 from pgn_postmortem.analysis import AnalysisReport, Thresholds, analyze_games
