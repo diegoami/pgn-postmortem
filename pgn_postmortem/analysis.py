@@ -34,7 +34,6 @@ which worker analyzed it or on what that worker analyzed before.
 
 from __future__ import annotations
 
-import io
 import math
 import os
 import queue
@@ -49,7 +48,7 @@ import chess
 import chess.engine
 import chess.pgn
 
-from pgn_postmortem.collection import ANALYSIS_HEADER, ID_HEADER, CollectedGame, format_game, read_text
+from pgn_postmortem.collection import ANALYSIS_HEADER, CollectedGame, analyzed_id, format_game
 
 FALLBACK_ENGINE_PATH = "/usr/games/stockfish"  # where Debian and Ubuntu install it, off the default PATH
 
@@ -209,12 +208,7 @@ def analyzed_ids(out_dir: Path) -> set[str]:
     ``PostmortemId`` of each file there whose first game carries the
     ``PostmortemAnalysis`` marker. A file without it (a game that was only
     stripped, or anything else) does not count."""
-    ids = set()
-    for path in out_dir.glob("*.pgn"):
-        headers = chess.pgn.read_headers(io.StringIO(read_text(path)))
-        if headers is not None and ANALYSIS_HEADER in headers and ID_HEADER in headers:
-            ids.add(headers[ID_HEADER])
-    return ids
+    return {gid for path in out_dir.glob("*.pgn") if (gid := analyzed_id(path))}
 
 
 def analyze_games(

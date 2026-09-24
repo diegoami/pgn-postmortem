@@ -44,7 +44,9 @@ def cmd_read(args: argparse.Namespace) -> int:
     collection = read_collection(args)
     if args.out:
         paths = collection.write(args.out)
-        print(f"Wrote {len(paths)} game(s) to {args.out}.")
+        kept = len(collection) - len(paths)
+        already = f"; {kept} already analyzed there, left as they are" if kept else ""
+        print(f"Wrote {len(paths)} game(s) to {args.out}{already}.")
     return 0
 
 

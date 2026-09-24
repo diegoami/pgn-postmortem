@@ -51,6 +51,12 @@ def test_read_then_analyze_a_fixture_collection(tmp_path):
     assert again.returncode == 0, again.stderr
     assert "Analyzed 0 game(s) into analyzed; 3 already there." in again.stdout
 
+    # reading the collection again into the analysis directory leaves the analyses alone
+    reread = run_cli("read", f"{FIXTURES}/**/*.pgn", *player, "--out", "analyzed", cwd=tmp_path)
+    assert reread.returncode == 0, reread.stderr
+    assert "Wrote 0 game(s) to analyzed; 3 already analyzed there, left as they are." in reread.stdout
+    assert all("[%eval" in path.read_text(encoding="utf-8") for path in analyzed)
+
 
 def test_a_missing_input_fails_with_a_message(tmp_path):
     result = run_cli("read", "no-such-dir", cwd=tmp_path)

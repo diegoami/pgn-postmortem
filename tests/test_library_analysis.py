@@ -89,6 +89,28 @@ def test_games_only_read_into_the_output_directory_are_still_analyzed(tmp_path):
 
 
 @needs_stockfish
+def test_reading_again_into_an_analyzed_directory_keeps_the_analysis(tmp_path):
+    # read, analyze in place, read again (with one new game), analyze again: only the new
+    # game is analyzed, and the analyses already there survive (review 006, finding 9).
+    games = tmp_path / "games"
+    Collection.read(FIXTURES / "club", **PLAYER).write(games)
+    assert Collection.read(games).analyze(games, depth=DEPTH, workers=2).analyzed == 2
+    analyzed = contents(games)
+
+    written = Collection.read(FIXTURES, **PLAYER).write(games)
+    assert [path.name for path in written] == [name for name in contents(games) if name not in analyzed]
+    assert {name: text for name, text in contents(games).items() if name in analyzed} == analyzed
+    second = Collection.read(games).analyze(games, depth=DEPTH, workers=2)
+    assert (second.analyzed, second.skipped) == (1, 2)
+
+    # and once more: nothing is re-analyzed, and every game still has its [%eval] comments
+    Collection.read(FIXTURES, **PLAYER).write(games)
+    third = Collection.read(games).analyze(games, depth=DEPTH, engine_path="/nonexistent/stockfish")
+    assert (third.analyzed, third.skipped) == (0, 3)
+    assert all("[%eval" in text for text in contents(games).values())
+
+
+@needs_stockfish
 def test_two_workers_give_the_same_output_as_one(tmp_path):
     collection = Collection.read(FIXTURES, **PLAYER)
     collection.analyze(tmp_path / "one", depth=DEPTH, workers=1)

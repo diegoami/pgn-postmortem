@@ -166,7 +166,9 @@ Every game the library writes is named `<date>-<id>.pgn` and carries two headers
 - `PostmortemId`, the game's content id;
 - `PostmortemAnalysis`, only on analyzed games: the engine and search limit, e.g. `Stockfish 16, depth 18`.
   `analyze` skips a game when a file in its output directory carries that game's id and this header,
-  so games that `read --out` only stripped are still analyzed, even in the same directory.
+  so games that `read --out` only stripped are still analyzed, even in the same directory. In turn,
+  `read --out` leaves such a file alone, so reading new games into an analysis directory keeps the
+  analysis already there.
 
 Two copies of a game count as one when they have the same start position, moves, result and date.
 The players' names are not compared, so a game exported under two of your names or aliases is kept

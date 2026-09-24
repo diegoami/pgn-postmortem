@@ -215,6 +215,16 @@ def strip_game(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:
     return out
 
 
+def analyzed_id(path: Path) -> str | None:
+    """The ``PostmortemId`` of the game in ``path`` if the analysis step
+    wrote it (its first game carries the ``PostmortemAnalysis`` marker), else
+    None: a stripped game, or any other file."""
+    headers = chess.pgn.read_headers(io.StringIO(read_text(path)))
+    if headers is None or ANALYSIS_HEADER not in headers:
+        return None
+    return headers.get(ID_HEADER)
+
+
 def format_game(game: chess.pgn.Game) -> str:
     """PGN text wrapped at 80 columns, the usual PGN convention."""
     exporter = chess.pgn.StringExporter(columns=80)
@@ -282,12 +292,23 @@ class Collection:
         return len(self.games)
 
     def write(self, out_dir: str | Path) -> list[Path]:
-        """Write every game, stripped, to ``out_dir/<date>-<id>.pgn``."""
+        """Write every game, stripped, to ``out_dir/<date>-<id>.pgn``, and
+        return the paths written.
+
+        A game whose file there already holds the library's analysis of the
+        same game is left alone, so reading new games into an analysis
+        directory never throws away analysis already done. "The same game"
+        means the file's first game carries the ``PostmortemAnalysis`` marker
+        and a ``PostmortemId`` equal to this game's content id (``game_id``:
+        start position, moves, result and date). Any other file at that name
+        (a stripped copy, or something else) is overwritten."""
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         paths = []
         for item in self.games:
             path = out_dir / item.filename
+            if path.is_file() and analyzed_id(path) == item.id:
+                continue
             path.write_text(format_game(item.game), encoding="utf-8")
             paths.append(path)
         return paths
