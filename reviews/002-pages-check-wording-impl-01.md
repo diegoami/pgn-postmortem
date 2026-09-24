@@ -30,3 +30,15 @@ No blocking findings.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `2c2eb01` (pull request #2); the clean round, 01, covers `f5010f6`.
+
+- **`CLAUDE.md` separates failures caused by the repository, which are defects, from outages, which aren't:** `CLAUDE.md:87-90` on `main`.
+- **Nothing else changed:** the pull request's only code file is `CLAUDE.md` (4 lines added, 2 removed), plus this review record.
+- **The gates are green:** `ruff check .` passed and `pytest -q` gave 30 passed. The pull request's checks (test on Python 3.10 and 3.12, GitGuardian) passed before the merge.
+
+The review's non-blocking finding (report a Pages failure caused by GitHub-side settings to the owner) was left as is by the owner's decision.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
