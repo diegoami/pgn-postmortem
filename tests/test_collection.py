@@ -91,6 +91,16 @@ def test_a_latin1_file_is_read_without_losing_its_accents(tmp_path):
     assert Collection.read(path).games[0].game.headers["White"] == "Jürgen Müller"
 
 
+def test_a_windows_file_keeps_its_curly_quotes(tmp_path):
+    path = tmp_path / "windows.pgn"
+    path.write_bytes('[Event "Café “Open”"]\n[White "A"]\n[Black "B"]\n[Result "*"]\n\n1. e4 e5 *\n'.encode("cp1252"))
+    assert Collection.read(path).games[0].game.headers["Event"] == "Café “Open”"
+
+    # 0x81 is undefined in Windows-1252: the file is still read, through Latin-1
+    path.write_bytes(b'[White "A\x81"]\n[Black "B"]\n[Result "*"]\n\n1. e4 e5 *\n')
+    assert Collection.read(path).games[0].game.headers["White"] == "A\x81"
+
+
 def test_the_library_output_reads_back_with_the_same_ids(tmp_path):
     collection = Collection.read(FIXTURES, **PLAYER)
     collection.write(tmp_path)

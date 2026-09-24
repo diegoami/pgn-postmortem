@@ -119,14 +119,23 @@ def find_pgn_files(inputs: Iterable[str | Path]) -> list[Path]:
 
 
 def read_text(path: Path) -> str:
-    """The file's text: UTF-8 (with or without a BOM), else Latin-1, which is
-    what old Windows-era collections are usually in. Latin-1 decodes any byte,
-    so a file is never rejected for its encoding."""
+    """The file's text, decoded once for the whole file: UTF-8 (with or
+    without a BOM) if the whole file is valid UTF-8; else Windows-1252, what
+    old Windows-era collections are usually in (a superset of Latin-1's
+    letters, with curly quotes and dashes); else, for the five bytes
+    Windows-1252 leaves undefined, Latin-1, which decodes any byte, so a file
+    is never rejected for its encoding.
+
+    The decision is per file, not per game: a file that concatenates UTF-8
+    and Windows-1252 games is not valid UTF-8, so its UTF-8 games come out
+    as mojibake (``JÃ¼rgen``). Convert such a file to UTF-8 first."""
     data = path.read_bytes()
-    try:
-        return data.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        return data.decode("latin-1")
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            pass
+    return data.decode("latin-1")
 
 
 def iter_games(path: Path, report: ReadReport) -> Iterator[tuple[str, chess.pgn.Game]]:
