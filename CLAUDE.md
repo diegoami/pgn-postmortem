@@ -75,7 +75,8 @@ bootstrap applies as written there — one review, not two stages.
   output); `data/openings/*.tsv` (about 3,800 rows; grep it, do not read it
   whole); `examples/docs/**` and `examples/analyzed_games/**` (generated, see
   above; open one file when a check points at it); any workspace `.cache/`
-  (downloaded archives and cloned repositories).
+  (downloaded archives and cloned repositories); `.claude/worktrees/` (agent
+  worktrees: full copies of the repository, git-ignored).
 - **never read or echo:** `.env` and `.env.*` other than `.env.example` (the
   owner's player name and local data paths); the value of any API-key variable
   (`DEEPSEEK_API_KEY`, or whatever a config names in `api_key_env`); `~/.ssh/`
