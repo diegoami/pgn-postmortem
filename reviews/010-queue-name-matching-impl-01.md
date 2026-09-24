@@ -127,3 +127,15 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-24 as `30a93c2` (pull request #10); the clean round, 01, covers `9c3b9e5`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36041467923.
+
+- **F-4 is queued** with the owner's verbatim wording and status `requested`, and is not shaped. The reviewer reproduced the 8 excluded games (149 read, 140 kept, 8 left out, 1 duplicate) without running any analysis.
+- **Review 009's findings 1–3 are addressed:** the licence is in the open-work list, the book workspace is in the product entry, and the plan's status names every place owner decisions are recorded.
+- **Only `ROADMAP.md`, `CLAUDE.md` and `docs/book-plan.md` changed,** plus this record.
+
+Left for when F-4 is shaped: findings 1 (the row doesn't mention the duplicate that makes 140 + 8 = 148 of 149) and 2 (the "exact except letter case" wording also ignores surrounding spaces). Finding 3 (`docs/book-plan.md` still says nothing is implemented, although F-1.1 and F-1.2 have landed) goes into the next record change.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
