@@ -161,12 +161,12 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   5. a threshold below 55 or above 95 is rejected;
   6. an unrecorded, unanalyzed game ending in checkmate shows the mating side's win, and ones ending
      in stalemate or with insufficient material show ½–½;
-  6a. an unrecorded, analyzed game whose final eval is a mate score (`[%eval #N]`, not checkmate on
+  7. an unrecorded, analyzed game whose final eval is a mate score (`[%eval #N]`, not checkmate on
      the board) shows the win of the side with the mate;
-  7. an unrecorded game that is neither analyzed nor ended on the board shows "not recorded" wording,
+  8. an unrecorded game that is neither analyzed nor ended on the board shows "not recorded" wording,
      and no bare "\*" appears anywhere outside the PGN section;
-  8. the PGN `Result` header, the `PostmortemId` and the file names of all these games are unchanged;
-  9. counts read "inaccuracies" when there are two or more.
+  9. the PGN `Result` header, the `PostmortemId` and the file names of all these games are unchanged;
+  10. counts read "inaccuracies" when there are two or more.
 
   Each new assertion is shown failing first. The golden files are regenerated where the output
   changes.
