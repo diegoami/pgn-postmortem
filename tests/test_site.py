@@ -22,6 +22,8 @@ no test here runs Stockfish.
                                   (2019.123.05)
 """
 
+import shutil
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -149,29 +151,168 @@ def test_building_twice_into_the_same_directory_changes_nothing(tmp_path):
 # --- one article per game, no broken links ----------------------------------------
 
 
-def check_links(site: Path) -> int:
+LICHESS = "https://lichess.org/analysis/"  # a position: LICHESS + the FEN with its spaces as "_"
+LICHESS_GAME = LICHESS + "pgn/"  # a whole game: LICHESS_GAME + its moves, URL-encoded
+NEW_TAB = {"target": "_blank", "rel": "noopener noreferrer"}
+
+
+@dataclass(frozen=True)
+class Checked:
+    """The links ``check_links`` checked: the relative ones, and the lichess
+    game and position links (ROADMAP.md, F-10)."""
+
+    relative: int = 0
+    games: int = 0
+    positions: int = 0
+
+    @property
+    def total(self) -> int:
+        return self.relative + self.games + self.positions
+
+
+def inside(element: Element, tag: str, cls: str) -> bool:
+    """Whether ``element`` is inside an element ``<tag class="cls">``."""
+    parent = element.parent
+    while parent is not None:
+        if parent.tag == tag and cls in (parent.attrs.get("class") or "").split():
+            return True
+        parent = parent.parent
+    return False
+
+
+def lichess_kind(element: Element, key: str, link: str) -> str | None:
+    """``games`` or ``positions`` for an absolute link that the pages may
+    carry, else None: an ``<a href>`` to ``LICHESS_GAME`` inside an article's
+    infobox, or to ``LICHESS`` (not ``pgn/``) inside a critical moment's answer,
+    with something after the prefix and no query or fragment."""
+    if element.tag != "a" or key != "href" or "?" in link or "#" in link:
+        return None
+    if link.startswith(LICHESS_GAME):
+        where, rest = ("table", "infobox"), link[len(LICHESS_GAME) :]
+        kind = "games"
+    elif link.startswith(LICHESS):
+        where, rest = ("details", "answer"), link[len(LICHESS) :]
+        kind = "positions"
+    else:
+        return None
+    return kind if rest and inside(element, *where) else None
+
+
+def check_links(site: Path) -> Checked:
     """Every href and src in every page is relative, names a file in the
-    site, and any #fragment is an id in that file. Returns the links checked."""
+    site, and any #fragment is an id in that file; except the lichess links
+    (ROADMAP.md, F-10), which are absolute, of one of the two forms
+    ``lichess_kind`` accepts, each in its place, and open in a new tab with
+    ``rel="noopener noreferrer"``. ``target`` appears on no other element.
+    Returns the links checked."""
     site = site.resolve()
     pages = {path: parse(path) for path in site.rglob("*.html")}
     ids = {path: {e.attrs["id"] for e in dom.iter() if e.attrs.get("id")} for path, dom in pages.items()}
-    checked = 0
+    counts = {"relative": 0, "games": 0, "positions": 0}
     for path, dom in pages.items():
         for element in dom.iter():
+            lichess = None
             for key in ("href", "src"):
                 link = element.attrs.get(key)
                 if link is None:
                     continue
                 parts = urlsplit(link)
                 where = f"{path.relative_to(site)}: {key}={link!r}"
-                assert not parts.scheme and not parts.netloc and not link.startswith("/"), f"not relative: {where}"
+                if parts.scheme or parts.netloc or link.startswith("/"):
+                    lichess = lichess_kind(element, key, link)
+                    assert lichess, f"not relative, and not a lichess link in its place: {where}"
+                    for name, value in NEW_TAB.items():
+                        assert element.attrs.get(name) == value, f"no {name}={value!r}: {where}"
+                    counts[lichess] += 1
+                    continue
                 target = (path.parent / parts.path).resolve() if parts.path else path
                 assert target.is_file(), f"broken: {where}"
                 assert site in target.parents, f"outside the site: {where}"
                 if parts.fragment:
                     assert parts.fragment in ids[target], f"no such anchor: {where}"
-                checked += 1
-    return checked
+                counts["relative"] += 1
+            if "target" in element.attrs:
+                assert lichess, f"{path.relative_to(site)}: target on <{element.tag} {element.attrs}>"
+    return Checked(**counts)
+
+
+# --- the check fails what it must (ROADMAP.md, F-10) ---------------------------------------
+
+
+@pytest.fixture(scope="module")
+def analyzed_site(tmp_path_factory) -> Path:
+    """The fixture site, as the command line builds it."""
+    site = tmp_path_factory.mktemp("analyzed")
+    build([ANALYZED], site, *PLAYER)
+    return site
+
+
+GOOD = 'target="_blank" rel="noopener noreferrer"'
+POSITION = LICHESS + "3r2k1/5pp1/7p/8/8/8/R4PPP/6K1_w_-_-_0_31"
+# An absolute link, or a target, that the check must fail: (where it is put, the markup).
+BAD = {
+    "another site": ("lead", f'<a href="https://example.org/" {GOOD}>x</a>'),
+    "http, not https": ("infobox", f'<a href="http://lichess.org/analysis/pgn/e4" {GOOD}>x</a>'),
+    "protocol-relative": ("infobox", f'<a href="//lichess.org/analysis/pgn/e4" {GOOD}>x</a>'),
+    "root-relative": ("infobox", f'<a href="/analysis/pgn/e4" {GOOD}>x</a>'),
+    "another lichess page": ("answer", f'<a href="https://lichess.org/study/abc" {GOOD}>x</a>'),
+    "lichess without analysis": ("infobox", f'<a href="https://lichess.org/pgn/e4" {GOOD}>x</a>'),
+    "a game link in an answer": ("answer", f'<a href="{LICHESS_GAME}e4" {GOOD}>x</a>'),
+    "a game link in the lead": ("lead", f'<a href="{LICHESS_GAME}e4" {GOOD}>x</a>'),
+    "a position link in the infobox": ("infobox", f'<a href="{POSITION}" {GOOD}>x</a>'),
+    "a position link in the lead": ("lead", f'<a href="{POSITION}" {GOOD}>x</a>'),
+    "a game link with a query": ("infobox", f'<a href="{LICHESS_GAME}e4?color=black" {GOOD}>x</a>'),
+    "a position link with a fragment": ("answer", f'<a href="{POSITION}#x" {GOOD}>x</a>'),
+    "an empty game link": ("infobox", f'<a href="{LICHESS_GAME}" {GOOD}>x</a>'),
+    "an empty position link": ("answer", f'<a href="{LICHESS}" {GOOD}>x</a>'),
+    "no target": ("infobox", f'<a href="{LICHESS_GAME}e4" rel="noopener noreferrer">x</a>'),
+    "another target": ("infobox", f'<a href="{LICHESS_GAME}e4" target="lichess" rel="noopener noreferrer">x</a>'),
+    "no noreferrer": ("answer", f'<a href="{POSITION}" target="_blank" rel="noopener">x</a>'),
+    "an image": ("infobox", f'<img src="{LICHESS_GAME}e4" {GOOD}>'),
+    "a stylesheet": ("head", f'<link rel="stylesheet" href="{LICHESS}style.css">'),
+    "a target on a relative link": ("lead", '<a href="../index.html" target="_blank">x</a>'),
+}
+PLACES = {  # the text each markup goes next to, and how
+    "lead": ('<p class="lead">', '<p class="lead">{}'),
+    "infobox": ("</table>", "{}</table>"),
+    "answer": ("</details>", "{}</details>"),
+    "head": ("</head>", "{}</head>"),
+}
+
+
+def plant(site: Path, tmp_path: Path, place: str, markup: str) -> Path:
+    """A copy of ``site`` with ``markup`` put into one article with a critical
+    moment: in its lead, its infobox, its answer or its head."""
+    copy = tmp_path / "site"
+    shutil.copytree(site, copy)
+    page = copy / "games" / "2020-06-01-9705c13f05.html"
+    text = page.read_text(encoding="utf-8")
+    anchor, planted = PLACES[place]
+    assert text.count(anchor) == 1
+    text = text.replace(anchor, planted.format(markup))
+    page.write_text(text, encoding="utf-8")
+    return copy
+
+
+@pytest.mark.parametrize(("place", "markup"), BAD.values(), ids=BAD.keys())
+def test_the_check_fails_any_other_absolute_link_or_target(analyzed_site, tmp_path, place, markup):
+    check_links(analyzed_site)  # the site as built passes
+    with pytest.raises(AssertionError):
+        check_links(plant(analyzed_site, tmp_path, place, markup))
+
+
+@pytest.mark.parametrize(
+    ("place", "markup", "kind"),
+    [
+        ("infobox", f'<a href="{LICHESS_GAME}e4" {GOOD}>x</a>', "games"),
+        ("answer", f'<a href="{POSITION}" {GOOD}>x</a>', "positions"),
+    ],
+    ids=["game", "position"],
+)
+def test_a_planted_lichess_link_of_the_right_form_in_its_place_passes(analyzed_site, tmp_path, place, markup, kind):
+    before = check_links(analyzed_site)
+    after = check_links(plant(analyzed_site, tmp_path, place, markup))
+    assert getattr(after, kind) == getattr(before, kind) + 1
 
 
 @pytest.mark.parametrize(
@@ -191,7 +332,7 @@ def test_the_site_has_one_article_per_game_and_no_broken_links(tmp_path, inputs,
     assert sorted(linked) == sorted(f"games/{name}" for name in expected)  # each game listed exactly once
     for name in expected:
         assert len(parse(tmp_path / "games" / name).find_all("article")) == 1
-    assert check_links(tmp_path) > len(expected) * 3
+    assert check_links(tmp_path).total > len(expected) * 3
 
 
 def test_a_stale_page_the_builder_wrote_is_removed_whatever_its_name(tmp_path):
@@ -275,7 +416,7 @@ def test_a_malformed_date_still_gets_an_article_filed_as_undated(tmp_path):
     long_month = next(item for item in collection if item.game.headers["Date"] == "2019.123.05")
     page = parse(tmp_path / "games" / f"{file_stem(long_month.game, long_month.id)}.html")
     assert "played on 2019," in page.find_all("p", "lead")[0].text()
-    assert check_links(tmp_path) > 0
+    assert check_links(tmp_path).total > 0
 
 
 # --- the revision mode --------------------------------------------------------------

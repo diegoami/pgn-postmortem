@@ -192,7 +192,7 @@ def test_names_match_regardless_of_case_and_spaces_and_both_sides_count(tmp_path
 
 
 def test_each_line_links_to_its_question_and_carries_its_game_and_move(site):
-    assert check_links(site) > 0  # every link of every page, the quiz's included, resolves (files and anchors)
+    assert check_links(site).total > 0  # every link of every page, the quiz's included, resolves (files and anchors)
     for line, (name, label) in zip(lines(site), EXPECTED, strict=True):
         item = read(name)
         cost, number, key = facts(name, label)
@@ -255,7 +255,7 @@ def test_a_player_with_no_own_moments_gets_a_page_that_says_so(tmp_path, keep_an
     assert quiz_list(tmp_path) is None and not dom.find_all("li")
     assert "no questions" in dom.find_all("p", "lead")[0].text()
     assert links_quiz(tmp_path)
-    assert check_links(tmp_path) > 0
+    assert check_links(tmp_path).total > 0
 
 
 # --- stale pages ------------------------------------------------------------------------------------
