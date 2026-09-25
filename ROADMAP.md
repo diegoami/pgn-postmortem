@@ -17,7 +17,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 | F-5 | "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear." | landed | 3 | Raised on the owner's own book (2026-09-24): 12 of the 148 OTB games, all from 2012, have no recorded result. Shaped below. Landed in #13 (`88ebc62`), 2026-09-25. |
 | F-6 | "I am looking at the games and I think there should be more diagrams, for instance in this game https://diegoami.github.io/chessgamescollection/games/2008-01-04-4e5d4e182f.html just an error is shown that did not affect the end result. It was move 40 that was deciding, not 31" | landed | 4 | The owner's choices on 2026-09-24, when asked which extra moments should get a diagram: "Swings that changed the outcome" (a move that changes the expected result, e.g. winning → level or level → losing, even below the 20-point critical-moment line), not the other two options offered ("the deciding moment" and "inaccuracies too"); and when: "Right after F-5, before F-1.3". The owner's example game (Pedroni vs. Amicabile, Verona 2008) has only 31... Qa2? as a critical moment; 37... Rg2+ (25% → 41% for White) and 40. Ra4 (49% → 32%) changed the outcome but cost 16 and 17 points. Shaped below. Landed in #15 (`378dd9c`), 2026-09-25, with the owner's band change to 40–60%. |
 | F-7 | "queue the library feature" | requested | | The owner's answer on 2026-09-25 to the question "F-7: should I queue the library feature? It would make re-reading a collection refresh the headers of games that are already analyzed, so corrections like this one reach the book without any manual header editing." It comes from correcting the owner's source (DA_chessgames `9e7c939` and `691eba6`: 23 "Saxonia Systems AG" placeholder Sites and 2 Events replaced). Reading again leaves an analyzed game's file alone, headers included, so the corrected headers were carried into `chessgamescollection` by hand (`a4a7d09`, `9be2978`). Header changes don't change a game's identity (moves, result, date, start position), but a corrected `Date` or `Result` would. Not shaped yet. |
-| F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | accepted | 5 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server (F-1's scope) and no JavaScript (`README.md`, `pgn_postmortem/site.py`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. Shaped below. |
+| F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | accepted | 5 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server (F-1's scope) and no JavaScript (`README.md`, `pgn_postmortem/site.py`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. Shaped below. |
 | F-9 | "A list of proposed quiz, starting from your worse blunder, assuming the game are yours." | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the player's own critical moments across all games, as a list of questions ordered from the worst (most winning chances lost) down, each linking to its position (every moment has a `moment-N` anchor). It relates to F-1.3's selection of best games. |
 | F-10 | "A link in critical position to a pop up link, where you can start stockfish and analyze the current position" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. **Owner decision (2026-09-25): a link that opens the position on lichess's analysis board** (by FEN). It was recommended as the default because it needs no JavaScript and no bundled engine, and brings in no licence question, at the cost of needing the network and a third-party site. The alternative not chosen was Stockfish in the browser (a bundled WebAssembly build: offline, several MB per site, JavaScript, and Stockfish's GPL licence; see F-1's licence question). |
 | F-11 | "The possibilty to add notes in critical positions, also as a pop up-" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: with no server, notes would live in the reader's browser (per device), which brings JavaScript into the site (see F-8), and the EPUB would not carry them. Browser storage survives a rebuild of the site; the risk is a page renamed when a game's id changes (a corrected `Date` or `Result`, see F-7). Keeping notes across devices would need an export/import to a file, or a write-back into the owner's repository (the pipeline, F-3). How notes are kept is an owner decision. |
@@ -65,7 +65,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   | **F-1.1** — read and analyze | the library package with its API and command line; reading PGN collections (files, directories, globs) with player aliases, content-based duplicate removal and stripping; the parallel, incremental Stockfish step writing `[%eval]`; the Python version of open question 3 in `pyproject.toml`, the CI matrix and the gates table | the gates pass, including new tests that: read a multi-game file whole; collect files through a glob across directories; keep only the player's games under any alias; keep a game found in two files once; strip comments (a source `[%eval]` included), variations and NAGs; analyze a forced mate and flag it with `[%eval]` output (Stockfish test, as today); analyze nothing on a second run over the same games; give the same output with two workers as with one; and run the command line end to end on a fixture collection (read, then analyze) as a subprocess. Each new assertion is shown failing before it passes (`PRINCIPLES.md`) |
   | **F-1.2** — every game as an article | the static site: an article for every game, the game index by year, the diagrams (HTML/CSS boards), the template prose, the revision mode; building from games not analyzed yet | the gates pass, including: a golden-file test that a small fixture collection renders to committed pages byte for byte; a test that the site has one article per game and no broken internal links; a test that every critical moment in the fixture has its revision-mode question and hidden answer; a test that a fixture with no analysis still builds one article per game with no critical moments. Then, before merging, the owner opens the fixture site on a phone and from `file://` and records the verdict as a comment on the slice's pull request; a "no" sends the slice back to the builder and it does not merge; the completion note transcribes the verdict |
   | **F-1.3** — the book around the games | the career article; the selection of best wins, best losses and best draws; the chapters; the demo collection of open question 7, committed with its source named | the gates pass, including tests that the selection ranks hand-made fixture games as intended (a hard-fought loss above a loss decided by one early blunder; a draw saved from a lost position; no game in two chapters) and a golden-file test of the career article on the fixture. Then, before merging, the owner reads the book built from the demo collection and records on the slice's pull request whether the chapter picks are right; a "no" sends the slice back with what to change, and it does not merge; the completion note transcribes the verdict |
-  | **F-1.4** — EPUB and release | the EPUB 3 writer; packaging and documentation; the demo book; a test in the tests gate that validates the demo EPUB with `epubcheck` (the Ubuntu package, installed in CI; skipped locally when `epubcheck` is missing, as the Stockfish test is), with the tests row of the gates table updated in the same change; a tag-triggered trusted-publishing workflow for PyPI | the gates pass, the `epubcheck` test included; before merging, the owner opens the demo EPUB in the e-readers of open question 8 and records the verdict on the slice's pull request (a "no" sends it back and it does not merge). After the merge, **the owner publishes the release** — pushing the tag that triggers the workflow, or uploading it; the builder never handles PyPI credentials. F-1.4, and with it F-1, is complete only when `pip install <name>==<version>` from PyPI in a clean environment builds the demo book; the completion note records the PyPI URL and that run |
+  | **F-1.4** — EPUB and release | the EPUB 3 writer (carrying no script: F-8's history is for the site only); packaging and documentation; the demo book; a test in the tests gate that validates the demo EPUB with `epubcheck` (the Ubuntu package, installed in CI; skipped locally when `epubcheck` is missing, as the Stockfish test is), with the tests row of the gates table updated in the same change; a tag-triggered trusted-publishing workflow for PyPI | the gates pass, the `epubcheck` test included; before merging, the owner opens the demo EPUB in the e-readers of open question 8 and records the verdict on the slice's pull request (a "no" sends it back and it does not merge). After the merge, **the owner publishes the release** — pushing the tag that triggers the workflow, or uploading it; the builder never handles PyPI credentials. F-1.4, and with it F-1, is complete only when `pip install <name>==<version>` from PyPI in a clean environment builds the demo book; the completion note records the PyPI URL and that run |
 
 - **Done when:** all four slices have landed as above.
 - **Out of scope** (recorded so it is not lost):
@@ -319,50 +319,84 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 - **Player value:** on the road, the reader sees at a glance which games they have already opened and
   how many of each game's answers they have already revealed, so they can go back to the questions
   they haven't seen yet.
-- **Scope:** a small script, written into each page. It uses no libraries and loads nothing from the
-  network. It keeps a reading history in the reader's own browser (`localStorage`), per device and per
+- **Scope:** a small script, written into each page. It uses no libraries and makes no network use.
+  It keeps a reading history in the reader's own browser (`localStorage`), per device and per
   browser, never shared and never sent anywhere.
   - **What it records:**
     - a game as **viewed** (with the time) when its article is opened;
     - an answer as **revealed** when its "what would you play?" answer (`<details class="answer">`) is
       opened.
-  - **How records are keyed:** games by their id (`PostmortemId`), and answers by the move they are
-    about (move number and side), not by the moment's number, which can change when the rules for
-    critical moments change (as F-6 did).
+  - **The history belongs to one site.** Browser storage is shared by every page of one origin:
+    all of a user's GitHub Pages sites share one, and some browsers give every local `file://` page
+    the same one. So:
+    - every stored key starts with a prefix of the tool's own plus a **site key**. The site key is
+      written into the pages at build time from the site's player (or title), so it survives
+      rebuilds;
+    - "Clear history" removes only keys with that prefix and site key;
+    - "Recently viewed" and the marks show only games that are in the index's current list.
+      Anything else stored (other books, games that no longer exist) is ignored.
+  - **The data in the pages.** For the script, the pages carry a few `data-` attributes, and only
+    these:
+    - each article: its game id (`PostmortemId`);
+    - each answer: the move it is about (move number and side, e.g. `31b`);
+    - each game in the index: its id and the moves of its current questions.
+
+    Answers are keyed by move, not by the moment's number, which can change when the rules for
+    critical moments change (as F-6 did). A game's "k/m" counts only revealed answers whose move is
+    among the game's current questions, so m is the current number of questions.
   - **The index shows:**
-    - a **"Recently viewed"** list at the top, newest first, limited to the latest 10 games;
+    - a **"Recently viewed"** list at the top, newest first, limited to the latest 10 games, so it fits
+      a phone screen without scrolling;
     - in the game list, a **mark** on each viewed game, with how many of its answers were revealed
       out of its current number of questions (e.g. "2/4").
-  - **A "Clear history" button** on the index removes all the history after the reader confirms.
-  - **Everything still works without the script.** With scripts off, or where the browser gives no
-    storage (some private windows; some browsers for pages opened as `file://`), the pages read
-    exactly as today and the history parts stay hidden.
-  - **The EPUB (F-1.4) carries no script.** `README.md` and `pgn_postmortem/site.py` stop saying
-    "there is no JavaScript" and describe the optional history script instead.
-  - **No mark inside the articles:** a revealed answer isn't marked when the reader comes back. That
-    was an option the owner did not choose.
+  - **A "Clear history" button** on the index removes the site's history after the reader confirms.
+  - **Everything still works without the script.** The history parts are in the HTML with the
+    `hidden` attribute and are shown only by the script. With scripts off, or where the browser gives
+    no storage (some private windows; some browsers for `file://` pages), the pages read exactly as
+    today.
+  - **The history can be lost:** when the reader clears the browser's data; in Safari, which deletes
+    script-written storage after 7 days without a visit; and for one game, when its id changes (a
+    corrected `Date` or `Result`, see F-7). It is a convenience, not a record.
+  - **Where the script lives:** one file in the package (`pgn_postmortem/static/history.js`),
+    declared as package data. The site builder inlines it into every page, the same bytes in every
+    page. `README.md` and `pgn_postmortem/site.py` stop saying "there is no JavaScript" and describe
+    the optional history script instead.
+  - **The EPUB (F-1.4) carries no script.**
+  - **A switch:** `build_site(..., history=False)` builds the pages without the script, the
+    containers and the `data-` attributes.
 - **Done when:** the gates pass, including:
-  1. **Python tests** that every page carries the script inline, with no `src` attribute and no URL
-     in it; that nothing else in the page changes except the script and the (hidden) history
-     containers; and that a page with the script removed is the same article as before. The golden
-     files are regenerated with the documented command.
-  2. **A new gate, `node --test`,** running script tests with Node's built-in test runner (no npm
-     packages; the script's logic is written so it can be tested with a stand-in storage and page).
-     They cover:
+  1. **Python tests on the pages:**
+     - every page carries the script inline, byte-identical to `pgn_postmortem/static/history.js`,
+       with no `src` attribute;
+     - the script contains no URL and no network or loading call: no `fetch`, `XMLHttpRequest`,
+       `sendBeacon`, `WebSocket`, `EventSource`, `import(` or `importScripts`;
+     - the history containers carry `hidden` in the static HTML;
+     - `build_site(..., history=False)` is **byte-identical to the golden pages from before F-8**,
+       which are kept as they are, so nothing else in the pages changed;
+     - the new golden pages with the history are generated with the documented command;
+     - an installed (not editable) build of the package includes the script file.
+  2. **A new gate, "script"**, with the command `node --test tests/js/` (the explicit path keeps it
+     out of `.claude/worktrees/`). It uses Node's built-in test runner and no npm packages, and the
+     script's logic is written so it can be tested with a stand-in storage and page. The tests
+     cover:
      - opening an article records the game as viewed;
      - revealing an answer records it once, keyed by move;
-     - the index lists the latest 10 games newest first;
-     - the "k/m" mark counts only answers of questions the game still has;
-     - "Clear history" removes everything, but only after the confirmation;
+     - the index lists the latest 10 games newest first, and only games in its current list;
+     - the "k/m" mark counts only answers of the game's current questions;
+     - "Clear history" removes this site's keys only, and only after the confirmation; another site
+       key's data and unrelated keys survive;
      - storage that throws or is missing leaves the page working with the history hidden;
      - corrupt stored data is ignored, not trusted.
 
-     CI installs Node (pinned) and runs this gate, and the gates table in `CLAUDE.md` gets the new
-     row with its command, coverage and failure model.
+     **Gate details for the table:** it runs on every change, locally and in CI, with 1 repeat, and
+     it is deterministic. CI pins Node 22 with `actions/setup-node`. Locally it needs Node 22 or
+     newer; without Node the builder says so in the pull request, and CI's run decides.
+     `CLAUDE.md`'s gates table gets the row, and "only the two gates above decide a merge" becomes
+     three.
   3. **The owner's check:** before merging, the owner's book is rebuilt from the branch (no
-     re-analysis). The owner opens some games on a phone and on a desktop browser, reveals some
-     answers, and checks the index's "Recently viewed" list, the marks and "Clear history". The
-     verdict is recorded on the PR, and a "no" sends it back.
+     re-analysis). The owner opens some games on a phone and on a desktop browser, both online and
+     from `file://` on the desktop, reveals some answers, and checks the index's "Recently viewed"
+     list, the marks and "Clear history". The verdict is recorded on the PR, and a "no" sends it back.
 
   Each new assertion is shown failing first.
 - **Out of scope:**
@@ -386,9 +420,11 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     - Recommended default: the same, because anything more needs a file export or a server.
     - Owner's choice: the recommended default. Export/import, the alternative, was not chosen.
   - **Proposed with this shaping, confirmed by the owner's merge:**
-    - the limit of 10 recent games;
-    - answers keyed by move, not by moment number;
-    - the new `node --test` gate, with Node pinned in CI.
+    - the limit of 10 recent games, so the list fits a phone screen;
+    - answers keyed by move, and the `data-` attributes that carry the ids and moves;
+    - a site key for the history's storage, and a clear that removes only that site's history;
+    - the `history=False` switch;
+    - the new "script" gate, with Node 22 pinned in CI.
 
 ## Statuses
 
