@@ -171,3 +171,24 @@ pending, as the PR says. It is the owner's step before merging and not part of t
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-25 as `f3b4dea` (pull request #23), on the owner's go. The clean round, 01, covers `3c73ba1`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36173249312. F-10's done-when (`ROADMAP.md`, F-10's block):
+
+1. **Game links:** each game from the standard start that has moves has one game link in the infobox. It decodes to the mainline's bare SAN without `+`/`#`, with no query or fragment, and a fixture with checks, a mate and a promotion covers this.
+2. **Set-up games:** the hand-written set-up fixture has a critical moment and no game link, and its position link is asserted checked. A game without moves, built directly for `build_site`, has no game link.
+3. **Position links:** one per critical moment, inside its closed answer, with the FEN of the position before the move; none elsewhere.
+4. **The narrowed `check_links`:** only the two lichess forms in their two places, with `target="_blank" rel="noopener noreferrer"`. `target` is allowed nowhere else, and 20 planted bad links are all rejected.
+5. **Golden sets:** both regenerated (the CSS rule, game links in all six articles, position links in the four with moments).
+
+**The owner's check:** a served preview of the owner's book at `3c73ba1` (148 game links, 675 position links; the Pedroni game's game link and a position link): "Checked, looks fine, merge". It was recorded on the PR by the orchestrator (https://github.com/diegoami/pgn-postmortem/pull/23#issuecomment-5837419007), not signed by the owner.
+
+**The gates:** `ruff check .` is clean, `pytest -q` gives 205 passed, and the script gate gives 32 passed.
+
+**Owner decisions on the review's findings:**
+- **Finding 1:** set-up games are decided by the starting board, which is accepted. F-10's plan text gets aligned in a later record change.
+- **Finding 2:** games of a variant getting a standard-chess link goes into the roadmap as a note for later.
+- **Finding 3:** the game link's placement in the final-position cell stays as it is.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
