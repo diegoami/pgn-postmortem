@@ -562,9 +562,14 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 - **Scope:** two plain links to lichess, with no script and nothing loaded by the page itself.
   lichess is reached only when the reader taps a link.
   - **"Open this game on lichess"** in each article's infobox. It links to
-    `https://lichess.org/analysis/pgn/<moves>`, the game's mainline moves in SAN, URL-encoded. A game
-    that starts from a set-up position (a `FEN` header) gets no game link, because that URL can't
-    carry a start position. Its critical positions still get their links.
+    `https://lichess.org/analysis/pgn/<moves>`, the game's mainline moves in SAN, URL-encoded,
+    **without the check and mate signs** (`+`, `#`). These are optional in SAN, and a `+` in the path
+    is read by lichess as a space, so leaving them out avoids the ambiguity. There is no query and no
+    fragment. There is no game link for:
+    - **a game that starts from a set-up position** (a `FEN` header): lichess accepts a `[FEN …]`
+      tag in that path, but it is not verified that its board then starts from that position.
+      The game's critical positions still get their links;
+    - **a game with no moves**: there is nothing to open, and the empty path only redirects.
   - **"Analyze this position on lichess"** inside each critical moment's hidden answer
     (`<details class="answer">`), so it can't spoil the question. It links to
     `https://lichess.org/analysis/<FEN>`, the position before the move (the question's position),
@@ -578,23 +583,43 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     `--no-history` pages have them too.
   - **The quiz page, the index and the history script are unchanged.** The links need no new `data-`
     attribute, so F-8's list is unchanged.
+  - **The site's "every link is relative" check is narrowed**, a change to what the tests gate
+    asserts, decided here. `check_links` in `tests/test_site.py`, also used by the quiz tests,
+    accepts an absolute link only if:
+    - it is `https://lichess.org/analysis/pgn/…` inside an article's infobox, or
+      `https://lichess.org/analysis/…` (not `pgn/`) inside an answer `<details>`; and
+    - it carries `target="_blank"` and `rel="noopener noreferrer"`.
+
+    Every other `href` and `src` must still be relative and resolve. The escape test's list of
+    allowed attributes gains `target` and `rel`, for those links only. Updated to match:
+    - the tests row's "covers" cell in `CLAUDE.md`, which today says every link is relative;
+    - `README.md`, which says the same;
+    - `pgn_postmortem/site.py`'s docstring.
 - **Done when:** the gates pass, including Python tests on fixtures that:
-  1. every article of a game from the standard start has exactly one game link, in the infobox, whose
-     URL decodes to exactly the game's mainline moves in SAN, in order;
-  2. a game with a `FEN` header has no game link, and its critical positions still have their links;
+  1. every article of a game from the standard start that has moves has exactly one game link, in the
+     infobox. Its URL's path, decoded with `unquote`, is exactly the game's mainline moves in SAN
+     without `+`/`#`, in order, and it has no query or fragment. A fixture game with checks and a
+     mate covers the signs;
+  2. **set-up games:** a new hand-written fixture (documented as hand-written) has a set-up game
+     (a `FEN` header) with at least one critical moment. It has no game link, its critical positions
+     have their links, and the test asserts that at least one such position link was checked. A game
+     with no moves has no game link;
   3. every critical moment has exactly one position link, inside its closed answer `<details>`; its
      FEN, with `_` read back as spaces, equals the position before the move (checked with
      python-chess against the article's moves); no position link appears outside an answer;
-  4. every lichess link has `target="_blank"` and `rel="noopener noreferrer"`, its URL starts with
-     `https://lichess.org/analysis/`, and it is HTML-escaped. The pages still load nothing by
-     themselves: no new `src` and no script change;
+  4. **the narrowed link check:**
+     - every lichess link has `target="_blank"` and `rel="noopener noreferrer"`, its URL starts with
+       `https://lichess.org/analysis/`, and it is HTML-escaped;
+     - the check still fails an absolute link anywhere else, or of any other form, which is shown
+       failing first;
+     - the pages still load nothing by themselves: no new `src` and no script change;
   5. both golden sets are regenerated with their documented commands, and the PR says which pages
      changed and why.
 
   Then **the owner's check:** before merging, on a served preview of the owner's book built from the
-  branch (no re-analysis), the owner taps a game link and a position link (on a desktop browser, and
-  on a phone if the owner chooses) and confirms lichess opens the right game and position. The
-  verdict is recorded on the PR.
+  branch (no re-analysis), the owner taps a game link (of a game with checks) and a position link (on
+  a desktop browser, and on a phone if the owner chooses) and confirms lichess opens the right game
+  and position. The verdict is recorded on the PR.
 
   Each new assertion is shown failing first.
 - **Out of scope:**
@@ -617,8 +642,9 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     - Owner's choice: the recommended default. The same tab, and the game link above the moves, were
       not chosen.
   - **Proposed with this shaping, confirmed by the owner's merge:**
-    - the two URL forms;
-    - no game link for set-up positions;
+    - the two URL forms, and moves without check and mate signs;
+    - no game link for set-up positions or for games without moves;
+    - narrowing the link check to exactly these two lichess forms in these two places;
     - the link texts;
     - the links in both golden sets.
 
