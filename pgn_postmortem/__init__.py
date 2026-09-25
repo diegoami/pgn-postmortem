@@ -18,7 +18,7 @@ The same steps from the command line are ``pgn-postmortem read``,
 
 from pgn_postmortem.analysis import AnalysisReport, EngineFailure, Thresholds, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection, ReadReport, find_pgn_files
-from pgn_postmortem.site import SiteReport, build_site, critical_moments
+from pgn_postmortem.site import SiteReport, build_site, critical_moments, shown_result
 
 __version__ = "0.1.0"
 
@@ -35,4 +35,5 @@ __all__ = [
     "build_site",
     "critical_moments",
     "find_pgn_files",
+    "shown_result",
 ]
