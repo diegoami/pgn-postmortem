@@ -104,3 +104,15 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-25 as `035d19d` (pull request #25), as part of the owner's instruction to tag this version as the first release, with the records ("Both"). The clean round, 02, covers `8460d04`. CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36194085601.
+
+- **The owner's decisions are recorded:** F-11 parked, F-10 landed and aligned, how v0.1.0 is reviewed, and the phone-check addenda.
+- **Statuses follow the roadmap's vocabulary.**
+- **The five files changed,** plus the review records.
+
+Left as non-blocking: round-02's wording point ("that release" at `CLAUDE.md:57` means the harness release).
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
