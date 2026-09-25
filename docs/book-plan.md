@@ -7,8 +7,9 @@ DeepSeek with bring-your-own-key, the chapters, English, library before pipeline
 open questions of F-1 in `ROADMAP.md`, and the entries marked "Decided by the owner" in *Open
 decisions* below (the package name, where the owner's book lives); everything else here is
 direction, not agreed for implementation. Each request is shaped (and, in OpenCode mode, designed and agreed) before any work
-starts. Nothing below is implemented yet, except what the "Existing spike" section lists (on the
-`book-poc` branch).
+starts. Implemented so far: F-1.1 (reading and analysis) and F-1.2 (the site, one article per
+game), both merged on `main`. The "Existing spike" section describes the `book-poc` branch; F-1.1
+reused parts of it.
 
 ## Goal
 
