@@ -103,3 +103,18 @@ Nothing else changed beyond what the commit message lists.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `03cf83f` (pull request #17); the clean round, 03, covers `ce892cb`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36135175957.
+
+- **F-8's block has every field of the block format,** with the owner decisions each carrying a default and reason, and the proposed items marked as confirmed by the merge. Checked in rounds 01–03.
+- **The iteration table and F-1's row agree on the new order:** F-8 is iteration 5, and F-1.3 and F-1.4 come after F-8 to F-11.
+- **Only `ROADMAP.md` and `PLAN.md` changed,** plus the review records.
+
+Left for F-8's implementation: round-03 findings 1–3.
+- **The history's CSS** needs a home that keeps the `--no-history` pages equal to `main`'s, with the stylesheet covered by the strip test if it changes.
+- **`CLAUDE.md` updates:** the generated-paths list, the regeneration commands and the tests row for the second golden set and the strip test.
+- **Declarations:** the CI wheel step goes in the gates table, it and the `setuptools` pin join the list confirmed by the merge, and the `site_key` command-line option gets a name.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
