@@ -138,3 +138,5 @@ Merged by the owner on 2026-09-25 as `3adbe08` (pull request #18); the clean rou
 - storage uses one key per viewed game and per revealed answer, plus a probe key.
 
 — Implementer, Claude Opus 5.5 (claude-opus-5-5)
+
+**Owner's phone check (addendum, 2026-09-25):** on the live book, after F-8 was published, the owner reported: "everythink ok". Transcribed by the orchestrator.

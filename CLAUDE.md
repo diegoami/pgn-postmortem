@@ -59,6 +59,14 @@ bootstrap applies as written there — one review, not two stages.
   before its work, F-1's claims are its done-when items in `ROADMAP.md`,
   fixed when #3 landed (`7476e54`) before any F-1 work began; with no earlier
   tag, F-1's first milestone review covers the range from that commit.
+  **The first release, v0.1.0** (owner, 2026-09-25), is tagged before F-1 is
+  complete and before r5 is adopted. It lands F-1.1, F-1.2, F-5, F-6, F-8, F-9,
+  F-10 and the board-squares defect fix (#24). Its claims are those requests'
+  done-when items, each fixed when its shaping landed and before its work. It
+  is reviewed by DeepSeek (`opencode/deepseek-v4-pro`, a model that
+  implemented none of the range) over the range from `7476e54`, using
+  `harness_template` main's milestone prompt as the fixed prompt. The tag
+  waits for that review's AGREE.
 - **paths to inspect:** `scripts/` (the code), `tests/`, `README.md`,
   `docs/book-plan.md`, `ROADMAP.md`, `.claude/skills/publish-games/SKILL.md`,
   `.github/workflows/`, `pgn_postmortem/` (the library of F-1). The older
