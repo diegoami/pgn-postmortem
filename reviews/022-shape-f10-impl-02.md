@@ -103,3 +103,18 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-25 as `df721b6` (pull request #22), on the owner's go ("merge it and start implementing F-10", given while round 01 was running and acted on only after the clean round 02, covering `ef24e18`). CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36162834793.
+
+- **F-10's block has every field of the block format,** with the owner decisions each carrying a default and reason, and the proposed items marked (including the narrowed link check).
+- **Statuses and the iteration table are consistent:** F-9 is landed and F-10 is iteration 7.
+- **Only `ROADMAP.md` and `PLAN.md` changed,** plus the review records.
+
+Left for F-10's implementation (put in the implementer's brief):
+- **Round-02 finding 6:** add only `target` to the escape test's allowed attributes (`rel` is already allowed), and have `check_links` assert `target` appears only on the lichess links.
+- **Finding 7:** `Collection.read` skips games without moves, so the "no game link without moves" test builds such a game directly for `build_site`.
+- **Finding 8:** fix one form for the game URL (bare SAN or with move numbers) and compare accordingly.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
