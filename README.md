@@ -205,6 +205,14 @@ and their analysis together (`site games/ analyzed/`) and the analyzed copy of e
 Building again into the same folder removes the pages it wrote before for games that are no longer in
 the collection; a file it did not write is never touched.
 
+A game whose result was not recorded (`Result "*"`, or no `Result` header) still gets one. If the game
+ended in checkmate, stalemate or insufficient material, the board decides it. Otherwise, if the game
+was analyzed, the final position decides it: a win for the side with at least 70% winning chances (a
+forced mate counts as 100%), a draw otherwise. The 70 is `build_site(..., presume_threshold=70)`, from
+55 to 95. Failing both, the article says the result was not recorded. The result is shown like a
+recorded one, in the infobox, the lead, after the moves, in the conclusion and in the index; the game's
+PGN, its id and its file name keep the source's `*`.
+
 The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html).
 
 ## Claude Code skill
