@@ -88,7 +88,7 @@ def test_every_page_carries_the_script_inline_byte_identical_to_the_package_file
         assert body == script, f"{page.name}: the inlined script differs from {SCRIPT.name}"
         assert text.count("<script") == 1, page.name
         checked += 1
-    assert checked == 7  # the index and six articles
+    assert checked == 8  # the index, six articles and the quiz
 
 
 def test_the_script_makes_no_network_use_and_cannot_break_out_of_its_element():
@@ -150,6 +150,10 @@ def test_the_data_attributes_are_the_named_ones_and_only_those(sites):
         if page.name == "index.html":
             assert placed == {("html", "data-site"), ("li", "data-game"), ("li", "data-moves")}
             continue
+        if page.name == "quiz.html":  # F-9: each line carries its game and its move, as the answers do
+            assert placed == {("html", "data-site"), ("li", "data-game"), ("li", "data-move")}
+            quiz = [(li.attrs["data-game"], li.attrs["data-move"]) for li in dom.find_all("li")]
+            continue
         item = by_stem[page.stem]
         (article,) = dom.find_all("article")
         assert article.attrs["data-game"] == item.id == item.game.headers["PostmortemId"]
@@ -160,6 +164,8 @@ def test_the_data_attributes_are_the_named_ones_and_only_those(sites):
         assert placed <= {("html", "data-site"), ("article", "data-game"), ("details", "data-move")}
     listed = {li.attrs["data-game"]: li.attrs["data-moves"] for li in index.find_all("li") if "data-game" in li.attrs}
     assert listed == entries
+    assert quiz == [("9705c13f05", "3b")]  # Ada Example's one own critical moment in the fixture
+    assert all(move in entries[game].split() for game, move in quiz)
     assert sorted(entries.values()) == sorted(" ".join(k) for k in [[], [], ["3b"], ["5b"], ["5w"], ["2b"]])
     assert len(EXPECTED_MOMENTS) == len(entries)
 
@@ -187,6 +193,7 @@ def strip_history(text: str) -> str:
 
 def test_stripping_the_history_gives_exactly_the_pages_without_it(sites):
     with_history, without = files(sites[0]), files(sites[1])
+    assert "quiz.html" in with_history  # the quiz page (F-9) is covered too
     assert sorted(with_history) == sorted(without)  # the stylesheet included: no file only one of them has
     for name, content in with_history.items():
         if name.endswith(".html"):
@@ -197,7 +204,10 @@ def test_stripping_the_history_gives_exactly_the_pages_without_it(sites):
 
 
 def test_without_the_history_the_pages_carry_none_of_it(sites):
+    assert (sites[1] / "quiz.html").is_file()  # the quiz page (F-9) is covered too
     for page in pages(sites[1]):
+        # no mark of the history, as the script would add ("answered" on the quiz, "viewed" on the index)
+        assert 'class="seen"' not in page.read_text(encoding="utf-8"), page.name
         text = page.read_text(encoding="utf-8")
         assert "<script" not in text and 'id="history' not in text, page.name
         assert not any(f"{name}=" in text for name in HISTORY_DATA), page.name

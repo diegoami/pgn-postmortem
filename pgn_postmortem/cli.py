@@ -17,6 +17,8 @@
         and write a static site to DIR: one article per game and an index by
         year. Analyzed games get notes, diagrams and a "what would you play?"
         question at each critical moment; the others get a plain article.
+        With --player or --alias, a quiz page lists the player's own critical
+        moments, the costliest first, each linking to its question.
         Every page carries a small script that keeps a reading history in the
         reader's browser; --site-key sets the key it is stored under (by
         default one derived from the title), and --no-history leaves it out.
@@ -90,7 +92,15 @@ def site_key(value: str) -> str:
 def cmd_site(args: argparse.Namespace) -> int:
     collection = read_collection(args, keep_analysis=True)
     title = args.title or (f"Games of {display_name(args.player)}" if args.player else "Games")
-    report = build_site(collection, args.out, title=title, history=args.history, site_key=args.site_key)
+    report = build_site(
+        collection,
+        args.out,
+        title=title,
+        history=args.history,
+        site_key=args.site_key,
+        player=args.player,
+        aliases=args.alias,
+    )
     print(report.summary(args.out))
     return 0
 

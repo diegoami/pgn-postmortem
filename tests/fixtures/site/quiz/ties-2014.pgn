@@ -1,0 +1,15 @@
+[Event "Club championship"]
+[Site "Verona"]
+[Date "2014.04.04"]
+[Round "4"]
+[White "  ADA EXAMPLE "]
+[Black "Carl <Foe> & Co"]
+[Result "0-1"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+
+1. e4 { [%eval 0.20] } 1... e5 { [%eval 0.20] } 2. Nf3 { [%eval 0.20] } 2... Nc6
+{ [%eval 0.20] } 3. Bc4 { [%eval 0.20] } 3... Bc5 { [%eval 0.20] } 4. c3
+{ [%eval 0.20] } 4... Nf6 { [%eval 0.20] } 5. d3 { [%eval 0.20] } 5... d6
+{ [%eval 0.20] } 6. O-O { [%eval 0.20] } 6... O-O { [%eval 0.20] } 7. Re1 $2 { [%eval -3.00] } ( 7. Bb3 a6 8. h3 $14 ) 7... a6 $2
+{ [%eval 0.20] } 8. h3 $2 { [%eval -3.00] } ( 8. Bb3 Ba7 9. h3 $14 ) 8... h6
+{ [%eval -3.00] } 0-1
