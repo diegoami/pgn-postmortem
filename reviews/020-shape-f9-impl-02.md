@@ -109,3 +109,18 @@ shaping, confirmed by the owner's merge". They now include:
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `144a293` (pull request #20); the clean round, 02, covers `d5d6182`. CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36153240575.
+
+- **F-9's block has every field of the block format,** with the owner decisions each carrying a default and reason, and the proposed items marked as confirmed by the merge.
+- **F-9's row and the iteration table agree** (iteration 6). F-8 is marked landed, and F-1's note is updated.
+- **Only `ROADMAP.md` and `PLAN.md` changed,** plus the review records.
+
+Left for F-9's implementation, by the owner's decision (put in the implementer's brief):
+- **Round-02 finding 1:** a `Collection` must keep the player names it was read with, so that `Collection.read(..., player=...).build_site(out)` builds the quiz, with a done-when test for that route.
+- **Finding 2:** the page marker predates F-8 (`0602071`, F-1.2's rebuild rule), so it should be called the generator marker, not "F-8's".
+- **Finding 3:** the no-player rule is stated twice; keep one.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
