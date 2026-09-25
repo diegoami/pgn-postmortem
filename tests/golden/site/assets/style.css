@@ -38,6 +38,7 @@ h2 { font-size: 1.4rem; margin: 1.6rem 0 .5rem; border-bottom: 1px solid var(--r
 .infobox .figure { padding: .5rem; }
 .infobox .board { max-width: 100%; }
 .caption { font-size: .85rem; color: var(--muted); text-align: center; margin-top: .3rem; }
+.infobox .lichess { text-align: center; font-size: .85rem; margin-top: .3rem; }
 @media (min-width: 44rem) {
   .infobox { float: right; clear: right; width: 20rem; margin: 0 0 1rem 1.2rem; }
 }

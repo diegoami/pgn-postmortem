@@ -368,6 +368,7 @@ TAGS = {
 ATTRIBUTES = {
     "lang", "charset", "name", "content", "rel", "href", "class", "id", "role", "aria-label", "colspan",
     "data-r", "data-f", "hidden", "type", "data-site", "data-game", "data-move", "data-moves",  # F-8
+    "target",  # the lichess links' only (F-10), which check_links asserts
 }  # fmt: skip
 
 
@@ -383,6 +384,7 @@ def test_names_with_markup_characters_are_escaped(tmp_path):
         text = path.read_text(encoding="utf-8")
         for raw in ("<GM>", "<Open>", "<Pub>", "<2400>", "<draw>", "<games>", "<i>Italian", "1 & 2", "Smith & "):
             assert raw not in text, f"{path.name}: {raw!r} is not escaped"
+    assert check_links(tmp_path).games == 3  # the target attribute is allowed on the lichess links only
 
     dom = parse(article)
     assert dom.find_all("h1")[0].text() == 'Alberic <GM> O\'Kelly vs. Smith & "Jones" <b>, 2022'

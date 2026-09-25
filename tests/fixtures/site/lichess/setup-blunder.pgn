@@ -1,0 +1,13 @@
+[Event "Endgame practice"]
+[Site "Verona"]
+[Date "2013.04.05"]
+[Round "?"]
+[White "Ada Example"]
+[Black "Bert Sample"]
+[Result "0-1"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+[SetUp "1"]
+[FEN "3r2k1/5ppp/8/8/8/8/R4PPP/6K1 b - - 0 30"]
+
+30... h6 { [%eval 0.00] } 31. Ra7 $4 { [%eval #-1] } ( 31. g3 Rd1+ 32. Kg2 $10 )
+31... Rd1# ( 31... Rd1# $19 ) 0-1
