@@ -239,11 +239,21 @@ export function scriptSource() {
 export function run(html, { storage, confirm = () => true } = {}) {
   const document = parseHtml(html);
   const confirms = [];
+  const listeners = new Map();
   const window = {
     document,
     confirm(message) {
       confirms.push(message);
       return typeof confirm === "function" ? confirm(message) : confirm;
+    },
+    addEventListener(type, listener) {
+      if (!listeners.has(type)) listeners.set(type, []);
+      listeners.get(type).push(listener);
+    },
+    // For the tests: fire an event at the window, e.g. dispatch("pageshow", { persisted: true }) when the
+    // browser shows the page again from its back/forward cache.
+    dispatch(type, fields = {}) {
+      for (const listener of listeners.get(type) || []) listener.call(window, { type, target: window, ...fields });
     },
   };
   if (storage === "throws") {

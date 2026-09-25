@@ -193,16 +193,21 @@
     record();
   }
 
+  // Returns what to do when the page is shown again (see start).
   function startArticle(doc, storage, prefix, article) {
     var id = article.getAttribute("data-game");
     if (!id || !GAME.test(id)) {
-      return;
+      return null;
     }
-    write(storage, prefix + "viewed:" + id, String(Date.now()));
+    function view() {
+      write(storage, prefix + "viewed:" + id, String(Date.now()));
+    }
+    view();
     var answers = doc.getElementsByTagName("details");
     for (var i = 0; i < answers.length; i++) {
       watchAnswer(storage, prefix, id, answers[i]);
     }
+    return view;
   }
 
   // --- the index ---
@@ -321,20 +326,24 @@
     }
   }
 
+  // Returns what to do when the page is shown again (see start).
   function startIndex(win, doc, storage, prefix, section) {
     var games = indexGames(doc);
-    render(doc, storage, prefix, games, section);
-    var button = doc.getElementById("history-clear");
-    if (!button) {
-      return;
-    }
-    button.addEventListener("click", function () {
-      if (typeof win.confirm !== "function" || !win.confirm(CONFIRM)) {
-        return;
-      }
-      clearSite(storage, prefix);
+    function show() {
       render(doc, storage, prefix, games, section);
-    });
+    }
+    show();
+    var button = doc.getElementById("history-clear");
+    if (button) {
+      button.addEventListener("click", function () {
+        if (typeof win.confirm !== "function" || !win.confirm(CONFIRM)) {
+          return;
+        }
+        clearSite(storage, prefix);
+        show();
+      });
+    }
+    return show;
   }
 
   function start(win, doc) {
@@ -347,13 +356,34 @@
       return;
     }
     var prefix = PREFIX + site + ":";
+    var again = [];
     var articles = doc.getElementsByTagName("article");
     if (articles.length && articles[0].getAttribute("data-game")) {
-      startArticle(doc, storage, prefix, articles[0]);
+      again.push(startArticle(doc, storage, prefix, articles[0]));
     }
     var section = doc.getElementById("history");
     if (section) {
-      startIndex(win, doc, storage, prefix, section);
+      again.push(startIndex(win, doc, storage, prefix, section));
+    }
+    // "Back" to a served page (http, e.g. GitHub Pages) can show it again from the browser's
+    // back/forward cache, as it was left: the script does not run again, and only a "pageshow"
+    // event with "persisted" set says so. Then the article counts as viewed again, and the index
+    // shows the history as it is stored now.
+    if (typeof win.addEventListener === "function") {
+      win.addEventListener("pageshow", function (event) {
+        if (!event || !event.persisted) {
+          return;
+        }
+        for (var i = 0; i < again.length; i++) {
+          try {
+            if (again[i]) {
+              again[i]();
+            }
+          } catch (error) {
+            // the page as it was left is still complete
+          }
+        }
+      });
     }
   }
 

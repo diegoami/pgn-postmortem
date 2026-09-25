@@ -294,3 +294,36 @@ test("on the golden pages: open two games, reveal an answer, and the index shows
   assert.equal(style.parentNode, document.head);
   assert.match(style.textContent, /\.seen \{/);
 });
+
+// "Back" to a served page (http://, e.g. GitHub Pages) shows it again from the browser's back/forward cache:
+// the script does not run again, only a "pageshow" event with persisted set comes.
+test("an index shown again from the back/forward cache shows the history as stored now", () => {
+  const storage = new MemoryStorage();
+  const { document, window } = run(INDEX, { storage });
+  assert.equal(section(document).hidden, true);
+
+  // meanwhile, in the article: the game was opened and its answer revealed
+  storage.setItem(viewedKey("9705c13f05"), "2000");
+  storage.setItem(revealedKey("9705c13f05", "3b"), "1");
+  window.dispatch("pageshow", { persisted: true });
+  assert.equal(section(document).hidden, false);
+  assert.deepEqual(recent(document), [MATE]);
+  assert.deepEqual(marks(document), { "9705c13f05": "viewed · 1/1 answer" });
+
+  // and cleared elsewhere (another tab): shown again, the stale marks go
+  storage.clear();
+  window.dispatch("pageshow", { persisted: true });
+  assert.equal(section(document).hidden, true);
+  assert.deepEqual(marks(document), {});
+  assert.deepEqual(recent(document), []);
+});
+
+test("an article shown again from the back/forward cache is recorded as viewed again", () => {
+  const storage = new MemoryStorage();
+  const { window } = run(golden(MATE), { storage });
+  storage.setItem(viewedKey("9705c13f05"), "1000");
+  window.dispatch("pageshow", { persisted: false }); // the first showing, right after loading: nothing new
+  assert.equal(storage.getItem(viewedKey("9705c13f05")), "1000");
+  window.dispatch("pageshow", { persisted: true });
+  assert.ok(Number(storage.getItem(viewedKey("9705c13f05"))) > 1000);
+});
