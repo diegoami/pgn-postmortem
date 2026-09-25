@@ -202,14 +202,17 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   from won to level.
   - **The owner's example:** Pedroni – Amicabile, Festival Verona 2008. It shows only 31… Qa2? (a
     28-point mistake that didn't change the result). The moves that did were 37… Rg2+ (White from
-    25% to 41%, 16.4 points) and 40. Ra4 (49% to 32%, 17.0 points).
-  - **On the owner's 148 analyzed OTB games,** the rule below adds 236 questions in 96 games, on top
-    of 390 critical moments. Another 362 swings are already critical moments. The counts come from
-    the owner's analyzed files on 2026-09-25; the implementer re-checks them.
+    25% to 41%, 16.4 points) and 40. Ra4 (49% to 32%, 17.0 points). With the 40–60% band below,
+    15. Nxc5 (47% to 37%) is a question too, so the example game's questions are 15. Nxc5,
+    31… Qa2, 37… Rg2+ and 40. Ra4.
+  - **On the owner's 148 analyzed OTB games,** the rule below adds 285 questions in 109 games, on
+    top of 390 critical moments (675 in all). Another 318 swings are already critical moments. The
+    orchestrator computed the counts on 2026-09-25 from the owner's analyzed files, with the
+    library's win-percentage model and the rule as written, at the 40–60% band.
 - **Scope:** each analyzed position gets an *expected outcome* from White's winning chances after
   the move:
-  - **White winning** at 65% or more;
-  - **Black winning** at 35% or less;
+  - **White winning** at 60% or more;
+  - **Black winning** at 40% or less;
   - **level** in between.
 
   A move is an **outcome swing** when all three hold:
@@ -228,7 +231,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
   Condition 3 matters because a move that was the engine's own first choice is not an error: its
   drop comes from the engine's search limit. There is also nothing better to show as the answer.
-  In the owner's book this excludes 3 of 239 candidates: 45… Qa6 and 47… Qa6 in
+  In the owner's book this excludes 3 of 288 candidates: 45… Qa6 and 47… Qa6 in
   `2005-09-24-3bd9df323c`, and 18. Qxd4 in `2008-01-05-ec4df50311`.
 
   Every outcome swing that is not already a critical moment **becomes a critical moment too.** It
@@ -239,10 +242,10 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   least 20 points or changed the expected result".
 
   The note in the moves says how the expected result changed (e.g. "level → losing"). This applies
-  to swings, and also to the 362 critical moments that are swings too (e.g. "a mistake that turned a
+  to swings, and also to the 318 critical moments that are swings too (e.g. "a mistake that turned a
   level game into a losing one"). A move that is both is shown once.
 
-  The bands are a library parameter pair with 35/65 as the default. The pair is valid only if both
+  The bands are a library parameter pair with 40/60 as the default. The pair is valid only if both
   are finite numbers, the lower is above 0 and below 50, and the upper is above 50 and below 100. It
   is checked up front before anything is written, even for an empty collection, as F-5's threshold
   is. The rule uses only the analysis that exists, so nothing is re-analyzed and no Stockfish run is
@@ -263,7 +266,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   7. **the edges and the parameter:**
      - White's chances exactly at the upper edge count as White winning, and exactly at the lower
        edge as Black winning. This is tested by setting the parameter to a fixture's exact value,
-       since a hand-set `[%eval]` can't hit 65.000%.
+       since a hand-set `[%eval]` can't hit 60.000%.
      - A changed band pair changes the moments.
      - Invalid pairs are rejected up front, even for an empty collection: lower ≥ upper, a value
        outside its half, and NaN;
@@ -275,8 +278,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - **Golden files:** they are regenerated with the documented command where output changes, and
     the PR says which pages changed and why.
   - **The owner's verdict:** before merging, the owner's book is rebuilt locally from the branch,
-    with no re-analysis. The owner checks the example game shows 31… Qa2, 37… Rg2+ and 40. Ra4, and
-    records a verdict on the PR. A "no" sends it back.
+    with no re-analysis. The owner checks the example game shows 15. Nxc5, 31… Qa2, 37… Rg2+ and
+    40. Ra4, and records a verdict on the PR. A "no" sends it back.
 
   Each new assertion is shown failing first.
 - **Out of scope:** re-analyzing games; changing the 20-point critical-moment line or the grading
@@ -289,10 +292,12 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
       articles short and marks exactly the move the owner pointed at.
     - Owner's choice: **swings that changed the outcome**, which covers every move that changed the
       expected result, not only the last.
-  - **Owner decision (2026-09-25): the level band is 35–65%.**
-    - Recommended default: the same, because a narrower 30–70% band misses the owner's own example,
-      40. Ra4 (49% → 32%).
-    - Owner's choice: the recommended default.
+  - **Owner decision (2026-09-25): the level band is 40–60%.**
+    - Recommended default: 35–65%, because a narrower 30–70% band misses the owner's own example,
+      40. Ra4 (49% → 32%). The owner first chose it, on 2026-09-25.
+    - Owner's choice, changed the same day after checking the preview of the book built from this
+      iteration's branch (pull request #15): **40–60%**, because 15. Nxc5 (47% → 37%) in the example
+      game should be a question too. A narrower 45–55% band would lose 37… Rg2+ (25% → 41%).
   - **Owner decision (2026-09-24): when.**
     - Recommended default: right after F-5, before F-1.3, so that F-1.3's selection can use the
       swings.
@@ -301,7 +306,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     points (the inaccuracy threshold), and a better move must exist.
     - Recommended default: yes. Only then does every question have a real better move as its
       answer, and small crossings near a band edge are noise.
-    - On the owner's book this adds 236 questions in 96 games.
+    - On the owner's book this adds 285 questions in 109 games (at the 40–60% band).
     - Alternative: any band change, which would need re-analysis or questions without an answer.
 
 ## Statuses
