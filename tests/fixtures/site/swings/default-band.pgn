@@ -1,7 +1,7 @@
 [Event "Club championship"]
 [Site "Verona"]
-[Date "2013.01.02"]
-[Round "2"]
+[Date "2013.01.06"]
+[Round "6"]
 [White "Ada Example"]
 [Black "Bert Sample"]
 [Result "1/2-1/2"]
@@ -10,8 +10,8 @@
 1. e4 { [%eval 0.20] } 1... e5 { [%eval 0.20] } 2. Nf3 { [%eval 0.20] } 2... Nc6
 { [%eval 0.20] } 3. Bc4 { [%eval 0.20] } 3... Bc5 { [%eval 0.20] } 4. c3
 { [%eval 0.20] } 4... Nf6 { [%eval 0.20] } 5. d3 { [%eval 0.20] } 5... d6
-{ [%eval 0.20] } 6. O-O { [%eval 0.20] } 6... O-O { [%eval 0.20] } 7. h3
-{ [%eval 1.50] } ( 7. b4 Bb6 8. a4 $16 ) 7... a6 { [%eval 1.50] } 8. Nbd2
-{ [%eval 0.80] } ( 8. a4 Ba7 9. Nbd2 $14 ) 8... Ba7 { [%eval -1.50] } 9. Re1 $6
-{ [%eval -3.00] } ( 9. Bb3 Be6 10. Bxe6 fxe6 $17 ) 9... Nh5 { [%eval -3.00] }
-1/2-1/2
+{ [%eval 0.20] } 6. O-O { [%eval 0.20] } 6... O-O { [%eval 0.20] } 7. Re1 $6
+{ [%eval -1.11] } ( 7. Bb3 a6 8. h3 $14 ) 7... a6 { [%eval -1.11] } ( 7... Ng4
+8. Re2 Qf6 $17 ) 8. h3 { [%eval -0.10] } 8... Nh5 $6 { [%eval 1.11] } ( 8... Ba7
+9. Nbd2 $10 ) 9. Nbd2 { [%eval 1.11] } ( 9. Nxe5 dxe5 10. Qxh5 $16 ) 9... Nf4
+{ [%eval 1.11] } 1/2-1/2

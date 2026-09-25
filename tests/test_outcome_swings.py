@@ -3,12 +3,13 @@ hand-written fixtures in tests/fixtures/site/swings/ (their README says what
 each move is and why). No test here runs Stockfish.
 
 Each analyzed position gets an expected outcome from White's winning chances
-after the move: White winning at 65% or more, Black winning at 35% or less,
-level in between. A move is an outcome swing when it makes the expected
-outcome worse for its side, costs that side at least the inaccuracy threshold
-(10 points by default), and the engine's first choice before it (the first
-move of any engine line stored there) differs from the move played. A swing
-becomes a critical moment, and its note says how the expected result changed.
+after the move: White winning at 60% or more, Black winning at 40% or less,
+level in between (the owner's 40/60, which replaced the shaping's 35/65). A
+move is an outcome swing when it makes the expected outcome worse for its
+side, costs that side at least the inaccuracy threshold (10 points by
+default), and the engine's first choice before it (the first move of any
+engine line stored there) differs from the move played. A swing becomes a
+critical moment, and its note says how the expected result changed.
 """
 
 import io
@@ -44,8 +45,8 @@ def moments(name: str, **options) -> list[str]:
 
 
 def band(white: float) -> str:
-    """The expected outcome at the default 35/65 bands, from White's chances."""
-    return "White winning" if white >= 65 else "Black winning" if white <= 35 else "level"
+    """The expected outcome at the default 40/60 bands, from White's chances."""
+    return "White winning" if white >= 60 else "Black winning" if white <= 40 else "level"
 
 
 def facts(name: str, label: str) -> tuple[float, float, float, set[chess.Move], chess.Move]:
@@ -86,7 +87,7 @@ def page(site: Path, name: str) -> Element:
 
 
 def notes(dom: Element) -> dict[str, list[str]]:
-    """Each graded move as the moves section shows it (``7. Re1?!``, or ``Bg4?!``
+    """Each graded move as the moves section shows it (``7. Re1?!``, or ``Nh5?!``
     after a White move in the same run of moves), and its notes."""
     found: dict[str, list[str]] = {}
     for paragraph in dom.find_all("p", "moves"):
@@ -151,7 +152,7 @@ def test_a_band_change_in_favour_of_the_side_that_moved_is_not_a_moment(request)
     before, after, cost, firsts, played = facts("not-swings.pgn", "7. h3")
     assert (band(before), band(after)) == ("level", "White winning")
     assert cost <= -10  # a gain of more than the floor, so only its direction keeps it out
-    assert firsts and played not in firsts  # 6... Bg4's refutation starts with 7. b4
+    assert firsts and played not in firsts  # a line starting with 7. b4 is stored before it
     assert "7. h3" not in moments("not-swings.pgn")
     assert not page(lazy_site(request), "not-swings.pgn").find_all("div", "moment")
 
@@ -166,14 +167,15 @@ def test_a_band_change_costing_less_than_10_points_is_not_a_moment(request):
 
 
 def test_a_10_to_20_point_loss_inside_one_band_is_not_a_moment(request):
-    before, after, cost, firsts, played = facts("not-swings.pgn", "6... Bg4")
-    assert band(before) == band(after) == "level"
+    # the level band is 20 points wide, so the fixture's 10-20-point loss is inside Black winning
+    before, after, cost, firsts, played = facts("not-swings.pgn", "9. Re1")
+    assert band(before) == band(after) == "Black winning"
     assert 10 <= cost < 20
     assert firsts and played not in firsts
-    assert "6... Bg4" not in moments("not-swings.pgn")
+    assert "9. Re1" not in moments("not-swings.pgn")
     dom = page(lazy_site(request), "not-swings.pgn")
     assert not dom.find_all("div", "moment")
-    assert notes(dom) == {"Bg4?!": ["An inaccuracy: Black's winning chances fall from 48% to 37%."]}
+    assert notes(dom) == {"9. Re1?!": ["An inaccuracy: White's winning chances fall from 37% to 25%."]}
 
 
 # --- 5: the engine's own first choice ----------------------------------------------------------
@@ -235,25 +237,55 @@ def test_a_critical_moment_that_is_not_a_swing_says_nothing_about_the_expected_r
 # --- 7: the edges and the parameter -----------------------------------------------------------
 
 
+# A hand-set [%eval] can't put White's chances at exactly 60.000% or 40.000%. edges.pgn lands its two
+# moves just inside the default level band (59.99% and 40.01%) and default-band.pgn just outside it
+# (60.08% and 39.92%), so together they pin the default edges between them; the exact-edge tests move
+# one edge onto a fixture's exact value and keep the other at its default.
+
+
+def test_the_default_bands_are_40_and_60():
+    before, after, cost, firsts, played = facts("default-band.pgn", "8... Nh5")
+    assert after == win_percent(111) and 60 <= after < 60.1
+    assert (band(before), band(after)) == ("level", "White winning")
+    assert 10 <= cost < 20 and firsts and played not in firsts
+    before, after, cost, firsts, played = facts("default-band.pgn", "7. Re1")
+    assert after == win_percent(-111) and 39.9 < after <= 40
+    assert (band(before), band(after)) == ("level", "Black winning")
+    assert 10 <= cost < 20 and firsts and played not in firsts
+    assert moments("default-band.pgn") == ["7. Re1", "8... Nh5"]  # swings at the default 40/60
+    assert moments("default-band.pgn", outcome_bands=(35, 65)) == []  # and not at the shaping's 35/65
+    for label in ("7. Re1", "8... Nh5"):  # the same moves stopping just short of the edges are not swings
+        before, after, cost, firsts, played = facts("edges.pgn", label)
+        assert band(before) == band(after) == "level" and 10 <= cost < 20 and firsts and played not in firsts
+    assert moments("edges.pgn") == []
+
+
 def test_chances_exactly_at_the_upper_edge_count_as_white_winning():
     before, after, cost, firsts, played = facts("edges.pgn", "8... Nh5")
-    assert after == win_percent(150) and 10 <= cost < 20
-    assert band(before) == band(after) == "level"  # at 65, 63.5% is level
-    assert moments("edges.pgn") == []
-    assert moments("edges.pgn", outcome_bands=(35, win_percent(150))) == ["8... Nh5"]
+    assert after == win_percent(110) and 59.9 < after < 60 and 10 <= cost < 20
+    assert band(before) == band(after) == "level"  # 59.99% is level at the default 60
+    # with the default bands, 59.99% is level and 60.08% (default-band.pgn) is White winning
+    assert "8... Nh5" not in moments("edges.pgn")
+    assert "8... Nh5" in moments("default-band.pgn")
+    # and with the upper edge moved onto 59.99% exactly, 59.99% is White winning
+    assert moments("edges.pgn", outcome_bands=(40, win_percent(110))) == ["8... Nh5"]
 
 
 def test_chances_exactly_at_the_lower_edge_count_as_black_winning():
     before, after, cost, firsts, played = facts("edges.pgn", "7. Re1")
-    assert after == win_percent(-150) and 10 <= cost < 20
-    assert band(before) == band(after) == "level"  # at 35, 36.5% is level
-    assert moments("edges.pgn", outcome_bands=(win_percent(-150), 65)) == ["7. Re1"]
+    assert after == win_percent(-110) and 40 < after < 40.1 and 10 <= cost < 20
+    assert band(before) == band(after) == "level"  # 40.01% is level at the default 40
+    # with the default bands, 40.01% is level and 39.92% (default-band.pgn) is Black winning
+    assert "7. Re1" not in moments("edges.pgn")
+    assert "7. Re1" in moments("default-band.pgn")
+    # and with the lower edge moved onto 40.01% exactly, 40.01% is Black winning
+    assert moments("edges.pgn", outcome_bands=(win_percent(-110), 60)) == ["7. Re1"]
 
 
 def test_a_changed_band_pair_changes_the_moments(tmp_path):
-    assert moments("edges.pgn", outcome_bands=(40, 60)) == ["7. Re1", "8... Nh5"]  # more moments
+    assert moments("edges.pgn", outcome_bands=(41, 59)) == ["7. Re1", "8... Nh5"]  # more moments
     assert moments("two-swings.pgn", outcome_bands=(30, 70)) == []  # fewer: 33% and 46% are level at 30/70
-    site = build(tmp_path, outcome_bands=(40, 60))
+    site = build(tmp_path, outcome_bands=(41, 59))
     assert len(page(site, "edges.pgn").find_all("div", "moment")) == 2
     site = build(tmp_path / "wide", outcome_bands=(30, 70))
     dom = page(site, "two-swings.pgn")
@@ -326,7 +358,8 @@ def test_swings_count_in_the_infobox_and_the_lead_and_the_lead_is_true_for_them(
 
 def test_the_report_counts_the_swings(tmp_path):
     report = build_site(Collection.read(SWINGS, keep_analysis=True), tmp_path)
-    assert report.critical_moments == 2 + 0 + 0 + 1 + 0  # two-swings, not-swings, first-choice, critical-swing, edges
+    # two-swings, not-swings, first-choice, critical-swing, edges, default-band
+    assert report.critical_moments == 2 + 0 + 0 + 1 + 0 + 2
 
 
 # --- 9: unanalyzed games ----------------------------------------------------------------------------

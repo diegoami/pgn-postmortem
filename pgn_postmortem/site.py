@@ -36,8 +36,8 @@ standard start no single move loses that much.
 
 **Outcome swings** (ROADMAP.md, F-6). Each analyzed position gets an
 *expected outcome* from White's winning chances after the move: White winning
-at ``outcome_bands[1]`` (65 by default) or more, Black winning at
-``outcome_bands[0]`` (35) or less, level in between. A move is an outcome
+at ``outcome_bands[1]`` (60 by default) or more, Black winning at
+``outcome_bands[0]`` (40) or less, level in between. A move is an outcome
 swing when all three hold:
 
 1. it makes the expected outcome worse for the side that played it (winning
@@ -118,8 +118,9 @@ RESULTS = {"1-0": "1–0", "0-1": "0–1", "1/2-1/2": "½–½"}
 NOT_RECORDED = "*"  # the PGN result of a game in progress or with an unknown result
 PRESUME_THRESHOLD = 70.0  # the winning chances (%) that make an unrecorded result a win (owner, 2026-09-24)
 PRESUME_THRESHOLD_RANGE = (55.0, 95.0)
-# White's winning chances (%) at or below which Black is winning, and at or above which White is (owner, 2026-09-25)
-OUTCOME_BANDS = (35.0, 65.0)
+# White's winning chances (%) at or below which Black is winning, and at or above which White is. The owner
+# changed the shaping's 35/65 to 40/60 on 2026-09-25, so that the example game's 15. Nxc5 (47% -> 37%) is a question.
+OUTCOME_BANDS = (40.0, 60.0)
 OUTCOMES = ("losing", "level", "winning")  # the expected outcome for one side, from worst to best
 CHANGES = {
     ("winning", "level"): "a winning game into a level one",
@@ -251,6 +252,8 @@ def review_moves(
             grade = classify(loss, thresholds)
             # the bands are read from White's chances as computed, so an edge set to a position's exact value holds
             outcomes = (expected_outcome(white_before, bands, mover), expected_outcome(white_after, bands, mover))
+            # With the clamped ``loss`` at the floor the mover's chances fell, so its band can only stay or
+            # worsen: the first condition overlaps the second. Both are kept, as the rule states them.
             swing = (
                 OUTCOMES.index(outcomes[1]) < OUTCOMES.index(outcomes[0])
                 and loss >= thresholds.inaccuracy
@@ -1097,7 +1100,7 @@ def build_site(
     ``outcome_bands`` is the pair ``(lower, upper)`` of White's winning
     chances, in percent, that decides a position's expected outcome for the
     outcome swings (the rule is in the module docstring): Black is winning at
-    ``lower`` or less, White at ``upper`` or more, 35 and 65 by default. Both
+    ``lower`` or less, White at ``upper`` or more, 40 and 60 by default. Both
     must be finite, with 0 < lower < 50 < upper < 100; any other pair raises
     ``ValueError`` before anything is written.
     """
