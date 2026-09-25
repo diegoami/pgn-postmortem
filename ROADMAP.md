@@ -10,14 +10,14 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
 | id | request | status | iteration | notes |
 |---|---|---|---|---|
-| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-11 and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
+| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-11 and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8, 6 is F-9). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
 | F-2 | "Yes, LLM, but of course Claude with API key would be too expensive, Deepseek is the realistic option, BYOK for other users" | requested | | The book's prose. Depends on F-1. `docs/book-plan.md`, *Prose*. |
 | F-3 | "then wire that into a pipeline that may fetch games from somewhere on the input or put the published files somewhere on the output" | requested | | Depends on F-1. Also in the owner's words: "as sources it must be able to parse a collection of games"; "if it has to be reusable we have to think about people who do not have a github, so output must be pluggable somehow"; "I am not maintaining their repository or web pages". `docs/book-plan.md`, *Layer 2*; the chess.com, lichess and git sources exist as spike code on `book-poc`. |
 | F-4 | "yes, queue the name matching improvement" | requested | | Raised in the owner's own trial run (2026-09-24), in the owner's words: "Why are there games that are not mine, they might be mislabeled". Reading the owner's 149 OTB games kept 140 and left out 8 of the owner's own, spelled `Amicabile Diego` and `Diego , Amicabile`, because player names match exactly except for letter case, so every spelling needs its own alias. The implementer's proposal, to be shaped when picked up: match names ignoring spacing, commas and word order; and have `read` report the names seen most often in the games it left out, so a missed alias is easy to spot. Touches F-1.1's reading; the owner decides at shaping whether it lands before F-1.3 or within it. |
 | F-5 | "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear." | landed | 3 | Raised on the owner's own book (2026-09-24): 12 of the 148 OTB games, all from 2012, have no recorded result. Shaped below. Landed in #13 (`88ebc62`), 2026-09-25. |
 | F-6 | "I am looking at the games and I think there should be more diagrams, for instance in this game https://diegoami.github.io/chessgamescollection/games/2008-01-04-4e5d4e182f.html just an error is shown that did not affect the end result. It was move 40 that was deciding, not 31" | landed | 4 | The owner's choices on 2026-09-24, when asked which extra moments should get a diagram: "Swings that changed the outcome" (a move that changes the expected result, e.g. winning → level or level → losing, even below the 20-point critical-moment line), not the other two options offered ("the deciding moment" and "inaccuracies too"); and when: "Right after F-5, before F-1.3". The owner's example game (Pedroni vs. Amicabile, Verona 2008) has only 31... Qa2? as a critical moment; 37... Rg2+ (25% → 41% for White) and 40. Ra4 (49% → 32%) changed the outcome but cost 16 and 17 points. Shaped below. Landed in #15 (`378dd9c`), 2026-09-25, with the owner's band change to 40–60%. |
 | F-7 | "queue the library feature" | requested | | The owner's answer on 2026-09-25 to the question "F-7: should I queue the library feature? It would make re-reading a collection refresh the headers of games that are already analyzed, so corrections like this one reach the book without any manual header editing." It comes from correcting the owner's source (DA_chessgames `9e7c939` and `691eba6`: 23 "Saxonia Systems AG" placeholder Sites and 2 Events replaced). Reading again leaves an analyzed game's file alone, headers included, so the corrected headers were carried into `chessgamescollection` by hand (`a4a7d09`, `9be2978`). Header changes don't change a game's identity (moves, result, date, start position), but a corrected `Date` or `Result` would. Not shaped yet. |
-| F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | accepted | 5 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server (F-1's scope) and no JavaScript (`README.md`, `pgn_postmortem/site.py`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. Shaped below. |
+| F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | landed | 5 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server (F-1's scope) and no JavaScript (`README.md`, `pgn_postmortem/site.py`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. Shaped below. Landed in #18 (`3adbe08`), 2026-09-25; the owner's phone check was deferred to the live book. |
 | F-9 | "A list of proposed quiz, starting from your worse blunder, assuming the game are yours." | accepted | 6 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the player's own critical moments across all games, as a list of questions ordered from the worst (most winning chances lost) down, each linking to its position (every moment has a `moment-N` anchor). It relates to F-1.3's selection of best games. Shaped below. |
 | F-10 | "A link in critical position to a pop up link, where you can start stockfish and analyze the current position" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. **Owner decision (2026-09-25): a link that opens the position on lichess's analysis board** (by FEN). It was recommended as the default because it needs no JavaScript and no bundled engine, and brings in no licence question, at the cost of needing the network and a third-party site. The alternative not chosen was Stockfish in the browser (a bundled WebAssembly build: offline, several MB per site, JavaScript, and Stockfish's GPL licence; see F-1's licence question). Also in the owner's words (2026-09-25): "Another feature to add is having a link to open the full PGN game on lichess,". **Owner decision (2026-09-25): that request is part of F-10**, recommended as the default because both are plain links to lichess (the position's analysis board and the whole game), shaped and built as one iteration. The alternative, a separate request, was not chosen. |
 | F-11 | "The possibilty to add notes in critical positions, also as a pop up-" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: with no server, notes would live in the reader's browser (per device), which brings JavaScript into the site (see F-8), and the EPUB would not carry them. Browser storage survives a rebuild of the site; the risk is a page renamed when a game's id changes (a corrected `Date` or `Result`, see F-7). Keeping notes across devices would need an export/import to a file, or a write-back into the owner's repository (the pipeline, F-3). How notes are kept is an owner decision. |
@@ -454,29 +454,55 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   analyzed files on 2026-09-25, with F-6's rules and the owner's aliases; the implementer
   re-checks them.
 - **Scope:** a new page, `quiz.html`, linked from the top of the index.
-  - **Which questions:** every critical moment in the player's games that was played by the player
-    (by the site's `--player` and `--alias` names), using the same rules as the articles (F-6's
-    critical moments and outcome swings). The opponents' moments stay in their articles only.
-  - **Order:** by winning chances lost, worst first. Ties are broken by date, then move order.
+  - **Who the player is:** `build_site` gains `player` and `aliases` parameters (today it has
+    none; the names exist only when reading). `Collection.build_site` passes on the names its
+    collection was read with, and the `site` command passes its `--player`/`--alias`. Names match
+    exactly as `Collection.read` matches them: letter case and surrounding spaces are ignored.
+    - **No player** (neither `player` nor `aliases` given): there is no quiz page and no link to it,
+      because there are no "own" moves.
+    - **A game where both White and Black match** the player's names: both sides' moments count as
+      the player's.
+  - **Which questions:** every critical moment in the player's games that was played by the player,
+    using the same rules as the articles (F-6's critical moments and outcome swings; F-5's
+    presumed results don't affect moments). The opponents' moments stay in their articles only.
+  - **Order:** by winning chances lost (the exact, unrounded value), worst first. Ties are broken by
+    the game's position in the index (date order), then by the article's file name, then by move
+    order.
   - **One line per question:** its rank, the game (date and opponent), the move played (e.g.
     "30… Rd2") and the points lost. It links to that question in its article (`games/<file>.html#moment-N`).
-    The page shows no diagram and no answer, so it stays small on a phone.
+    The page shows no diagram and no answer, so it stays small on a phone. Each line carries two
+    `data-` attributes, the same names F-8 uses: the game's id and the move (e.g. `30b`). F-8's
+    "only these" list of `data-` attributes is extended by exactly these two on the quiz page.
+  - **A player with no critical moments of their own** gets a quiz page that says so, instead of an
+    empty list.
   - **Marks from the F-8 reading history:** a question whose answer the reader has already revealed
     is marked "answered". The order doesn't change. The marks use F-8's storage (the same site key,
     and answers keyed by game and move), so revealing an answer in an article marks it here. The quiz
     page follows F-8's rules: the marks are added by the script, the page is complete without it,
-    "Clear history" removes the marks too, and a back/forward-cache restore redraws them. With
-    `--no-history`, the page has no script, marks or `data-` attributes.
+    and a back/forward-cache restore redraws them. The quiz page has no "Clear history" button of
+    its own: the index's button clears the whole site's history, which removes the marks here too.
+    With `--no-history`, the page has no script, marks or `data-` attributes.
+  - **Stale pages:** a `quiz.html` the builder wrote (it carries F-8's generator mark) is removed when
+    the site is rebuilt without a player. A `quiz.html` the builder didn't write is never removed.
+  - **Files to update:** `README.md`, `pgn_postmortem/site.py`'s docstring, and the "covers" cells of
+    the tests and script rows in `CLAUDE.md`'s gates table.
   - **Without a player** (no `--player`/`--alias`, so every game is kept), there is no quiz page and
     no link to it, because there are no "own" moves.
 - **Done when:** the gates pass, including:
   1. **Python tests on fixtures:**
      - the quiz page lists exactly the player's own critical moments, including outcome swings, and
        none of the opponents';
-     - they are in worst-first order, with the tie rule tested;
+     - they are in worst-first order, with the whole tie rule tested (equal points, then index
+       order, then file name, then move order);
+     - the player's names match regardless of letter case and surrounding spaces, and a game where
+       both sides are the player counts both sides;
      - each line links to an existing `moment-N` anchor of that move's question (the link checker
-       covers the page);
-     - without a player, there is no quiz page and the index has no link to it;
+       covers the page), and each line's `data-` game and move equal those on the answer it links to;
+     - without a player, there is no quiz page and the index has no link to it; a player with no
+       own moments gets the "none" page;
+     - a rebuild without a player removes a `quiz.html` the builder wrote, and never one it didn't
+       write;
+     - F-8's `data-` attribute test covers the quiz page, with exactly the two new attributes;
      - the index links to the quiz page;
      - with `--no-history`, the quiz page has no script, marks or `data-` attributes. The strip test
        covers the quiz page.
@@ -518,9 +544,13 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
       were not chosen.
   - **Proposed with this shaping, confirmed by the owner's merge:**
     - the page name `quiz.html` and its link at the top of the index;
-    - the tie rule (date, then move order);
-    - the line's contents;
-    - no quiz page when the site has no player.
+    - the tie rule (exact points, then index order, then file name, then move order);
+    - the line's contents and its two `data-` attributes;
+    - no quiz page when the site has no player, and a "none" page for a player without own moments;
+    - `player` and `aliases` on `build_site`, matched like `Collection.read`, and both sides counted
+      when both match;
+    - the index's "Clear history" as the only clear;
+    - removing a stale `quiz.html` the builder wrote.
 
 ## Statuses
 
