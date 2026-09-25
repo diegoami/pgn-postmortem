@@ -145,7 +145,7 @@ Wikipedia-style site and an EPUB book ([`ROADMAP.md`](ROADMAP.md), F-1). So far 
 analyzes and writes the site: multi-game files, directories and glob patterns in, the player's games
 kept once each with every source comment, variation and NAG stripped, then a parallel Stockfish pass
 that writes standard `[%eval]` comments and skips games it has already analyzed, then a static site
-with an article for every game.
+with an article for every game and a quiz of the player's own mistakes.
 
 ```bash
 .venv/bin/pip install -e .
@@ -159,7 +159,8 @@ from pgn_postmortem import Collection
 
 games = Collection.read(["collections/**/*.pgn"], player="Ada Example", aliases=["adaex"])
 games.analyze("analyzed/", depth=18, workers=4)
-Collection.read("analyzed/", keep_analysis=True).build_site("site/", title="Games of Ada Example")
+analyzed = Collection.read("analyzed/", player="Ada Example", aliases=["adaex"], keep_analysis=True)
+analyzed.build_site("site/", title="Games of Ada Example")  # the quiz is for the names read with
 ```
 
 Quote a `**` pattern so the library, not the shell, expands it. The scripts above are unchanged by it.
@@ -190,7 +191,7 @@ The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.
 ### The site
 
 `pgn-postmortem site` writes `index.html` (the games by year), one `games/<date>-<id>.html` article
-per game and one stylesheet. Open `index.html` in a browser, or copy the folder to a phone: every link
+per game, one stylesheet and, for a player, `quiz.html` (below). Open `index.html` in a browser, or copy the folder to a phone: every link
 is relative, nothing loads from the network, and the colours follow the system's light or dark mode.
 The only JavaScript is the optional reading history below; without it the pages read the same. Each
 article has an infobox with the final position, a lead paragraph, the moves, a conclusion and the
@@ -226,11 +227,23 @@ recorded one, in the infobox, the lead, after the moves, in the conclusion and i
 source's `*` is left as it is: the article's PGN section shows it, and the game's id, and therefore its
 file name, is computed from that `*` result, not from the result shown.
 
+**The quiz.** With `--player` or `--alias` (in the library, the names the collection was read with,
+or `build_site(..., player=..., aliases=[...])`), the index links at its top to `quiz.html`: every
+critical moment where the player was the one to move, across the player's games, from the move that
+lost the most winning chances down. Each line shows its rank, the move played, the points it lost
+and the game (date and opponent), and links straight to the question in its article; the page has no
+diagrams and no answers, so it stays small on a phone. The opponents' critical moments are not in
+it; in a game where both sides are the player's names, both sides' are. Ties go by the index's
+order, then the article's file name, then move order. A player without a critical moment of their
+own gets a quiz page that says so. Without a player there is no quiz page and no link to it, and a
+rebuild without one removes the `quiz.html` an earlier build wrote (never one it did not write).
+
 **The reading history.** Every page carries a small script, inline, that remembers in the reader's
 own browser which games were opened and which answers were revealed. The index then shows a
 **Recently viewed** list (the latest 10 games, newest first), a mark on each game already opened with
 how many of its answers were revealed ("viewed · 2/4 answers"), and a **Clear history** button, which
-asks before it removes anything. The history is kept in the browser's `localStorage`: per device and
+asks before it removes anything. On the quiz page, a question whose answer was revealed is marked
+"answered", and the order stays the same; the index's button clears these marks too. The history is kept in the browser's `localStorage`: per device and
 per browser, never shared and never sent anywhere; the script loads nothing. It can be lost: when the
 reader clears the browser's data, in Safari after 7 days without a visit, and for one game when its id
 changes (a corrected `Date` or `Result`). With scripts off, or where the browser gives no storage (some
@@ -242,7 +255,7 @@ some browsers every `file://` page. So each site stores its history under a **si
 its title by default; two sites with the same title on one origin share a history. Set a key of your
 own with `--site-key KEY` (or `build_site(..., site_key="ada-otb")`): 1 to 64 ASCII letters, digits,
 `.`, `_` or `-`. `--no-history` (`build_site(..., history=False)`) writes the pages without the script,
-the history section and its `data-` attributes.
+the history section, the quiz's marks and the `data-` attributes.
 
 The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html), and
 the same site without the reading history in
