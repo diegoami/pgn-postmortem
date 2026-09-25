@@ -51,22 +51,28 @@ bootstrap applies as written there — one review, not two stages.
   `39c29e3`) on 2026-09-24. Modes: both; the owner picks the mode of each
   change when it starts (the iteration table in [`PLAN.md`](PLAN.md)). The
   owner's usual way of working is Claude Code mode, with releases reviewed
-  by a model that is not Claude. Those milestone reviews are not in `r4`:
-  they are on `harness_template`'s untagged `main`, and the owner plans to
-  take them from its next tagged release (expected to be `r5`), adopted as
-  its own reviewed change before F-1's first release at the end of F-1.4
-  (owner, 2026-09-24). Since those rules want a release's claims written
-  before its work, F-1's claims are its done-when items in `ROADMAP.md`,
-  fixed when #3 landed (`7476e54`) before any F-1 work began; with no earlier
-  tag, F-1's first milestone review covers the range from that commit.
-  **The first release, v0.1.0** (owner, 2026-09-25), is tagged before F-1 is
-  complete and before r5 is adopted. It lands F-1.1, F-1.2, F-5, F-6, F-8, F-9,
-  F-10 and the board-squares defect fix (#24). Its claims are those requests'
-  done-when items, each fixed when its shaping landed and before its work. It
-  is reviewed by DeepSeek (`opencode/deepseek-v4-pro`, a model that
-  implemented none of the range) over the range from `7476e54`, using
-  `harness_template` main's milestone prompt as the fixed prompt. The tag
-  waits for that review's AGREE.
+  by a model that is not Claude. Those milestone reviews are not in `r4`.
+  The owner planned (2026-09-24) to adopt them from the next tagged release
+  of the harness, as its own reviewed change, before F-1's release at the end
+  of F-1.4; that release is now tagged, `r5` (`f22685d`), and not yet
+  adopted. F-1's claims are its done-when items in `ROADMAP.md`, fixed when
+  #3 landed (`7476e54`) before any F-1 work began.
+  **The first release, v0.1.0** (owner, 2026-09-25), comes earlier than that
+  plan: it is tagged before F-1 is complete and before r5 is adopted, so it
+  is the first milestone and its review covers the range from `7476e54`
+  (there is no earlier tag). It lands F-1.1, F-1.2, F-5, F-6, F-8, F-9 and
+  F-10, and two defect fixes: the file-name date padding (#7, `d90a102`) and
+  the board squares (#24, `3adc85a`). Its claims are:
+  - for each request, its done-when items, each fixed when its shaping landed
+    and before its work, except F-6's level band, which the owner changed
+    during F-6's iteration (35–65% to 40–60%, recorded in F-6's block);
+  - for each defect fix, the assertion its change landed, recorded in
+    `reviews/007-…` and `reviews/024-…`.
+
+  It is reviewed by DeepSeek (`opencode/deepseek-v4-pro`, a model that
+  implemented none of the range) with r5's milestone prompt
+  (`reviews/milestone-prompt.md` at `r5`) as the fixed prompt. The tag waits
+  for that review's AGREE.
 - **paths to inspect:** `scripts/` (the code), `tests/`, `README.md`,
   `docs/book-plan.md`, `ROADMAP.md`, `.claude/skills/publish-games/SKILL.md`,
   `.github/workflows/`, `pgn_postmortem/` (the library of F-1). The older
