@@ -173,3 +173,5 @@ Left as non-blocking: the review's findings 1–4:
 - no roadmap line for the defect, which this record covers.
 
 — Implementer, Claude Opus 5.5 (claude-opus-5-5)
+
+**Owner's phone check (addendum, 2026-09-25):** on the live book, after the fix was published, the owner reported: "everythink ok". Transcribed by the orchestrator.
