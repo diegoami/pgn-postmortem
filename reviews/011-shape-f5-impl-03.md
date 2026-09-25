@@ -112,3 +112,15 @@ Nothing else changed. There is no code, test or golden-file change. `PLAN.md` an
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `bd31f14` (pull request #11); the clean round, 03, covers `26a8831`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36109410453.
+
+- **F-5's block has every field of the block format,** with the original request verbatim and the owner decisions each with a recommended default and reason. Checked in rounds 01–03.
+- **The iteration table stays consistent:** F-5 is iteration 3, and F-1.3 and F-1.4 move to 4 and 5.
+- **Only `ROADMAP.md`, `PLAN.md` and `docs/book-plan.md` changed,** plus the review records. Round 02 also queued **F-6** as a `requested` row, with the owner's wording.
+
+Left for F-6's shaping: round-03 findings 1 (F-6's note calls the example game "Verona 2008" while its source header then said "Saxonia Systems AG"; the source was since corrected in DA_chessgames `9e7c939`, Event "Festival Verona 2008", Site "Verona", so the note is now accurate), 2 (the "outside the position" wording rule has no test; it only triggers with thresholds of 55–59%) and 3 (shaping F-6 renumbers F-1.3 and F-1.4 again).
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
