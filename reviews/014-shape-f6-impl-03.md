@@ -93,3 +93,16 @@ finding is resolved.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking findings remain.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `98ed641` (pull request #14); the clean round, 03, covers `9256c7e`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36120266303.
+
+- **F-6's block has every field of the block format,** with the owner decisions each carrying a default and reason. The proposed rule (a 10-point floor that follows the inaccuracy threshold, and a better move must exist) is confirmed by the owner's merge.
+- **F-6's notes are checked against the owner's data:** 390 critical moments, and 236 new questions in 96 games after 3 exclusions (the engine's own first choice). The reviewer re-counted this with the library's functions in rounds 02 and 03.
+- **Statuses and iteration numbers are consistent:** F-5 is `landed`, F-6 is `accepted` as iteration 4, and F-1.3 and F-1.4 are iterations 5 and 6.
+- **Only `ROADMAP.md` and `PLAN.md` changed,** plus the review records.
+
+Left for F-6's implementation: round-03 finding 1. The rule "no line stored means the move played was the engine's first choice" holds when the site uses the analysis's own thresholds; reword it for a site run with a lower inaccuracy threshold.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
