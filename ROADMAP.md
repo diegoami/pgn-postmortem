@@ -203,39 +203,65 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - **The owner's example:** Pedroni – Amicabile, Festival Verona 2008. It shows only 31… Qa2? (a
     28-point mistake that didn't change the result). The moves that did were 37… Rg2+ (White from
     25% to 41%, 16.4 points) and 40. Ra4 (49% to 32%, 17.0 points).
-  - **On the owner's 148 analyzed OTB games,** the rule below adds 239 questions in 97 games, on top
-    of 390 critical moments. The counts come from an analysis of the owner's analyzed files on
-    2026-09-25; the implementer re-checks them.
+  - **On the owner's 148 analyzed OTB games,** the rule below adds 236 questions in 96 games, on top
+    of 390 critical moments. Another 362 swings are already critical moments. The counts come from
+    the owner's analyzed files on 2026-09-25; the implementer re-checks them.
 - **Scope:** each analyzed position gets an *expected outcome* from White's winning chances after
   the move:
   - **White winning** at 65% or more;
   - **Black winning** at 35% or less;
   - **level** in between.
 
-  A move is an **outcome swing** when it makes the expected outcome worse for the side that played
-  it (winning → level, level → losing, or winning → losing) **and** it cost that side at least 10
-  points of winning chances, i.e. it is graded at least an inaccuracy. Every outcome swing that is not
-  already a critical moment **becomes a critical moment too.** It gets a diagram, a "what would you
-  play?" question, the engine's better line and the refutation, exactly like the others, and counts
-  in the infobox, the lead and the conclusion. Its note in the moves says that the move changed the
-  expected result (e.g. "level → losing"). A move that is both a 20-point critical moment and an
-  outcome swing is shown once.
+  A move is an **outcome swing** when all three hold:
+  1. it makes the expected outcome worse for the side that played it (winning → level, level →
+     losing, or winning → losing);
+  2. it cost that side at least 10 points of winning chances, the inaccuracy threshold of the
+     decided grading (a fixed rule, not a new parameter);
+  3. **a better move exists**: the engine's first choice in the position before differs from the
+     move played.
 
-  The bands are a library parameter pair with 35/65 as the default. The rule uses only the analysis
-  that exists: a move graded inaccuracy or worse always has its better line stored, so nothing is
-  re-analyzed and no Stockfish run is needed.
+  Condition 3 matters because a move that was the engine's own first choice is not an error: its
+  drop comes from the engine's search limit. There is also nothing better to show as the answer.
+  In the owner's book this excludes 3 of 239 candidates: 45… Qa6 and 47… Qa6 in
+  `2005-09-24-3bd9df323c`, and 18. Qxd4 in `2008-01-05-ec4df50311`.
+
+  Every outcome swing that is not already a critical moment **becomes a critical moment too.** It
+  gets a diagram, a "what would you play?" question, the engine's better line and, when the analysis
+  has one, the refutation. There is none after a game's last move. It counts in the infobox's
+  number of critical moments and in the lead's. The lead's description of a critical moment must
+  stay true: today it says each one "cost at least 20 points", and with F-6 it must say "cost at
+  least 20 points or changed the expected result".
+
+  The note in the moves says how the expected result changed (e.g. "level → losing"). This applies
+  to swings, and also to the 362 critical moments that are swings too (e.g. "a mistake that turned a
+  level game into a losing one"). A move that is both is shown once.
+
+  The bands are a library parameter pair with 35/65 as the default. The pair is valid only if both
+  are finite numbers, the lower is above 0 and below 50, and the upper is above 50 and below 100. It
+  is checked up front before anything is written, even for an empty collection, as F-5's threshold
+  is. The rule uses only the analysis that exists, so nothing is re-analyzed and no Stockfish run is
+  needed.
 - **Done when:** the gates pass, including tests on synthetic fixtures (hand-set `[%eval]`s, in
   `tests/fixtures/site/synthetic/` or a sibling directory, documented as hand-written) that:
   1. a White move from level to Black winning, and a Black move from Black winning to level, each
-     costing 10–20 points, become critical moments with question, better line and refutation, and
-     their notes say how the expected result changed;
+     costing 10–20 points with a different engine first choice, become critical moments with
+     question, better line and refutation, and their notes say how the expected result changed;
   2. a move that changes the band **in favour of** the side that played it is not a moment;
   3. a band change costing less than 10 points is not a moment;
   4. a 10–20-point loss that stays inside one band is not a moment;
-  5. a move that is both a 20-point critical moment and a swing is shown once;
-  6. the band edges are tested: exactly 65% counts as White winning and exactly 35% as Black winning;
-     a changed band parameter changes the moments; an invalid pair (e.g. lower ≥ upper) is rejected;
-  7. unanalyzed games still have no moments.
+  5. a 10–20-point band change whose move **was the engine's first choice** is not a moment;
+  6. a move that is both a 20-point critical moment and a swing is shown once, and its note says the
+     expected result changed;
+  7. **the edges and the parameter:**
+     - White's chances exactly at the upper edge count as White winning, and exactly at the lower
+       edge as Black winning. This is tested by setting the parameter to a fixture's exact value,
+       since a hand-set `[%eval]` can't hit 65.000%.
+     - A changed band pair changes the moments.
+     - Invalid pairs are rejected up front, even for an empty collection: lower ≥ upper, a value
+       outside its half, and NaN;
+  8. **the counts and the lead:** in a game whose only critical moments are swings, the infobox count
+     and the lead count them, and the lead's wording is true for them;
+  9. unanalyzed games still have no moments.
 
   Then there are two checks:
   - **Golden files:** they are regenerated with the documented command where output changes, and
@@ -248,20 +274,27 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 - **Out of scope:** re-analyzing games; changing the 20-point critical-moment line or the grading
   thresholds (decided); F-1.3's use of swings in its selection (its own shaping); F-7.
 - **Depends on:** F-5 (landed), F-1.2 (landed).
-- **Open questions:** decided by the owner on 2026-09-25, each against a recommended default:
-  - **Owner decision: which moments get extra diagrams.** The owner was offered three kinds: "the
-    deciding moment", "inaccuracies too" and "swings that changed the outcome". The recommended
-    default was the deciding moment. The owner chose **swings that changed the outcome**.
-  - **Owner decision: the level band is 35–65%.** This was the recommended default, because a
-    narrower 30–70% band misses the owner's own example, 40. Ra4 (49% → 32%). The owner chose it.
-  - **Owner decision: when.** Right after F-5, before F-1.3. This was the recommended default,
-    because F-1.3's selection can then use the swings. The owner chose it.
-  - **Proposed with this shaping, confirmed by the owner's merge: a swing must cost at least 10
-    points.** Recommended default: yes, for two reasons. The analysis stores an engine line only for
-    moves graded inaccuracy or worse, so a smaller swing would have no answer to show. And
-    crossings of a few points near a band edge are noise. On the owner's book this still adds 239
-    moments. Alternative: any band change, which would need re-analysis or questions without an
-    answer.
+- **Open questions:** decided by the owner, each against a recommended default:
+  - **Owner decision (2026-09-24): which moments get extra diagrams.**
+    - Offered: "the deciding moment", "inaccuracies too" and "swings that changed the outcome".
+    - Recommended default: the deciding moment. It is one diagram per decisive game, which keeps
+      articles short and marks exactly the move the owner pointed at.
+    - Owner's choice: **swings that changed the outcome**, which covers every move that changed the
+      expected result, not only the last.
+  - **Owner decision (2026-09-25): the level band is 35–65%.**
+    - Recommended default: the same, because a narrower 30–70% band misses the owner's own example,
+      40. Ra4 (49% → 32%).
+    - Owner's choice: the recommended default.
+  - **Owner decision (2026-09-24): when.**
+    - Recommended default: right after F-5, before F-1.3, so that F-1.3's selection can use the
+      swings.
+    - Owner's choice: the recommended default.
+  - **Proposed with this shaping, confirmed by the owner's merge:** a swing must cost at least 10
+    points (the inaccuracy threshold), and a better move must exist.
+    - Recommended default: yes. Only then does every question have a real better move as its
+      answer, and small crossings near a band edge are noise.
+    - On the owner's book this adds 236 questions in 96 games.
+    - Alternative: any band change, which would need re-analysis or questions without an answer.
 
 ## Statuses
 
