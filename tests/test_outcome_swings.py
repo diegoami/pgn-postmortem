@@ -73,6 +73,13 @@ def site(tmp_path_factory) -> Path:
     return build(tmp_path_factory.mktemp("site"))
 
 
+def lazy_site(request: pytest.FixtureRequest) -> Path:
+    """The ``site`` fixture, built only when a test asks for it: a test that
+    checks a move is not a moment checks the rule first, so that a broken rule
+    fails on that assertion, not on building a page for an ungraded move."""
+    return request.getfixturevalue("site")
+
+
 def page(site: Path, name: str) -> Element:
     item = read(name)
     return parse(site / "games" / f"{file_stem(item.game, item.id)}.html")
@@ -139,31 +146,31 @@ def test_a_white_and_a_black_swing_of_10_to_20_points_become_critical_moments(si
 # --- 2, 3, 4: band changes that are not swings -------------------------------------------------
 
 
-def test_a_band_change_in_favour_of_the_side_that_moved_is_not_a_moment(site):
+def test_a_band_change_in_favour_of_the_side_that_moved_is_not_a_moment(request):
     before, after, cost, firsts, played = facts("not-swings.pgn", "7. h3")
     assert (band(before), band(after)) == ("level", "White winning")
     assert cost <= -10  # a gain of more than the floor, so only its direction keeps it out
     assert firsts and played not in firsts  # 6... Bg4's refutation starts with 7. b4
     assert "7. h3" not in moments("not-swings.pgn")
-    assert not page(site, "not-swings.pgn").find_all("div", "moment")
+    assert not page(lazy_site(request), "not-swings.pgn").find_all("div", "moment")
 
 
-def test_a_band_change_costing_less_than_10_points_is_not_a_moment(site):
+def test_a_band_change_costing_less_than_10_points_is_not_a_moment(request):
     before, after, cost, firsts, played = facts("not-swings.pgn", "8. Nbd2")
     assert (band(before), band(after)) == ("White winning", "level")
     assert 0 < cost < 10
     assert firsts and played not in firsts  # a line with another first move, so only the cost keeps it out
     assert "8. Nbd2" not in moments("not-swings.pgn")
-    assert not page(site, "not-swings.pgn").find_all("div", "moment")
+    assert not page(lazy_site(request), "not-swings.pgn").find_all("div", "moment")
 
 
-def test_a_10_to_20_point_loss_inside_one_band_is_not_a_moment(site):
+def test_a_10_to_20_point_loss_inside_one_band_is_not_a_moment(request):
     before, after, cost, firsts, played = facts("not-swings.pgn", "6... Bg4")
     assert band(before) == band(after) == "level"
     assert 10 <= cost < 20
     assert firsts and played not in firsts
     assert "6... Bg4" not in moments("not-swings.pgn")
-    dom = page(site, "not-swings.pgn")
+    dom = page(lazy_site(request), "not-swings.pgn")
     assert not dom.find_all("div", "moment")
     assert notes(dom) == {"Bg4?!": ["An inaccuracy: Black's winning chances fall from 48% to 37%."]}
 
@@ -171,7 +178,7 @@ def test_a_10_to_20_point_loss_inside_one_band_is_not_a_moment(site):
 # --- 5: the engine's own first choice ----------------------------------------------------------
 
 
-def test_a_band_change_that_was_the_engines_first_choice_is_not_a_moment(site):
+def test_a_band_change_that_was_the_engines_first_choice_is_not_a_moment(request):
     # no line stored before it: the engine's first choice was the move played
     before, after, cost, firsts, played = facts("first-choice.pgn", "7. Re1")
     assert (band(before), band(after)) == ("level", "Black winning") and 10 <= cost < 20
@@ -182,7 +189,7 @@ def test_a_band_change_that_was_the_engines_first_choice_is_not_a_moment(site):
     assert firsts == {played}
 
     assert moments("first-choice.pgn") == []
-    dom = page(site, "first-choice.pgn")
+    dom = page(lazy_site(request), "first-choice.pgn")
     assert not dom.find_all("div", "moment")
     assert not dom.find_all("details")
     assert notes(dom) == {
