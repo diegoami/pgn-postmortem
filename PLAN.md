@@ -43,6 +43,8 @@ so; the exception is recorded, never improvised.
 | 6 | F-1.4 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.4 in F-1's block | F-2, F-3 | chosen by the owner | written when the iteration starts (OpenCode mode) | medium | the assignment table (OpenCode) or a fresh-context session (Claude) |
 | 7+ | the first unblocked roadmap request, in the owner's order | that request's block in `ROADMAP.md` | the other requests | chosen by the owner | written when the request is shaped (OpenCode mode) | per request | as above |
 
+The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Each gets its iteration number when it is shaped, and F-1.3 and F-1.4 then move after them.
+
 F-1 was split into F-1.1 to F-1.4 when it was shaped (`ROADMAP.md`, *Size it
 to one iteration*).
 
