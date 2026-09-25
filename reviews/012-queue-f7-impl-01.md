@@ -68,3 +68,17 @@ its checkable claims hold.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `c4f6afc` (pull request #12); the clean round, 01, covers `3a48e4b`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36114811733.
+
+- **F-7 is queued** with the owner's verbatim wording and status `requested`, and is not shaped.
+- **Only `ROADMAP.md` changed,** plus this record.
+
+Left for F-7's shaping, recorded here so it isn't lost:
+- **Finding 1:** the stale headers come from analysis skipping already-analyzed games and from the site preferring the analyzed copy, not from reading, which does refresh the plain copies. The fix may belong there.
+- **Finding 2:** of the 2 Events replaced, one was the placeholder and the other "?"; `691eba6` set Site "Worms" on 7 games.
+- **Finding 3:** a corrected `FEN` changes a game's identity too.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
