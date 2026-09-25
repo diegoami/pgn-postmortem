@@ -153,3 +153,23 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-25 as `3adc85a` (pull request #24), on the owner's go ("Check on the live book after merge"). The clean round, 01, covers `c96537d`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36190901762.
+
+**The defect** (recorded here, as the defect path asks): the owner reported "The final position looks skewed". Board diagrams drew square colours with one board-level background pattern (from F-1.2), while pieces and the highlight were drawn in the grid cells. At fractional square sizes the two rounded apart: squares alternated between 37 and 38 px, and the highlight was 1–2 px off its square.
+
+- **The fix:** each cell draws its own square's colour, and the board-level pattern is gone. The highlight is pre-blended solid colours, within 1 per channel of the old look.
+- **The assertion that would have caught it:** `tests/test_boards.py` fails on the pre-fix code, for the right reasons. It checks every cell of every fixture board, in both orientations, for colour, piece and highlight, and that no board-level pattern remains.
+- **Visual check in headless Chromium:** colour edges off the cell boxes went from 1,049 to 0, and highlight edges off their square from 24 of 168 to 0. The reviewer reproduced this.
+- **The gates:** `ruff check .` is clean, `pytest -q` gives 209 passed, and the script gate gives 32 passed. Both golden sets are regenerated; with the `l`/`d` classes stripped, the articles are identical to main's.
+- **The owner's phone check** is deferred to the live book by the owner's choice.
+
+Left as non-blocking: the review's findings 1–4:
+- the test's "parity" wording;
+- the stylesheet test rejecting gradients site-wide;
+- the highlight blend asserted only by the golden files;
+- no roadmap line for the defect, which this record covers.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
