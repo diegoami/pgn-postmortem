@@ -277,11 +277,23 @@ def player_names(player: str | None, aliases: Iterable[str]) -> set[str]:
 
 class Collection:
     """The games read from one or more PGN collections: the player's games
-    only, each once, stripped. ``report`` says what was left out and why."""
+    only, each once, stripped. ``report`` says what was left out and why.
+    ``player`` and ``aliases`` are the names the games were read with (none
+    for a collection made directly from its games); the site's quiz page
+    uses them (``build_site``)."""
 
-    def __init__(self, games: list[CollectedGame], report: ReadReport | None = None):
+    def __init__(
+        self,
+        games: list[CollectedGame],
+        report: ReadReport | None = None,
+        *,
+        player: str | None = None,
+        aliases: Iterable[str] = (),
+    ):
         self.games = games
         self.report = report or ReadReport(kept=len(games))
+        self.player = player
+        self.aliases = tuple(aliases)
 
     @classmethod
     def read(
@@ -305,6 +317,7 @@ class Collection:
         """
         if isinstance(inputs, str | Path):
             inputs = [inputs]
+        aliases = tuple(aliases)  # kept with the games, so read once
         names = player_names(player, aliases)
         report = ReadReport()
         games: list[CollectedGame] = []
@@ -335,7 +348,7 @@ class Collection:
                 games.append(CollectedGame(gid, kept, origin))
 
         report.kept = len(games)
-        return cls(games, report)
+        return cls(games, report, player=player, aliases=aliases)
 
     def __iter__(self) -> Iterator[CollectedGame]:
         return iter(self.games)
@@ -378,8 +391,10 @@ class Collection:
         return analyze_games(self.games, out_dir, **options)
 
     def build_site(self, out_dir: str | Path, **options):
-        """Write the static site for these games to ``out_dir``; see
-        ``pgn_postmortem.site.build_site`` for the options."""
+        """Write the static site for these games to ``out_dir``, with the quiz
+        page for the names they were read with (unless ``player`` or
+        ``aliases`` is given); see ``pgn_postmortem.site.build_site`` for the
+        options."""
         from pgn_postmortem.site import build_site
 
-        return build_site(self.games, out_dir, **options)
+        return build_site(self, out_dir, **options)

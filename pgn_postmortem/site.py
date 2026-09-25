@@ -7,6 +7,8 @@ directory::
 
     index.html              the games by year, each linking to its article
     games/<date>-<id>.html  one article per game, named like the game's PGN file
+    quiz.html               the player's own critical moments, worst first
+                            (below), when the site has a player
     assets/style.css        the layout, the colours (light or dark, as the OS
                             says) and the one piece set every diagram uses
 
@@ -87,6 +89,25 @@ The game itself is untouched: its ``Result`` header, so its id and its file
 name, and the article's PGN section stay as the source had them. A recorded
 result is always shown as recorded.
 
+**The quiz** (ROADMAP.md, F-9). ``build_site`` takes the player's name and
+aliases (``player``, ``aliases``), matched as ``Collection.read`` matches them:
+letter case and surrounding spaces are ignored. A site without a player (no
+name given, or only blank ones) has no quiz page and no link to it, since no
+move is the player's own; a rebuild without a player removes the
+``quiz.html`` an earlier build wrote (it carries the generator marker,
+``GENERATOR``), and never a ``quiz.html`` without it. With a player, the
+index links at its top to ``quiz.html``, which lists every critical moment
+(the rules above) played by the player, in every game where White or Black
+is one of the player's names (both sides when both are), and none of the
+opponents'. They are ordered by the winning chances the move lost (the
+exact value, not the rounded one shown), the most first; ties go by the
+game's position in the index, then the article's file name, then move
+order. Each line shows its rank, the move played (``30... Rd2``), the points
+it lost and the game (its date and the opponent), and links to the
+question in its article (``games/<file>.html#moment-N``); the page shows no
+diagram and no answer. A player without a critical moment of their own gets
+a quiz page that says so.
+
 **The reading history** (ROADMAP.md, F-8). Every page carries, inline and
 byte for byte, the script ``pgn_postmortem/static/history.js`` (package
 data). In the reader's browser only (``localStorage``, never sent anywhere)
@@ -97,11 +118,14 @@ rules for critical moments do. The index shows a "Recently viewed" list (the
 latest 10 of its own games, newest first), a mark on each viewed game with
 how many of its current questions' answers were revealed ("2/4"), and a
 "Clear history" button that removes this site's history after a
-confirmation. For it the pages carry these ``data-`` attributes and no
-others: ``data-site`` on ``<html>`` (the site key), ``data-game`` on the
-article (the ``PostmortemId``), ``data-move`` on each answer, and
+confirmation. The quiz page marks "answered" each question whose answer was
+revealed, keeping the order; it has no button of its own, and the index's
+clears its marks too. For it the pages carry these ``data-`` attributes and
+no others: ``data-site`` on ``<html>`` (the site key), ``data-game`` on the
+article (the ``PostmortemId``), ``data-move`` on each answer,
 ``data-game`` and ``data-moves`` (the moves of its current questions) on
-each game in the index. Every stored key starts with ``pgn-postmortem:`` and
+each game in the index, and ``data-game`` and ``data-move`` on each line of
+the quiz. Every stored key starts with ``pgn-postmortem:`` and
 the site key, which the pages carry so that sites sharing an origin (all
 GitHub Pages sites of one user, or ``file://`` pages in some browsers) keep
 separate histories; by default it is derived from the title
@@ -134,10 +158,12 @@ from pgn_postmortem.analysis import LICHESS_THRESHOLDS, MATE_SCORE, Thresholds, 
 from pgn_postmortem.collection import (
     ANALYSIS_HEADER,
     CollectedGame,
+    Collection,
     date_fields,
     file_stem,
     format_game,
     is_number,
+    player_names,
     strip_game,
 )
 
@@ -167,6 +193,7 @@ MONTHS = [
 NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 NBSP = "\u00a0"  # between a move number and its move, so a line never breaks between them
 GENERATOR = '<meta name="generator" content="pgn-postmortem">'  # in every page; marks what a rebuild may delete
+QUIZ_PAGE = "quiz.html"  # the quiz list of the player's own mistakes (ROADMAP.md, F-9)
 SITE_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")  # the reading history's site key (ROADMAP.md, F-8)
 
 
@@ -206,6 +233,14 @@ class MoveReview:
     def change(self) -> str:
         """``turned a level game into a losing one`` for a swing, else nothing."""
         return f"turned {CHANGES[self.outcomes]}" if self.swing else ""
+
+    @property
+    def loss(self) -> float:
+        """The winning chances the move cost the mover, exactly as graded
+        (0 when it gained, or without analysis)."""
+        if self.before is None or self.after is None:
+            return 0.0
+        return max(self.before - self.after, 0.0)
 
 
 def is_analyzed(game: chess.pgn.Game) -> bool:
@@ -700,8 +735,13 @@ class Article:
         return [review for review in self.reviews if review.critical]
 
 
-def page(title: str, body: str, *, root: str, site_title: str, history: History | None = None) -> str:
-    home = "" if root == "" else f'<header class="top"><a href="{root}index.html">{esc(site_title)}</a></header>\n'
+def page(title: str, body: str, *, root: str, site_title: str, history: History | None = None,
+         home: bool | None = None) -> str:  # fmt: skip
+    """A whole page. ``home`` puts the link to the index at the top: by
+    default on every page but the index (``root`` is empty only there and on
+    the quiz page, which asks for it)."""
+    home = root != "" if home is None else home
+    home = f'<header class="top"><a href="{root}index.html">{esc(site_title)}</a></header>\n' if home else ""
     return (
         "<!DOCTYPE html>\n"
         f'<html lang="en"{data(history, site=history.site_key) if history else ""}>\n'
@@ -1008,11 +1048,35 @@ def article_html(article: Article, previous: Article | None, following: Article 
     return page(article.title, body, root="../", site_title=site_title, history=history)
 
 
-def index_html(articles: list[Article], site_title: str, history: History | None = None) -> str:
+def index_years(articles: list[Article]) -> list[tuple[int | None, list[Article]]]:
+    """The index's sections: the years in order (as numbers), then the
+    undated games; in each, the articles in the order given (by file name,
+    as ``build_site`` sorts them)."""
     years: dict[int | None, list[Article]] = {}
     for article in articles:
         years.setdefault(article.year, []).append(article)
     dated = sorted(year for year in years if year is not None)
+    return [(year, years[year]) for year in [*dated, *([None] if None in years else [])]]
+
+
+def index_order(articles: list[Article]) -> list[Article]:
+    """The articles in the order the index lists them."""
+    return [article for _, section in index_years(articles) for article in section]
+
+
+@dataclass(frozen=True)
+class Quiz:
+    """What the index needs to link to the quiz page: its title and its
+    number of questions."""
+
+    title: str
+    questions: int
+
+
+def index_html(articles: list[Article], site_title: str, history: History | None = None,
+               quiz: Quiz | None = None) -> str:  # fmt: skip
+    sections = index_years(articles)
+    dated = [year for year, _ in sections if year is not None]
 
     def anchor(year: int | None) -> str:
         return f"y{year}" if year is not None else "undated"
@@ -1020,7 +1084,8 @@ def index_html(articles: list[Article], site_title: str, history: History | None
     def heading(year: int | None) -> str:
         return str(year) if year is not None else "Undated"
 
-    order = [*dated, *([None] if None in years else [])]
+    years = dict(sections)
+    order = [year for year, _ in sections]
     span = f"from {dated[0]} to {dated[-1]}" if len(dated) > 1 else (f"from {dated[0]}" if dated else "")
     undated = len(years.get(None, []))
     summary = f"{plural(len(articles), 'game').capitalize()}"
@@ -1033,6 +1098,9 @@ def index_html(articles: list[Article], site_title: str, history: History | None
         "“what would you play?”, with the answer hidden until you tap it."
     )
     parts = [f"<h1>{esc(site_title)}</h1>\n", f'<p class="lead">{summary}</p>\n']
+    if quiz:
+        count = plural(quiz.questions, "question") if quiz.questions else "no questions"
+        parts.append(f'<p class="quiz-link"><a href="{QUIZ_PAGE}">{esc(quiz.title)}</a>: {count}.</p>\n')
     if history:
         parts.append(HISTORY_SECTION)
     if len(order) > 1:
@@ -1059,6 +1127,122 @@ def index_html(articles: list[Article], site_title: str, history: History | None
             )
         parts.append("</ol>\n</section>\n")
     return page(site_title, "".join(parts), root="", site_title=site_title, history=history)
+
+
+# --- the quiz (ROADMAP.md, F-9) -----------------------------------------------------
+
+
+@dataclass(frozen=True)
+class QuizEntry:
+    """One line of the quiz: a critical moment that the player played."""
+
+    article: Article
+    review: MoveReview
+    number: int  # the moment's number in its article, as in its anchor ``moment-N``
+    loss: float  # the winning chances the move cost, exactly
+    position: int  # the game's position in the index, from 0
+    filename: str  # the article's file name
+    ply: int  # the move's place in its game
+
+    def order(self) -> tuple[float, int, str, int]:
+        """The quiz's order: the most points lost first, then the index's
+        order, then the file name, then move order."""
+        return (-self.loss, self.position, self.filename, self.ply)
+
+
+def own_colors(game: chess.pgn.Game, names: set[str]) -> set[chess.Color]:
+    """The sides of ``game`` whose name is one of ``names`` (as
+    ``player_names`` gives them): White's, Black's, both or neither, compared
+    as ``Collection.read`` compares them."""
+    colors = set()
+    for color, key in ((chess.WHITE, "White"), (chess.BLACK, "Black")):
+        if (game.headers.get(key) or "").strip().casefold() in names:
+            colors.add(color)
+    return colors
+
+
+def quiz_order(entries: Iterable[QuizEntry]) -> list[QuizEntry]:
+    return sorted(entries, key=QuizEntry.order)
+
+
+def quiz_entries(articles: list[Article], names: set[str]) -> list[QuizEntry]:
+    """The quiz for the player called ``names``, in its order: every critical
+    moment of ``articles`` (given in the index's order) played by one of the
+    player's sides."""
+    entries = []
+    for position, article in enumerate(articles):
+        own = own_colors(article.game, names)
+        for number, review in enumerate(article.moments, 1):
+            if review.mover in own:
+                entries.append(
+                    QuizEntry(article, review, number, review.loss, position, article.filename, review.node.ply())
+                )
+    return quiz_order(entries)
+
+
+def player_label(player: str | None, aliases: Iterable[str]) -> str:
+    """The player's name as the quiz shows it: ``player``'s, else the first
+    alias's, as prose wants it (``Example, Ada`` is ``Ada Example``)."""
+    name = next((name for name in [player or "", *aliases] if name.strip()), "")
+    return display_name(name)
+
+
+def quiz_title(label: str) -> str:
+    return f"Quiz: {label}'s own mistakes, worst first"
+
+
+def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str, site_title: str,
+              thresholds: Thresholds, history: History | None = None) -> str:  # fmt: skip
+    """The quiz page: one line per question, linking to it. ``games`` is the
+    number of the player's games, ``unanalyzed`` how many of them have no
+    analysis yet; the page without questions says both. With questions, the
+    lead counts the games they come from."""
+    title = quiz_title(label)
+    name = esc(label)
+    what = (
+        f"a move that cost at least {thresholds.mistake:g} points of winning chances or changed the expected result"
+    )
+    of_games = f"{plural(games, 'game')} of {name}'s"
+    parts = [f"<h1>{esc(title)}</h1>\n"]
+    if not entries:
+        if games:
+            lead = f"The quiz has no questions: in {of_games}, no move {name} played is a critical moment ({what})."
+        else:
+            lead = f"The quiz has no questions: no game here is {name}'s."
+        if unanalyzed:
+            lead += (
+                f" {number_word(unanalyzed).capitalize()} of them {'is' if unanalyzed == 1 else 'are'} not analyzed "
+                "yet, and only analyzed games have critical moments."
+            )
+        parts.append(f'<p class="lead">{lead}</p>\n')
+        return page(title, "".join(parts), root="", site_title=site_title, history=history, home=True)
+
+    # the games the questions come from, not all of the player's games
+    sources = len({entry.article.item.id for entry in entries})
+    parts.append(
+        f'<p class="lead">{plural(len(entries), "question").capitalize()} from '
+        f"{plural(sources, 'game')} of {name}'s: "
+        f"{'it is' if len(entries) == 1 else 'each is'} a critical "
+        f"moment where {name} was the one to move, {what}. The move that cost the most comes first, with the "
+        "points of winning chances each one cost. Each line leads to its “what would you play?” question, where "
+        "the answer stays hidden until you tap it.</p>\n"
+    )
+    parts.append('<ol id="quiz" class="games quiz">\n')
+    for rank, entry in enumerate(entries, 1):
+        article, review = entry.article, entry.review
+        board = review.board_before
+        points = f"{entry.loss:.0f}"
+        opponent = article.black if review.mover == chess.WHITE else article.white
+        meta = f"{format_date(article.game.headers.get('Date')) or 'Undated'} · vs. {opponent}"
+        parts.append(
+            f"<li{data(history, game=article.item.id, move=move_key(board))}>"
+            f'<span class="rank">{rank}.</span> '
+            f'<a href="games/{entry.filename}#moment-{entry.number}">{esc(move_label(board, review.node.move))}</a> '
+            f'<span class="lost">{points} point{"" if points == "1" else "s"}</span>'
+            f'<span class="meta">{esc(meta)}</span></li>\n'
+        )
+    parts.append("</ol>\n")
+    return page(title, "".join(parts), root="", site_title=site_title, history=history, home=True)
 
 
 STYLE = """\
@@ -1140,6 +1324,8 @@ figcaption b { color: var(--fg); }
 .games li { padding: .5rem 0; border-bottom: 1px solid var(--rule); }
 .games .result { margin-left: .5rem; font-weight: 600; }
 .games .meta { display: block; color: var(--muted); font-size: .85rem; }
+.quiz .rank { display: inline-block; min-width: 2rem; color: var(--muted); }
+.quiz .lost { margin-left: .5rem; font-weight: 600; }
 /* The piece set (Colin M.L. Burnett's, as python-chess ships it), shared by every diagram. */
 """
 
@@ -1150,12 +1336,17 @@ class SiteReport:
     analyzed: int = 0
     critical_moments: int = 0
     removed: list[Path] = field(default_factory=list)
+    quiz: Path | None = None  # the quiz page, when the site has a player
+    quiz_questions: int = 0
 
     def summary(self, out_dir: str | Path) -> str:
-        return (
+        text = (
             f"Wrote {len(self.articles)} article(s) to {out_dir}: {self.analyzed} analyzed, "
             f"{len(self.articles) - self.analyzed} not analyzed yet, {self.critical_moments} critical moment(s)."
         )
+        if self.quiz:
+            text += f" The quiz lists {self.quiz_questions} of them, the player's own."
+        return text
 
 
 def write_text(path: Path, text: str) -> None:
@@ -1181,6 +1372,8 @@ def build_site(
     outcome_bands: tuple[float, float] = OUTCOME_BANDS,
     history: bool = True,
     site_key: str | None = None,
+    player: str | None = None,
+    aliases: Iterable[str] = (),
 ) -> SiteReport:
     """Write the site for ``games`` (a ``Collection``, or any iterable of
     ``CollectedGame``) to ``out_dir``: ``index.html``, ``assets/style.css``
@@ -1216,18 +1409,23 @@ def build_site(
     1 to 64 ASCII letters, digits, ``.``, ``_`` and ``-``, starting with a
     letter or a digit; any other value raises ``ValueError`` before anything
     is written, with or without the history.
+
+    ``player`` and ``aliases`` name the player, as ``Collection.read`` takes
+    them and compares them (letter case and surrounding spaces ignored), for
+    the quiz page ``quiz.html`` (the rule is in the module docstring). When
+    neither is given and ``games`` is a ``Collection``, the names it was read
+    with are used; names given here take their place.
     """
     check_presume_threshold(presume_threshold)
     check_outcome_bands(outcome_bands)
     key = check_site_key(site_key) if site_key is not None else default_site_key(title)
     reading = History(key, history_script()) if history else None
+    aliases = tuple(aliases)
+    if player is None and not aliases and isinstance(games, Collection):
+        player, aliases = games.player, games.aliases
+    names = player_names(player, aliases)
     out_dir = Path(out_dir)
-    articles = []
-    for item in games:
-        analyzed = is_analyzed(item.game)
-        result = shown_result(item.game, presume_threshold)
-        articles.append(Article(item, review_moves(item.game, thresholds, outcome_bands), analyzed, result))
-    articles.sort(key=lambda article: article.stem)
+    articles = make_articles(games, thresholds, presume_threshold, outcome_bands)
 
     report = SiteReport()
     write_text(out_dir / "assets" / "style.css", STYLE + piece_css())
@@ -1240,11 +1438,43 @@ def build_site(
         report.articles.append(path)
         report.analyzed += article.analyzed
         report.critical_moments += len(article.moments)
-    write_text(out_dir / "index.html", index_html(articles, title, reading))
+    quiz = None
+    if names:
+        in_order = index_order(articles)
+        entries = quiz_entries(in_order, names)
+        players = [article for article in in_order if own_colors(article.game, names)]
+        label = player_label(player, aliases)
+        unanalyzed = sum(not article.analyzed for article in players)
+        quiz_text = quiz_html(entries, len(players), unanalyzed, label, title, thresholds, reading)
+        write_text(out_dir / QUIZ_PAGE, quiz_text)
+        quiz = Quiz(quiz_title(label), len(entries))
+        report.quiz, report.quiz_questions = out_dir / QUIZ_PAGE, len(entries)
+    write_text(out_dir / "index.html", index_html(articles, title, reading, quiz))
 
     written = {path.name for path in report.articles}
     for path in sorted((out_dir / "games").glob("*.html")):
         if path.name not in written and is_generated(path):
             path.unlink()
             report.removed.append(path)
+    stale = out_dir / QUIZ_PAGE
+    if not names and stale.is_file() and is_generated(stale):  # a site without a player has no quiz page
+        stale.unlink()
+        report.removed.append(stale)
     return report
+
+
+def make_articles(
+    games: Iterable[CollectedGame],
+    thresholds: Thresholds = LICHESS_THRESHOLDS,
+    presume_threshold: float = PRESUME_THRESHOLD,
+    outcome_bands: tuple[float, float] = OUTCOME_BANDS,
+) -> list[Article]:
+    """An ``Article`` for each game, with its reviewed moves and the result
+    it shows, sorted by file name."""
+    articles = []
+    for item in games:
+        analyzed = is_analyzed(item.game)
+        result = shown_result(item.game, presume_threshold)
+        articles.append(Article(item, review_moves(item.game, thresholds, outcome_bands), analyzed, result))
+    articles.sort(key=lambda article: article.stem)
+    return articles

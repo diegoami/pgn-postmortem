@@ -85,7 +85,9 @@
 // The site builder writes this file, unchanged, into every page. It keeps, in
 // this browser only (localStorage), which games were opened and which answers
 // were revealed, and shows it on the index: a "Recently viewed" list and a
-// mark on each viewed game. It loads nothing and sends nothing anywhere.
+// mark on each viewed game; and on the quiz page (ROADMAP.md, F-9), a mark on
+// each question whose answer was revealed. It loads nothing and sends nothing
+// anywhere.
 // Without it (scripts off, or no storage) the pages read as they would
 // without it: what it shows is hidden in the HTML until it shows it.
 //
@@ -96,12 +98,14 @@
 //   li[data-game][data-moves] on the index, a game and its current questions ("3b 17w")
 //   section#history           on the index, the history, hidden until shown here, with
 //                             the list ol#history-recent and the button #history-clear
+//   ol#quiz li[data-game][data-move]
+//                             on the quiz page, a question: its game and its move
 //
 // What it stores, every key starting with "pgn-postmortem:KEY:":
 //   pgn-postmortem:KEY:viewed:ID               when the game was last opened, in ms
 //   pgn-postmortem:KEY:revealed:ID:MOVE        "1", once that answer was opened
-// A value of any other shape is ignored. "Clear history" removes these keys
-// and no other.
+// A value of any other shape is ignored. "Clear history", on the index only,
+// removes these keys and no other. The quiz page only reads them.
 //
 // The file has no asterisk in it: no page may show a bare asterisk outside its
 // PGN section (tests/test_presumed_results.py).
@@ -335,6 +339,59 @@
     return show;
   }
 
+  // --- the quiz ---
+
+  function quizEntries(list) {
+    var entries = [];
+    var items = list.getElementsByTagName("li");
+    for (var i = 0; i < items.length; i++) {
+      var id = items[i].getAttribute("data-game");
+      var move = items[i].getAttribute("data-move");
+      if (!id || !GAME.test(id) || !move || !MOVE.test(move)) {
+        continue;
+      }
+      var spans = items[i].getElementsByTagName("span");
+      var meta = null;
+      for (var j = 0; j < spans.length; j++) {
+        if (spans[j].className === "meta" && spans[j].parentNode === items[i]) {
+          meta = spans[j];
+        }
+      }
+      entries.push({ id: id, move: move, item: items[i], meta: meta, mark: null });
+    }
+    return entries;
+  }
+
+  // Marks each question whose answer was revealed; the lines stay where they are.
+  function renderQuiz(doc, storage, prefix, entries) {
+    var marked = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      if (entry.mark) {
+        entry.mark.parentNode.removeChild(entry.mark);
+        entry.mark = null;
+      }
+      if (isRevealed(storage, prefix, entry.id, entry.move)) {
+        // on the question's first line, before its date and opponent
+        entry.mark = entry.item.insertBefore(makeMark(doc, "answered"), entry.meta);
+        marked += 1;
+      }
+    }
+    if (marked) {
+      addStyle(doc);
+    }
+  }
+
+  // Returns what to do when the page is shown again (see start).
+  function startQuiz(doc, storage, prefix, list) {
+    var entries = quizEntries(list);
+    function show() {
+      renderQuiz(doc, storage, prefix, entries);
+    }
+    show();
+    return show;
+  }
+
   function start(win, doc) {
     var site = doc.documentElement ? doc.documentElement.getAttribute("data-site") : null;
     if (!site || !SITE.test(site)) {
@@ -354,10 +411,14 @@
     if (section) {
       again.push(startIndex(win, doc, storage, prefix, section));
     }
+    var quiz = doc.getElementById("quiz");
+    if (quiz) {
+      again.push(startQuiz(doc, storage, prefix, quiz));
+    }
     // "Back" to a served page (http, e.g. GitHub Pages) can show it again from the browser's
     // back/forward cache, as it was left: the script does not run again, and only a "pageshow"
     // event with "persisted" set says so. Then the article counts as viewed again, and the index
-    // shows the history as it is stored now.
+    // and the quiz show the history as it is stored now.
     if (typeof win.addEventListener === "function") {
       win.addEventListener("pageshow", function (event) {
         if (!event || !event.persisted) {

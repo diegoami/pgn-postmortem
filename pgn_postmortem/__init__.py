@@ -9,8 +9,8 @@ The library API::
     games.write("games-clean/")                     # optional: one stripped PGN per game
     games.analyze("analyzed/", depth=18, workers=4)  # Stockfish, [%eval] comments, incremental
 
-    analyzed = Collection.read("analyzed/", keep_analysis=True)
-    analyzed.build_site("site/", title="Games of Ada Example")  # one article per game, an index
+    analyzed = Collection.read("analyzed/", player="Ada Example", aliases=["adaex"], keep_analysis=True)
+    analyzed.build_site("site/", title="Games of Ada Example")  # an article per game, an index, the quiz
 
 The same steps from the command line are ``pgn-postmortem read``,
 ``pgn-postmortem analyze`` and ``pgn-postmortem site`` (see ``pgn_postmortem.cli``).
