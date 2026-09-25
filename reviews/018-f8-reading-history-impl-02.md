@@ -110,3 +110,31 @@ site.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `3adbe08` (pull request #18); the clean round, 02, covers `471b2bf`. CI on the merge commit passed on Python 3.11 and 3.13, with the script gate on Node 22 and the wheel check: https://github.com/diegoami/pgn-postmortem/actions/runs/36143456790. F-8's done-when (`ROADMAP.md`, F-8's block):
+
+1. **Python tests on the pages:**
+   - the script is inlined byte-identically from `pgn_postmortem/static/history.js`, with no `src`, no URL, no network or loading call, and no `*`;
+   - the containers are `hidden`;
+   - `tests/golden/site-no-history/` (built with `--no-history`) is byte-identical to the pre-F-8 golden pages;
+   - a strip test shows the history adds nothing else, the stylesheet included;
+   - the CI wheel step shows the script ships.
+2. **The "script" gate,** `node --test 'tests/js/*.test.mjs'`, with 20 tests and a zero-test guard. It covers recording views and answers by move, the latest 10 of the index's own games, k/m against current questions, Clear removing only this site's keys after confirmation, missing or throwing storage, corrupt data, and the back/forward-cache refresh added in round 01.
+3. **The owner's check:** given in the session on 2026-09-25 on a desktop browser (a served preview of the owner's book at `471b2bf`, and optionally `file://`): "great, merge it". It was recorded on the PR by the orchestrator (https://github.com/diegoami/pgn-postmortem/pull/18#issuecomment-5833508452), not signed by the owner. **The phone check is deferred to the live book by the owner's choice;** any problem found there goes through the defect path.
+
+**The gates:** `ruff check .` is clean, `pytest -q` gives 157 passed, and the script gate gives 20 passed.
+
+**Declared in the PR body and repeated here,** as review 017's completion note asked: the CI wheel step and the `setuptools==84.0.0` pin are confirmed by the owner's merge of #17. They are part of F-8's merged done-when; `ROADMAP.md`'s confirmed list was not edited.
+
+**Design choices under artistic license** (listed in the PR):
+- the history's CSS lives inside the script;
+- the site key is the title's words plus 8 hex digits of its SHA-256, set with `--site-key`;
+- the index wording is "viewed · k/m answers" and "Kept in this browser only.";
+- the script contains no `*`;
+- the escape test allows the history's tags and attributes;
+- Node and the wheel step run on the 3.13 leg only;
+- storage uses one key per viewed game and per revealed answer, plus a probe key.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
