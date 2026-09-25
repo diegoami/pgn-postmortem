@@ -28,11 +28,39 @@ and counts as 100 for the side that gave it). The difference is what the
 move lost; it is graded with the analysis step's thresholds
 (``analysis.classify``: 10/20/30 points by default, lichess's), so the grades
 here are the NAGs the analysis step wrote. **A critical moment is a move that
-lost at least ``thresholds.mistake`` points (20 by default): a mistake or a
-blunder.** Inaccuracies get a note but no diagram. The first move of a game
-has no evaluation before it (the analysis step does not write the start
-position's), so it is never graded; from the standard start no single move
-loses that much.
+lost at least ``thresholds.mistake`` points (20 by default), a mistake or a
+blunder, or an outcome swing** (below). Other graded moves get a note but no
+diagram. The first move of a game has no evaluation before it (the analysis
+step does not write the start position's), so it is never graded; from the
+standard start no single move loses that much.
+
+**Outcome swings** (ROADMAP.md, F-6). Each analyzed position gets an
+*expected outcome* from White's winning chances after the move: White winning
+at ``outcome_bands[1]`` (60 by default) or more, Black winning at
+``outcome_bands[0]`` (40) or less, level in between. A move is an outcome
+swing when all three hold:
+
+1. it makes the expected outcome worse for the side that played it (winning
+   to level, level to losing, or winning to losing);
+2. it cost that side at least ``thresholds.inaccuracy`` points (10 by
+   default), so every swing is a graded move;
+3. a better move exists: the engine's first choice in the position before
+   the move differs from the move played. The first choice is the first move
+   of any engine line stored at that position: the move's own better line,
+   or the previous move's refutation, which is the engine's line from the
+   same position. With no line stored there the move is not a swing either.
+   With the thresholds the analysis used, no line there means the engine's
+   first choice was the move played (the analysis stores a graded move's
+   better line whenever the engine's first choice differs); with a lower
+   inaccuracy threshold than the analysis used, a move graded between the
+   two thresholds may have no line of its own, and then nothing is known
+   about a better move. Either way there is no better move to show.
+
+A swing is a critical moment even when it cost less than
+``thresholds.mistake``; a move that is both is one moment. The note on a
+swing, in the moves and in the answer, says how the expected result changed
+("an inaccuracy that turned a level game into a losing one"). A move that
+changed the band without meeting all three conditions gets no such words.
 
 At each critical moment the article shows the position before the move, from
 the side of the player to move, and asks "What would you play?"; the answer
@@ -90,6 +118,15 @@ RESULTS = {"1-0": "1–0", "0-1": "0–1", "1/2-1/2": "½–½"}
 NOT_RECORDED = "*"  # the PGN result of a game in progress or with an unknown result
 PRESUME_THRESHOLD = 70.0  # the winning chances (%) that make an unrecorded result a win (owner, 2026-09-24)
 PRESUME_THRESHOLD_RANGE = (55.0, 95.0)
+# White's winning chances (%) at or below which Black is winning, and at or above which White is. The owner
+# changed the shaping's 35/65 to 40/60 on 2026-09-25, so that the example game's 15. Nxc5 (47% -> 37%) is a question.
+OUTCOME_BANDS = (40.0, 60.0)
+OUTCOMES = ("losing", "level", "winning")  # the expected outcome for one side, from worst to best
+CHANGES = {
+    ("winning", "level"): "a winning game into a level one",
+    ("level", "losing"): "a level game into a losing one",
+    ("winning", "losing"): "a winning game into a losing one",
+}
 MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -115,6 +152,9 @@ class MoveReview:
     score_after: chess.engine.PovScore | None
     grade: int | None  # NAG_DUBIOUS_MOVE, NAG_MISTAKE, NAG_BLUNDER or None
     critical: bool
+    # the mover's expected outcome before and after the move ("losing", "level", "winning"), when analyzed
+    outcomes: tuple[str, str] | None = None
+    swing: bool = False  # an outcome swing (the rule is in the module docstring)
 
     @property
     def mover(self) -> chess.Color:
@@ -127,6 +167,11 @@ class MoveReview:
     @property
     def symbol(self) -> str:
         return GRADES[self.grade][2] if self.grade else ""
+
+    @property
+    def change(self) -> str:
+        """``turned a level game into a losing one`` for a swing, else nothing."""
+        return f"turned {CHANGES[self.outcomes]}" if self.swing else ""
 
 
 def is_analyzed(game: chess.pgn.Game) -> bool:
@@ -147,34 +192,88 @@ def white_cp(node: chess.pgn.ChildNode) -> tuple[int | None, chess.engine.PovSco
     return None, None
 
 
-def review_moves(game: chess.pgn.Game, thresholds: Thresholds = LICHESS_THRESHOLDS) -> list[MoveReview]:
-    """Every mainline move with its grade and whether it is a critical
-    moment (the rule is in the module docstring)."""
+def check_outcome_bands(bands: object) -> tuple[float, float]:
+    """``bands`` as ``(lower, upper)``; raise ``ValueError`` unless both are
+    finite numbers with 0 < lower < 50 < upper < 100."""
+    try:
+        lower, upper = bands
+    except (TypeError, ValueError):
+        lower = upper = None
+    numbers = all(isinstance(value, int | float) and not isinstance(value, bool) for value in (lower, upper))
+    if not (numbers and 0 < lower < 50 < upper < 100):  # also rejects NaN and infinities
+        raise ValueError(
+            "outcome_bands must be two finite numbers (lower, upper), White's winning chances in percent, "
+            f"with 0 < lower < 50 < upper < 100; not {bands!r}"
+        )
+    return float(lower), float(upper)
+
+
+def expected_outcome(white: float, bands: tuple[float, float], color: chess.Color) -> str:
+    """``winning``, ``level`` or ``losing`` for ``color``, from White's winning
+    chances ``white``: White is winning at ``bands[1]`` or more, Black at
+    ``bands[0]`` or less."""
+    lower, upper = bands
+    leader = chess.WHITE if white >= upper else chess.BLACK if white <= lower else None
+    return "level" if leader is None else "winning" if leader == color else "losing"
+
+
+def has_better_move(node: chess.pgn.ChildNode) -> bool:
+    """Whether the engine's first choice before ``node``'s move differs from
+    it: some engine line is stored at the position before the move, and none
+    starts with the move played (the rule is in the module docstring)."""
+    first_choices = {line.move for line in node.parent.variations[1:]}
+    return bool(first_choices) and node.move not in first_choices
+
+
+def review_moves(
+    game: chess.pgn.Game,
+    thresholds: Thresholds = LICHESS_THRESHOLDS,
+    outcome_bands: tuple[float, float] = OUTCOME_BANDS,
+) -> list[MoveReview]:
+    """Every mainline move with its grade, its expected outcomes, and whether
+    it is an outcome swing and a critical moment (the rules are in the module
+    docstring). An invalid ``outcome_bands`` raises ``ValueError``."""
+    bands = check_outcome_bands(outcome_bands)
     analyzed = is_analyzed(game)
     reviews = []
     cp_before: int | None = None
     score_before: chess.engine.PovScore | None = None
     for node in game.mainline():
         cp_after, score_after = white_cp(node) if analyzed else (None, None)
-        before = after = None
-        grade, critical = None, False
+        before = after = outcomes = None
+        grade, critical, swing = None, False, False
         if cp_before is not None and cp_after is not None:
-            mover_is_white = node.turn() == chess.BLACK
-            before, after = win_percent(cp_before), win_percent(cp_after)
-            if not mover_is_white:
+            mover = not node.turn()
+            white_before, white_after = win_percent(cp_before), win_percent(cp_after)
+            before, after = white_before, white_after
+            if mover == chess.BLACK:
                 before, after = 100 - before, 100 - after
             loss = max(before - after, 0.0)
             grade = classify(loss, thresholds)
-            critical = loss >= thresholds.mistake
-        reviews.append(MoveReview(node, before, after, score_before, score_after, grade, critical))
+            # the bands are read from White's chances as computed, so an edge set to a position's exact value holds
+            outcomes = (expected_outcome(white_before, bands, mover), expected_outcome(white_after, bands, mover))
+            # With the clamped ``loss`` at the floor the mover's chances fell, so its band can only stay or
+            # worsen: the first condition overlaps the second. Both are kept, as the rule states them.
+            swing = (
+                OUTCOMES.index(outcomes[1]) < OUTCOMES.index(outcomes[0])
+                and loss >= thresholds.inaccuracy
+                and has_better_move(node)
+            )
+            critical = loss >= thresholds.mistake or swing
+        reviews.append(MoveReview(node, before, after, score_before, score_after, grade, critical, outcomes, swing))
         cp_before, score_before = cp_after, score_after
     return reviews
 
 
-def critical_moments(game: chess.pgn.Game, thresholds: Thresholds = LICHESS_THRESHOLDS) -> list[MoveReview]:
+def critical_moments(
+    game: chess.pgn.Game,
+    thresholds: Thresholds = LICHESS_THRESHOLDS,
+    outcome_bands: tuple[float, float] = OUTCOME_BANDS,
+) -> list[MoveReview]:
     """The game's critical moments, in move order: the moves that lost the
-    mover at least ``thresholds.mistake`` points of winning chances."""
-    return [review for review in review_moves(game, thresholds) if review.critical]
+    mover at least ``thresholds.mistake`` points of winning chances, and the
+    outcome swings."""
+    return [review for review in review_moves(game, thresholds, outcome_bands) if review.critical]
 
 
 # --- the result -----------------------------------------------------------------
@@ -382,9 +481,16 @@ def mate_clause(review: MoveReview) -> str:
     return ""
 
 
+def grade_words(review: MoveReview) -> str:
+    """``A mistake``, or for an outcome swing ``A mistake that turned a level
+    game into a losing one``."""
+    _, kind, _ = GRADES[review.grade]
+    return f"{kind} that {review.change}" if review.swing else kind
+
+
 def note_text(review: MoveReview) -> str:
     """The note after a graded move in the moves section."""
-    _, kind, _ = GRADES[review.grade]
+    kind = grade_words(review)
     clause = mate_clause(review)
     chances = f"{side(review.mover)}'s winning chances fall from {percent(review.before)} to {percent(review.after)}"
     return f"{kind}: {clause}; {chances}." if clause else f"{kind}: {chances}."
@@ -573,7 +679,8 @@ def lead_html(article: Article, thresholds: Thresholds) -> str:
     elif k:
         sentences.append(
             f"The engine found {plural(k, 'critical moment')}, where a single move cost at least {threshold} points "
-            f"of winning chances; {'it is' if k == 1 else 'each is'} a “what would you play?” question below."
+            f"of winning chances or changed the expected result; {'it is' if k == 1 else 'each is'} a “what would "
+            "you play?” question below."
         )
     else:
         sentences.append(
@@ -652,7 +759,7 @@ def moment_html(review: MoveReview, number: int) -> str:
         )
     else:
         answer = f"<p>The analysis records no better move than {esc(played)}.</p>\n"
-    _, kind, _ = GRADES[review.grade]
+    kind = grade_words(review)
     clause = mate_clause(review)
     answer += (
         f"<p>In the game {mover} played <b>{esc(played)}</b>, {kind.lower()}"
@@ -968,6 +1075,7 @@ def build_site(
     title: str = "Games",
     thresholds: Thresholds = LICHESS_THRESHOLDS,
     presume_threshold: float = PRESUME_THRESHOLD,
+    outcome_bands: tuple[float, float] = OUTCOME_BANDS,
 ) -> SiteReport:
     """Write the site for ``games`` (a ``Collection``, or any iterable of
     ``CollectedGame``) to ``out_dir``: ``index.html``, ``assets/style.css``
@@ -988,14 +1096,22 @@ def build_site(
     analysis makes it a win, 70 by default. A value below 55 or above 95
     raises ``ValueError`` before anything is written. The games are not
     changed.
+
+    ``outcome_bands`` is the pair ``(lower, upper)`` of White's winning
+    chances, in percent, that decides a position's expected outcome for the
+    outcome swings (the rule is in the module docstring): Black is winning at
+    ``lower`` or less, White at ``upper`` or more, 40 and 60 by default. Both
+    must be finite, with 0 < lower < 50 < upper < 100; any other pair raises
+    ``ValueError`` before anything is written.
     """
     check_presume_threshold(presume_threshold)
+    check_outcome_bands(outcome_bands)
     out_dir = Path(out_dir)
     articles = []
     for item in games:
         analyzed = is_analyzed(item.game)
         result = shown_result(item.game, presume_threshold)
-        articles.append(Article(item, review_moves(item.game, thresholds), analyzed, result))
+        articles.append(Article(item, review_moves(item.game, thresholds, outcome_bands), analyzed, result))
     articles.sort(key=lambda article: article.stem)
 
     report = SiteReport()

@@ -1,0 +1,17 @@
+[Event "Club championship"]
+[Site "Verona"]
+[Date "2013.01.01"]
+[Round "1"]
+[White "Ada Example"]
+[Black "Bert Sample"]
+[Result "1/2-1/2"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+
+1. e4 { [%eval 0.20] } 1... e5 { [%eval 0.20] } 2. Nf3 { [%eval 0.20] } 2... Nc6
+{ [%eval 0.20] } 3. Bc4 { [%eval 0.20] } 3... Bc5 { [%eval 0.20] } 4. c3
+{ [%eval 0.20] } 4... Nf6 { [%eval 0.20] } 5. d3 { [%eval 0.20] } 5... d6
+{ [%eval 0.20] } 6. O-O { [%eval 0.20] } 6... O-O { [%eval 0.20] } 7. Re1 $6
+{ [%eval -1.90] } ( 7. Bb3 a6 8. h3 $14 ) 7... a6 { [%eval -1.90] } ( 7... Ng4
+8. Re2 Qf6 $17 ) 8. h3 { [%eval -1.90] } 8... Nh5 $6 { [%eval -0.40] } ( 8... Ba7
+9. Nbd2 $17 ) 9. Nbd2 { [%eval -0.40] } ( 9. Nxe5 dxe5 10. Qxh5 $14 ) 9... Nf4
+{ [%eval -0.40] } 1/2-1/2

@@ -199,7 +199,18 @@ For an analyzed game the moves carry notes (`?!` inaccuracy, `?` mistake, `??` b
 **critical moment** gets a diagram and a question, "What would you play?", with the answer hidden
 until you tap it. A critical moment is a move that cost its side at least 20 points of winning chances
 (a mistake or a blunder), computed from the `[%eval]` comments that `analyze` wrote, with the same win
-percentage and thresholds that grade the moves. Games that have not been analyzed, or whose only
+percentage and thresholds that grade the moves.
+
+A move that changed the expected result is a critical moment too, even when it cost less. After each
+move the position is *White winning* (60% or more for White), *Black winning* (40% or less) or *level*.
+A move counts when it made that worse for its side (winning to level, level to losing, or winning to
+losing), cost its side at least 10 points (the inaccuracy threshold in use), and the analysis shows a
+better move there: an engine line that `analyze` stored at that position starts with another move. Only
+the stored analysis is read, so nothing is analyzed again. Its note says how the expected result changed, for example "an inaccuracy that turned a
+level game into a losing one". The bands are `build_site(..., outcome_bands=(40, 60))`: the lower one
+above 0 and below 50, the upper one above 50 and below 100.
+
+Games that have not been analyzed, or whose only
 evaluations came from their source, still get an article, without notes or questions. Pass the games
 and their analysis together (`site games/ analyzed/`) and the analyzed copy of each game is used.
 Building again into the same folder removes the pages it wrote before for games that are no longer in
