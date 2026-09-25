@@ -215,10 +215,16 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   A move is an **outcome swing** when all three hold:
   1. it makes the expected outcome worse for the side that played it (winning → level, level →
      losing, or winning → losing);
-  2. it cost that side at least 10 points of winning chances, the inaccuracy threshold of the
-     decided grading (a fixed rule, not a new parameter);
+  2. it cost that side at least as many points of winning chances as the inaccuracy threshold in
+     use (10 by default, the decided grading), so that every swing is a graded move. With custom
+     `thresholds`, the floor follows the inaccuracy threshold; it is not a new parameter;
   3. **a better move exists**: the engine's first choice in the position before differs from the
-     move played.
+     move played. The first choice is read from the stored analysis as the first move of **any**
+     engine line stored at that position: the move's own better line, or the previous move's
+     refutation, which is the engine's line from the same position. If no line is stored there,
+     the move played was the first choice. "A line is stored before the move" is **not** the test,
+     because the previous move's refutation is stored there too and can start with the move played,
+     as in all 3 exclusions below.
 
   Condition 3 matters because a move that was the engine's own first choice is not an error: its
   drop comes from the engine's search limit. There is also nothing better to show as the answer.
@@ -249,7 +255,9 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   2. a move that changes the band **in favour of** the side that played it is not a moment;
   3. a band change costing less than 10 points is not a moment;
   4. a 10–20-point loss that stays inside one band is not a moment;
-  5. a 10–20-point band change whose move **was the engine's first choice** is not a moment;
+  5. a 10–20-point band change whose move **was the engine's first choice** is not a moment, both
+     with no line stored before it and with the previous move's refutation as the only line there,
+     starting with the move played (the shape of the owner's 3 exclusions);
   6. a move that is both a 20-point critical moment and a swing is shown once, and its note says the
      expected result changed;
   7. **the edges and the parameter:**
