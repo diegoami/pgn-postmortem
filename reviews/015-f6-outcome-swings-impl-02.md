@@ -233,3 +233,25 @@ four questions: 15. Nxc5, 31… Qa2, 37… Rg2+ and 40. Ra4, which is what I got
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `378dd9c` (pull request #15); the clean round, 02, covers `dbb228b`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36130673138. F-6's done-when (`ROADMAP.md`, F-6's block, with the owner's band change to 40–60%):
+
+- **Items 1–9:** each is met by a test on the hand-written fixtures in `tests/fixtures/site/swings/`:
+  - swings in both directions become moments with their notes;
+  - moves are not moments when they change the band in the mover's favour, cost less than the floor, stay inside a band, or were the engine's own first choice (both shapes);
+  - a move that is both a critical moment and a swing is shown once;
+  - the default band edges, the band parameter and the up-front validation are checked;
+  - the counts and the lead's wording are right;
+  - unanalyzed games have no moments.
+
+  The reviewer broke each rule, 16 breaks in round 01 and 9 in round 02, and each broke its test.
+- **Golden files:** regenerated; they changed in round 01 (the lead's wording and three notes), and not in round 02.
+- **The owner's verdict:** the owner's book was rebuilt from the branch (at `dbb228b`) with no re-analysis. The example game has 15. Nxc5, 31… Qa2, 37… Rg2+ and 40. Ra4. The owner commented "I agree. Diego" (https://github.com/diegoami/pgn-postmortem/pull/15#issuecomment-5831713045).
+- **Counts on the owner's book:** 390 critical moments become 675, which is 285 new questions in 109 games, with 3 exclusions. The orchestrator re-checked this and the reviewer reproduced it in round 02.
+- **The gates:** `ruff check .` is clean, and `pytest -q` gives 134 passed.
+
+Left for F-1.3 by the owner's decision: round-01 findings 2 and 3, and round-02 findings 1–3. These are the README wording and wrapping, fixture notes (8. g4 and 7. b4 lines set by hand, item 4's stated reason), and pinning the default band exactly.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
