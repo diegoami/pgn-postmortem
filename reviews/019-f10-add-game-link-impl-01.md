@@ -44,3 +44,12 @@ None.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `4621492` (pull request #19); the clean round, 01, covers `879550c`. CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36148621351.
+
+- **The owner's wording is in F-10's row,** quoted verbatim, with the decision that it's part of F-10, its default and reason, and the alternative not chosen.
+- **Only `ROADMAP.md` changed,** plus this record.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
