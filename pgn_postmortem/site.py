@@ -618,9 +618,12 @@ def describe_position(board: chess.Board) -> str:
 
 
 def board_html(board: chess.Board, *, flipped: bool = False, highlight: Iterable[int] = (), label: str = "") -> str:
-    """The position as an 8x8 grid of empty elements, one line per rank: the
-    squares' colours are the board's background, each piece a class of the
-    shared stylesheet, the coordinates ``data-`` attributes on the edge squares."""
+    """The position as an 8x8 grid of empty elements, one line per rank. Each
+    cell draws its own square: its colour (``l`` or ``d``), its piece (a class
+    of the shared stylesheet) and the highlight (``hl``), so they share one box
+    at any size; the board draws no square pattern of its own, which would
+    round differently from the cells when a square is not a whole number of
+    pixels. The coordinates are ``data-`` attributes on the edge squares."""
     highlight = set(highlight)
     ranks = range(8) if flipped else range(7, -1, -1)
     files = list(range(7, -1, -1) if flipped else range(8))
@@ -629,13 +632,13 @@ def board_html(board: chess.Board, *, flipped: bool = False, highlight: Iterable
         cells = []
         for col, file in enumerate(files):
             square = chess.square(file, rank)
-            classes = []
+            classes = ["l" if chess.BB_LIGHT_SQUARES & chess.BB_SQUARES[square] else "d"]
             piece = board.piece_at(square)
             if piece:
                 classes.append(PIECE_CLASSES[piece.symbol()])
             if square in highlight:
                 classes.append("hl")
-            attrs = f' class="{" ".join(classes)}"' if classes else ""
+            attrs = f' class="{" ".join(classes)}"'
             if col == 0:
                 attrs += f' data-r="{rank + 1}"'
             if row == 7:
@@ -1305,13 +1308,13 @@ STYLE = """\
 :root {
   --bg: #ffffff; --fg: #202122; --muted: #54595d; --link: #3366cc; --rule: #a2a9b1;
   --box: #f8f9fa; --note: #54595d; --answer: #eaf3ff;
-  --light: #f0d9b5; --dark: #b58863; --hl: rgba(255, 213, 0, .45);
+  --light: #f0d9b5; --dark: #b58863; --hl-light: #f7d764; --hl-dark: #d6ab36;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #101418; --fg: #e8eaed; --muted: #a8adb3; --link: #8ab4f8; --rule: #3c4043;
     --box: #1b2026; --note: #b0b6bd; --answer: #17263a;
-    --light: #d8c3a0; --dark: #9c7453; --hl: rgba(255, 213, 0, .4);
+    --light: #d8c3a0; --dark: #9c7453; --hl-light: #e8ca60; --hl-dark: #c49b32;
   }
 }
 * { box-sizing: border-box; }
@@ -1350,11 +1353,16 @@ article::after { content: ""; display: block; clear: both; }
 .sym { white-space: nowrap; }
 .board {
   display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; width: 100%; max-width: 24rem;
-  background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 25% 25%;
   border: 1px solid var(--rule); font: 600 .65rem/1 system-ui, sans-serif; margin: 0 auto;
 }
 .board i { position: relative; background-size: 100% 100%; background-repeat: no-repeat; }
-.board i.hl { background-color: var(--hl); }
+/* Each cell draws its own square's colour, under its piece: no pattern on the board, whose squares
+   would round differently from the cells. The highlight is solid: rgba(255, 213, 0, .45) over the
+   square's colour (.4 in dark mode), worked out, so the piece stays drawn over it. */
+.board i.l { background-color: var(--light); }
+.board i.d { background-color: var(--dark); }
+.board i.l.hl { background-color: var(--hl-light); }
+.board i.d.hl { background-color: var(--hl-dark); }
 .board i[data-r]::before, .board i[data-f]::after { position: absolute; color: #5b4632; opacity: .8; }
 .board i[data-r]::before { content: attr(data-r); top: 3%; left: 4%; }
 .board i[data-f]::after { content: attr(data-f); bottom: 3%; right: 6%; }
