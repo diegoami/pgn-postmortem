@@ -100,3 +100,20 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `88ebc62` (pull request #13); the clean round, 02, covers `ddc74b9`. CI on the merge commit passed on Python 3.11 and 3.13: https://github.com/diegoami/pgn-postmortem/actions/runs/36114715578. F-5's done-when (`ROADMAP.md`, F-5's block), all met with tests checked in rounds 01–02:
+
+1–4. **Presuming from the analysis:** ≥70% gives a win (White and Black), 32–35% and 65–68% give a draw, the threshold parameter is used, and the threshold boundary counts as a win.
+5. **The threshold's range:** thresholds outside 55–95% are rejected, including up front in `build_site` and for an empty collection.
+6–7. **The board decides first:** checkmate, stalemate and insufficient material decide from the board, and a final mate-score eval decides for the side with the mate.
+8. **Nothing is left as a bare "\*":** "not recorded" wording is used, and no bare "\*" appears outside the PGN section.
+9. **The source is untouched:** the PGN `Result`, the `PostmortemId` and the file names are unchanged.
+10. **The plural is fixed:** "inaccuracies".
+
+**The gates:** `ruff check .` is clean, and `pytest -q` gives 104 passed. The golden files are unchanged, as expected.
+
+Left as accepted by the owner: round-01 finding 4 (the scope choices). Finding 5 (marking F-5 as landed in `ROADMAP.md`) was decided by the owner on 2026-09-25 and happens in the next record change.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
