@@ -482,12 +482,11 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     and a back/forward-cache restore redraws them. The quiz page has no "Clear history" button of
     its own: the index's button clears the whole site's history, which removes the marks here too.
     With `--no-history`, the page has no script, marks or `data-` attributes.
-  - **Stale pages:** a `quiz.html` the builder wrote (it carries F-8's generator mark) is removed when
-    the site is rebuilt without a player. A `quiz.html` the builder didn't write is never removed.
+  - **Stale pages:** a `quiz.html` the builder wrote (it carries the builder's generator marker,
+    `GENERATOR`, from F-1.2's rebuild rule, `0602071`) is removed when the site is rebuilt without a
+    player. A `quiz.html` the builder didn't write is never removed.
   - **Files to update:** `README.md`, `pgn_postmortem/site.py`'s docstring, and the "covers" cells of
     the tests and script rows in `CLAUDE.md`'s gates table.
-  - **Without a player** (no `--player`/`--alias`, so every game is kept), there is no quiz page and
-    no link to it, because there are no "own" moves.
 - **Done when:** the gates pass, including:
   1. **Python tests on fixtures:**
      - the quiz page lists exactly the player's own critical moments, including outcome swings, and
