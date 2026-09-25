@@ -1,0 +1,11 @@
+[Event "Club championship"]
+[Site "Verona"]
+[Date "2012.04.03"]
+[Round "?"]
+[White "Ada Example"]
+[Black "Bert Sample"]
+[Result "*"]
+[SetUp "1"]
+[FEN "4k3/8/8/8/8/8/3r4/3K4 w - - 0 60"]
+
+60. Kxd2 *

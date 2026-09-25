@@ -1,0 +1,12 @@
+[Event "Club championship"]
+[Site "Verona"]
+[Date "2012.05.02"]
+[Round "?"]
+[White "Ada Example"]
+[Black "Bert Sample"]
+[Result "*"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+[SetUp "1"]
+[FEN "4k2q/8/8/8/4K3/8/8/8 b - - 0 60"]
+
+60... Qh4+ { [%eval #-8] } 61. Kd5 { [%eval #-8] } *

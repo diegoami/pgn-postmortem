@@ -40,6 +40,20 @@ the side of the player to move, and asks "What would you play?"; the answer
 ``<details>`` element, hidden until tapped. The engine lines are the
 variations the analysis step attached: the best line from the position before
 the move, and the refutation after it.
+
+**Results that were not recorded** (ROADMAP.md, F-5). For a game whose
+``Result`` is ``*`` or missing, the site shows the result ``shown_result``
+gives, in this order: the board's, if the final position is checkmate (the
+mating side wins), stalemate or insufficient material (a draw); else, for an
+analyzed game whose final move carries an ``[%eval]``, a win for the side
+with at least ``presume_threshold`` (70 by default, 55 to 95) winning chances
+by ``analysis.win_percent`` (a forced mate counts as 100), and a draw
+otherwise; else the site says the result was not recorded. The result is
+shown like a recorded one, with no marker, everywhere outside the PGN section
+(the infobox, the lead, the end of the moves, the conclusion, the index).
+The game itself is untouched: its ``Result`` header, so its id and its file
+name, and the article's PGN section stay as the source had them. A recorded
+result is always shown as recorded.
 """
 
 from __future__ import annotations
@@ -73,6 +87,9 @@ GRADES = {
 }
 POSITION_SYMBOLS = {10: "=", 13: "∞", 14: "⩲", 15: "⩱", 16: "±", 17: "∓", 18: "+−", 19: "−+"}
 RESULTS = {"1-0": "1–0", "0-1": "0–1", "1/2-1/2": "½–½"}
+NOT_RECORDED = "*"  # the PGN result of a game in progress or with an unknown result
+PRESUME_THRESHOLD = 70.0  # the winning chances (%) that make an unrecorded result a win (owner, 2026-09-24)
+PRESUME_THRESHOLD_RANGE = (55.0, 95.0)
 MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -160,6 +177,58 @@ def critical_moments(game: chess.pgn.Game, thresholds: Thresholds = LICHESS_THRE
     return [review for review in review_moves(game, thresholds) if review.critical]
 
 
+# --- the result -----------------------------------------------------------------
+
+
+def check_presume_threshold(threshold: float) -> None:
+    """Raise ``ValueError`` unless ``threshold`` is from 55 to 95."""
+    low, high = PRESUME_THRESHOLD_RANGE
+    if not low <= threshold <= high:  # also rejects NaN
+        raise ValueError(
+            f"presume_threshold must be from {low:g} to {high:g} (a side's winning chances in percent), "
+            f"not {threshold!r}"
+        )
+
+
+def final_white_chances(game: chess.pgn.Game) -> float | None:
+    """White's winning chances (0-100) in the final position of an analyzed
+    game, from the ``[%eval]`` of its last move (a forced mate counts as 100
+    for the side with the mate), or None: not analyzed, or no eval there."""
+    if not is_analyzed(game):
+        return None
+    score = game.end().eval()
+    if score is None:
+        return None
+    white = score.white()
+    if white.is_mate():
+        return 100.0 if white > chess.engine.Cp(0) else 0.0
+    return win_percent(white.score())
+
+
+def shown_result(game: chess.pgn.Game, presume_threshold: float = PRESUME_THRESHOLD) -> str:
+    """The result the site shows for ``game``, in PGN notation: its
+    ``Result`` header when one is recorded; otherwise the board's result,
+    else the result presumed from the analysis, else ``*`` (not recorded).
+    The rule is in the module docstring. ``game`` is not changed."""
+    check_presume_threshold(presume_threshold)
+    recorded = (game.headers.get("Result") or NOT_RECORDED).strip()
+    if recorded not in ("", NOT_RECORDED):
+        return recorded
+    board = game.end().board()
+    if board.is_checkmate():
+        return "0-1" if board.turn == chess.WHITE else "1-0"
+    if board.is_stalemate() or board.is_insufficient_material():
+        return "1/2-1/2"
+    white = final_white_chances(game)
+    if white is None:
+        return NOT_RECORDED
+    if white >= presume_threshold:
+        return "1-0"
+    if 100 - white >= presume_threshold:
+        return "0-1"
+    return "1/2-1/2"
+
+
 def engine_line(node: chess.pgn.GameNode) -> tuple[list[chess.Move], str] | None:
     """The first engine line the analysis step attached off ``node`` (a
     variation, not the mainline), and the symbol of the position it ends in."""
@@ -208,7 +277,11 @@ def number_word(n: int) -> str:
 
 
 def plural(n: int, word: str, words: str | None = None) -> str:
-    return f"{number_word(n)} {word if n == 1 else (words or word + 's')}"
+    """``one move``, ``two moves``; a consonant and ``y`` become ``ies``
+    (``two inaccuracies``)."""
+    if words is None:
+        words = word[:-1] + "ies" if word.endswith("y") and word[-2:-1] not in ("", *"aeiou") else word + "s"
+    return f"{number_word(n)} {word if n == 1 else words}"
 
 
 def date_parts(date: str | None) -> tuple[int | None, int | None, int | None]:
@@ -276,6 +349,12 @@ def format_eval(score: chess.engine.PovScore) -> str:
 def symbol_html(symbol: str) -> str:
     """A position symbol (``+−``) after a line, kept on the line's last line."""
     return f'{NBSP}<span class="sym">{symbol}</span>' if symbol else ""
+
+
+def result_text(result: str, not_recorded: str) -> str:
+    """``1-0`` as ``1–0``; ``*`` as the words ``not_recorded``, never a bare
+    ``*``; any other value as written."""
+    return RESULTS.get(result, not_recorded if result == NOT_RECORDED else result)
 
 
 def percent(value: float) -> str:
@@ -382,6 +461,7 @@ class Article:
     item: CollectedGame
     reviews: list[MoveReview]
     analyzed: bool
+    result: str  # the result shown (``shown_result``): recorded, from the board, presumed, or "*"
 
     @property
     def game(self) -> chess.pgn.Game:
@@ -412,8 +492,10 @@ class Article:
         return f"{self.white} vs. {self.black}" + (f", {self.year}" if self.year else "")
 
     @property
-    def result(self) -> str:
-        return self.game.headers.get("Result", "*")
+    def presumed(self) -> bool:
+        """Whether the result shown was not recorded but read from the board
+        or presumed from the analysis."""
+        return self.result != self.game.headers.get("Result", NOT_RECORDED)
 
     @property
     def moments(self) -> list[MoveReview]:
@@ -514,7 +596,7 @@ def infobox_html(article: Article) -> str:
     rows = [
         ("White", player("White")),
         ("Black", player("Black")),
-        ("Result", esc(RESULTS.get(article.result, article.result))),
+        ("Result", esc(result_text(article.result, "Not recorded"))),
         ("Date", esc(format_date(headers.get("Date")) or "Unknown")),
     ]
     for label, key in (("Event", "Event"), ("Round", "Round"), ("Site", "Site")):
@@ -628,7 +710,7 @@ def moves_html(article: Article) -> str:
             token = f"<b>{token}</b> <span class=\"note\">({esc(note_text(review))})</span>"
             need_number = True
         tokens.append(token)
-    tokens.append(esc(RESULTS.get(article.result, article.result)))
+    tokens.append(esc(result_text(article.result, "(result not recorded)")))
     flush()
     return "".join(blocks)
 
@@ -649,7 +731,10 @@ def conclusion_html(article: Article) -> str:
     elif board.is_insufficient_material():
         sentences.append(f"The game ended after {last}, with too little material left on the board for a mate.")
     else:
-        sentences.append(f"The game ended {esc(RESULTS.get(result, result))} after {last}.")
+        if result == NOT_RECORDED:
+            sentences.append(f"The score stops after {last}; the result was not recorded.")
+        else:
+            sentences.append(f"The game ended {esc(RESULTS.get(result, result))} after {last}.")
         final = article.reviews[-1] if article.reviews else None
         cp = white_cp(final.node)[0] if (final and article.analyzed) else None
         if cp is not None:
@@ -663,6 +748,10 @@ def conclusion_html(article: Article) -> str:
                 chances = white_chances if winner == chess.WHITE else 100 - white_chances
                 if chances >= 60:
                     sentences.append(f"{name} was clearly ahead: the engine gives {percent(chances)} winning chances.")
+                elif article.presumed:  # a win presumed from these chances, so from the position itself
+                    sentences.append(
+                        f"{name} was ahead: the engine gives {percent(chances)} winning chances in the final position."
+                    )
                 else:
                     sentences.append(
                         f"The engine gives {name} only {percent(chances)} winning chances in the final position, "
@@ -755,7 +844,7 @@ def index_html(articles: list[Article], site_title: str) -> str:
                 meta.append("not analyzed")
             parts.append(
                 f'<li><a href="games/{article.filename}">{esc(article.white)} vs. {esc(article.black)}</a> '
-                f'<span class="result">{esc(RESULTS.get(article.result, article.result))}</span>'
+                f'<span class="result">{esc(result_text(article.result, "result not recorded"))}</span>'
                 f'<span class="meta">{esc(" · ".join(meta))}</span></li>\n'
             )
         parts.append("</ol>\n</section>\n")
@@ -878,6 +967,7 @@ def build_site(
     *,
     title: str = "Games",
     thresholds: Thresholds = LICHESS_THRESHOLDS,
+    presume_threshold: float = PRESUME_THRESHOLD,
 ) -> SiteReport:
     """Write the site for ``games`` (a ``Collection``, or any iterable of
     ``CollectedGame``) to ``out_dir``: ``index.html``, ``assets/style.css``
@@ -891,12 +981,21 @@ def build_site(
     that the builder did not write (no ``GENERATOR`` line) is never touched.
     The output depends only on the games and the options: building twice
     gives the same bytes.
+
+    A game whose result was not recorded is shown with the result
+    ``shown_result`` gives (the rule is in the module docstring):
+    ``presume_threshold`` is the winning chances, in percent, at which the
+    analysis makes it a win, 70 by default. A value below 55 or above 95
+    raises ``ValueError`` before anything is written. The games are not
+    changed.
     """
+    check_presume_threshold(presume_threshold)
     out_dir = Path(out_dir)
     articles = []
     for item in games:
         analyzed = is_analyzed(item.game)
-        articles.append(Article(item, review_moves(item.game, thresholds), analyzed))
+        result = shown_result(item.game, presume_threshold)
+        articles.append(Article(item, review_moves(item.game, thresholds), analyzed, result))
     articles.sort(key=lambda article: article.stem)
 
     report = SiteReport()
