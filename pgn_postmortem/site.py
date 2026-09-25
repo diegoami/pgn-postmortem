@@ -277,7 +277,11 @@ def number_word(n: int) -> str:
 
 
 def plural(n: int, word: str, words: str | None = None) -> str:
-    return f"{number_word(n)} {word if n == 1 else (words or word + 's')}"
+    """``one move``, ``two moves``; a consonant and ``y`` become ``ies``
+    (``two inaccuracies``)."""
+    if words is None:
+        words = word[:-1] + "ies" if word.endswith("y") and word[-2:-1] not in ("", *"aeiou") else word + "s"
+    return f"{number_word(n)} {word if n == 1 else words}"
 
 
 def date_parts(date: str | None) -> tuple[int | None, int | None, int | None]:

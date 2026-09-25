@@ -234,3 +234,12 @@ def test_the_result_header_the_id_and_the_file_names_are_unchanged(tmp_path):
         f"{file_stem(item.game, item.id)}.html" for item in collection
     )
 
+
+# --- 10: plurals -------------------------------------------------------------------------
+
+
+def test_counts_of_two_or_more_inaccuracies_read_inaccuracies(site):
+    assert "Black made two inaccuracies" in results_shown(site, "white-73.pgn")["conclusion"]
+    assert "White made two inaccuracies" in results_shown(site, "white-27.pgn")["conclusion"]
+    for path in site.rglob("*.html"):
+        assert "inaccuracys" not in path.read_text(encoding="utf-8"), path.name
