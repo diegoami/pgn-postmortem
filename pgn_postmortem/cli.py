@@ -12,10 +12,14 @@
         in DIR yet, writing it to DIR with [%eval] comments.
 
     pgn-postmortem site INPUT... --out DIR [--player NAME] [--alias NAME]... [--title TEXT]
+                        [--site-key KEY] [--no-history]
         Read the same way, keeping the analysis of games that `analyze` wrote,
         and write a static site to DIR: one article per game and an index by
         year. Analyzed games get notes, diagrams and a "what would you play?"
         question at each critical moment; the others get a plain article.
+        Every page carries a small script that keeps a reading history in the
+        reader's browser; --site-key sets the key it is stored under (by
+        default one derived from the title), and --no-history leaves it out.
 
 Without --player or --alias, every game is kept.
 """
@@ -28,7 +32,7 @@ import sys
 from pgn_postmortem import __version__
 from pgn_postmortem.analysis import DEFAULT_TIME, EngineFailure, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection
-from pgn_postmortem.site import build_site, display_name
+from pgn_postmortem.site import build_site, check_site_key, display_name
 
 
 def add_reading_options(parser: argparse.ArgumentParser) -> None:
@@ -76,10 +80,17 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def site_key(value: str) -> str:
+    try:
+        return check_site_key(value)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(str(err)) from None
+
+
 def cmd_site(args: argparse.Namespace) -> int:
     collection = read_collection(args, keep_analysis=True)
     title = args.title or (f"Games of {display_name(args.player)}" if args.player else "Games")
-    report = build_site(collection, args.out, title=title)
+    report = build_site(collection, args.out, title=title, history=args.history, site_key=args.site_key)
     print(report.summary(args.out))
     return 0
 
@@ -112,6 +123,19 @@ def build_parser() -> argparse.ArgumentParser:
     add_reading_options(site)
     site.add_argument("--out", metavar="DIR", required=True, help="where the site is written")
     site.add_argument("--title", help='the site\'s title (default: "Games of <player>", or "Games")')
+    site.add_argument(
+        "--site-key",
+        type=site_key,
+        metavar="KEY",
+        help="the key the reading history is stored under in the reader's browser: 1 to 64 letters, digits, "
+        "'.', '_' or '-' (default: derived from the title)",
+    )
+    site.add_argument(
+        "--no-history",
+        dest="history",
+        action="store_false",
+        help="write the pages without the reading-history script, its section and its data- attributes",
+    )
     site.set_defaults(func=cmd_site)
     return parser
 
