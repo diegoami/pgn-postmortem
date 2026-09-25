@@ -101,3 +101,28 @@ ROADMAP wording points from the shaping review's completion note are now done in
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-25 as `f9c54d3` (pull request #21), on the owner's go ("Checked, looks fine", with the choice "merge after round 02"). The clean round, 02, covers `8814cbd`. CI on the merge commit passed on Python 3.11 and 3.13, with the script gate on Node 22: https://github.com/diegoami/pgn-postmortem/actions/runs/36157618602. F-9's done-when (`ROADMAP.md`, F-9's block):
+
+1. **Python tests on fixtures:**
+   - only the player's own moments (names matched like `Collection.read`, and both sides when both match);
+   - the full tie order on exact points;
+   - links to existing anchors, with each line's game and move equal to its answer's;
+   - no page with no player or blank names, and a "none" page for a player without own moments;
+   - a stale builder-written `quiz.html` removed and a foreign one kept;
+   - exactly two new `data-` attributes, and none with `--no-history`;
+   - the library route `Collection.read(..., player=...).build_site(out)`;
+   - the count line counting only games with a question.
+2. **Node tests** on the "answered" marks, the order, the back/forward redraw, clearing through the index, and no storage: 32 tests on the script gate.
+3. **Golden files:** both sets regenerated with their commands (the quiz page, the index link, and the articles' inlined script).
+4. **The owner's check:** a served preview of the owner's book at `6ed9b8b` (334 questions, first 30… Rd2): "Checked, looks fine", recorded on the PR by the orchestrator (https://github.com/diegoami/pgn-postmortem/pull/21#issuecomment-5835291676), not signed by the owner. Round 02 confirmed that the count line is the only difference in the owner's book between `6ed9b8b` and `8814cbd`: it now reads "334 questions from 122 games".
+
+**The gates:** `ruff check .` is clean, `pytest -q` gives 175 passed, and the script gate gives 32 passed.
+
+**Also:** the owner asked for F-9's plan text in `ROADMAP.md` to get two wording fixes in this PR ("the generator marker"; the no-player rule stated once).
+
+Left as the owner decided: round-01 finding 2 (a rebuild with a player overwrites a hand-written `quiz.html`, as the index and articles already do). Left for a later change: round-02's non-blocking point, a one-line assertion on the game count of the "none" page.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
