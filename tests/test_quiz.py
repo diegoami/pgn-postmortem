@@ -340,3 +340,14 @@ def test_the_fixture_site_has_a_quiz_of_ada_examples_one_own_moment(tmp_path):
         ("3... Nf6", "9705c13f05", "3b")
     ]
     assert lines(tmp_path)[0]["href"] == "games/2020-06-01-9705c13f05.html#moment-1"
+
+
+def test_the_lead_says_how_many_questions_from_how_many_games(tmp_path, site):
+    def lead(root: Path) -> str:
+        return plain(parse(root / "quiz.html").find_all("p", "lead")[0].text())
+
+    # others.pgn is in the site but not one of Ada Example's games
+    assert lead(site).startswith("Seven questions from six games of Ada Example's: each is a critical moment where "
+                                 "Ada Example was the one to move, a move that cost at least 20 points")  # fmt: skip
+    build([ANALYZED], tmp_path, *PLAYER)
+    assert lead(tmp_path).startswith("One question from six games of Ada Example's: it is a critical moment")

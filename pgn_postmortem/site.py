@@ -1217,7 +1217,8 @@ def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str,
         return page(title, "".join(parts), root="", site_title=site_title, history=history, home=True)
 
     parts.append(
-        f'<p class="lead">{plural(len(entries), "question").capitalize()} from {of_games}: each is a critical '
+        f'<p class="lead">{plural(len(entries), "question").capitalize()} from {of_games}: '
+        f"{'it is' if len(entries) == 1 else 'each is'} a critical "
         f"moment where {name} was the one to move, {what}. The move that cost the most comes first, with the "
         "points of winning chances each one cost. Each line leads to its “what would you play?” question, where "
         "the answer stays hidden until you tap it.</p>\n"
