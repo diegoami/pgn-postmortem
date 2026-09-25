@@ -191,9 +191,10 @@ The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.
 
 `pgn-postmortem site` writes `index.html` (the games by year), one `games/<date>-<id>.html` article
 per game and one stylesheet. Open `index.html` in a browser, or copy the folder to a phone: every link
-is relative, nothing loads from the network, there is no JavaScript, and the colours follow the
-system's light or dark mode. Each article has an infobox with the final position, a lead paragraph,
-the moves, a conclusion and the PGN, all in template prose.
+is relative, nothing loads from the network, and the colours follow the system's light or dark mode.
+The only JavaScript is the optional reading history below; without it the pages read the same. Each
+article has an infobox with the final position, a lead paragraph, the moves, a conclusion and the
+PGN, all in template prose.
 
 For an analyzed game the moves carry notes (`?!` inaccuracy, `?` mistake, `??` blunder), and each
 **critical moment** gets a diagram and a question, "What would you play?", with the answer hidden
@@ -225,7 +226,27 @@ recorded one, in the infobox, the lead, after the moves, in the conclusion and i
 source's `*` is left as it is: the article's PGN section shows it, and the game's id, and therefore its
 file name, is computed from that `*` result, not from the result shown.
 
-The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html).
+**The reading history.** Every page carries a small script, inline, that remembers in the reader's
+own browser which games were opened and which answers were revealed. The index then shows a
+**Recently viewed** list (the latest 10 games, newest first), a mark on each game already opened with
+how many of its answers were revealed ("viewed · 2/4 answers"), and a **Clear history** button, which
+asks before it removes anything. The history is kept in the browser's `localStorage`: per device and
+per browser, never shared and never sent anywhere; the script loads nothing. It can be lost: when the
+reader clears the browser's data, in Safari after 7 days without a visit, and for one game when its id
+changes (a corrected `Date` or `Result`). With scripts off, or where the browser gives no storage (some
+private windows, some browsers for `file://` pages), the history stays hidden and the pages read the
+same. The EPUB will carry no script.
+
+Browser storage is shared by every page of one origin: all the GitHub Pages sites of one user, and in
+some browsers every `file://` page. So each site stores its history under a **site key**, derived from
+its title by default; two sites with the same title on one origin share a history. Set a key of your
+own with `--site-key KEY` (or `build_site(..., site_key="ada-otb")`): 1 to 64 ASCII letters, digits,
+`.`, `_` or `-`. `--no-history` (`build_site(..., history=False)`) writes the pages without the script,
+the history section and its `data-` attributes.
+
+The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html), and
+the same site without the reading history in
+[`tests/golden/site-no-history/`](tests/golden/site-no-history/index.html).
 
 ## Claude Code skill
 
@@ -239,7 +260,10 @@ them" and it runs the pipeline using your `.env`.
 .venv/bin/pip install -r requirements-dev.txt -e .
 .venv/bin/pytest          # unit tests, a golden-file test against examples/, and the Stockfish tests
 .venv/bin/ruff check .
+node --test 'tests/js/*.test.mjs'   # the reading-history script (Node 22 or newer, no npm packages)
 ```
+
+Quote the glob: Node expands it, and a bare `tests/js/` fails on Node 21 and newer.
 
 If you intentionally change the page output, regenerate the golden files:
 
@@ -251,6 +275,7 @@ and for the library's site (the fixture's analysis is committed, so this needs n
 
 ```bash
 .venv/bin/python -m pgn_postmortem site tests/fixtures/site/analyzed --player "Ada Example" --alias adaex --alias "Example, Ada" --out tests/golden/site
+.venv/bin/python -m pgn_postmortem site tests/fixtures/site/analyzed --player "Ada Example" --alias adaex --alias "Example, Ada" --no-history --out tests/golden/site-no-history
 ```
 
 ## Credits

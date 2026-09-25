@@ -17,6 +17,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["pgn_postmortem*"]
 
+[tool.setuptools.package-data]
+pgn_postmortem = ["static/*.js"]  # the reading-history script the site inlines (ROADMAP.md, F-8)
+
 [tool.setuptools.dynamic]
 version = { attr = "pgn_postmortem.__version__" }
 

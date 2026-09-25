@@ -1,7 +1,9 @@
 """The static site: one Wikipedia-style article per game, and an index of the
 games by year.
 
-The site is plain HTML and one stylesheet, written to an output directory::
+The site is HTML and one stylesheet, with a small script inlined in every
+page for the optional reading history (below), written to an output
+directory::
 
     index.html              the games by year, each linking to its article
     games/<date>-<id>.html  one article per game, named like the game's PGN file
@@ -10,7 +12,9 @@ The site is plain HTML and one stylesheet, written to an output directory::
 
 Every link is relative and names a file (``../index.html``, not ``../``), so
 the site works from a web server, from a folder copied to a phone, and from
-``file://``. There is no JavaScript and nothing is loaded from the network.
+``file://``. Nothing is loaded from the network. The only JavaScript is the
+optional reading history (below), inlined in every page; without it the
+pages read the same.
 
 An article has an infobox (the players, the event, the result, the final
 position), a lead paragraph, the moves with notes, a diagram and a question at
@@ -82,14 +86,43 @@ shown like a recorded one, with no marker, everywhere outside the PGN section
 The game itself is untouched: its ``Result`` header, so its id and its file
 name, and the article's PGN section stay as the source had them. A recorded
 result is always shown as recorded.
+
+**The reading history** (ROADMAP.md, F-8). Every page carries, inline and
+byte for byte, the script ``pgn_postmortem/static/history.js`` (package
+data). In the reader's browser only (``localStorage``, never sent anywhere)
+it records a game as viewed when its article is opened, and an answer as
+revealed when its ``<details class="answer">`` is opened, keyed by its move
+(``31b``: Black's 31st), not by the moment's number, which changes when the
+rules for critical moments do. The index shows a "Recently viewed" list (the
+latest 10 of its own games, newest first), a mark on each viewed game with
+how many of its current questions' answers were revealed ("2/4"), and a
+"Clear history" button that removes this site's history after a
+confirmation. For it the pages carry these ``data-`` attributes and no
+others: ``data-site`` on ``<html>`` (the site key), ``data-game`` on the
+article (the ``PostmortemId``), ``data-move`` on each answer, and
+``data-game`` and ``data-moves`` (the moves of its current questions) on
+each game in the index. Every stored key starts with ``pgn-postmortem:`` and
+the site key, which the pages carry so that sites sharing an origin (all
+GitHub Pages sites of one user, or ``file://`` pages in some browsers) keep
+separate histories; by default it is derived from the title
+(``default_site_key``), so two sites with the same title share one. The
+index's history section is in the HTML with the ``hidden`` attribute, and
+only the script shows it; its styling is in the script too, added when it
+shows something, so ``assets/style.css`` is the same with or without the
+history. With scripts off, or with no storage, the pages read as they would
+without the history. ``build_site(..., history=False)`` leaves out the
+script, the section and the ``data-`` attributes.
 """
 
 from __future__ import annotations
 
+import hashlib
 import html
 import re
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from importlib import resources
 from pathlib import Path
 
 import chess
@@ -134,6 +167,7 @@ MONTHS = [
 NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 NBSP = "\u00a0"  # between a move number and its move, so a line never breaks between them
 GENERATOR = '<meta name="generator" content="pgn-postmortem">'  # in every page; marks what a rebuild may delete
+SITE_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")  # the reading history's site key (ROADMAP.md, F-8)
 
 
 # --- reading the analysis ---------------------------------------------------
@@ -557,6 +591,64 @@ def board_html(board: chess.Board, *, flipped: bool = False, highlight: Iterable
     return f'<div class="board" role="img" aria-label="{attr(description)}">\n' + "\n".join(rows) + "\n</div>"
 
 
+# --- the reading history ------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class History:
+    """What the pages carry for the reading history: the site key, and the
+    script that every page inlines (the rule is in the module docstring)."""
+
+    site_key: str
+    script: str
+
+
+HISTORY_SECTION = (
+    '<section id="history" class="history" hidden>\n'
+    "<h2>Recently viewed</h2>\n"
+    '<ol id="history-recent" class="games"></ol>\n'
+    '<p><button type="button" id="history-clear">Clear history</button> '
+    '<span class="note">Kept in this browser only.</span></p>\n'
+    "</section>\n"
+)
+
+
+def history_script() -> str:
+    """The reading-history script, ``pgn_postmortem/static/history.js``, as
+    its bytes read (package data)."""
+    return (resources.files("pgn_postmortem") / "static" / "history.js").read_bytes().decode("utf-8")
+
+
+def default_site_key(title: str) -> str:
+    """The site key for a site titled ``title``: its words in ASCII, lower
+    case, joined by ``-`` (at most 40 characters), then the first 8 hex
+    digits of the title's SHA-256, so that only the same title gives the same
+    key: ``Games of Ada Example`` is ``games-of-ada-example-`` and 8 digits."""
+    ascii_title = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii").lower()
+    words = "-".join(re.findall(r"[a-z0-9]+", ascii_title))[:40].strip("-")
+    digest = hashlib.sha256(title.encode("utf-8")).hexdigest()[:8]
+    return f"{words}-{digest}" if words else digest
+
+
+def check_site_key(key: object) -> str:
+    """``key``, or ``ValueError`` unless it is 1 to 64 ASCII letters, digits,
+    ``.``, ``_`` and ``-``, starting with a letter or a digit."""
+    if not (isinstance(key, str) and SITE_KEY.fullmatch(key)):
+        raise ValueError(
+            "site_key must be 1 to 64 ASCII letters, digits, '.', '_' or '-', starting with a letter or a digit; "
+            f"not {key!r}"
+        )
+    return key
+
+
+def data(history: History | None, **values: str) -> str:
+    """`` data-game="…"`` and the like for the reading history, or nothing
+    when the pages are built without it."""
+    if history is None:
+        return ""
+    return "".join(f' data-{name}="{attr(value)}"' for name, value in values.items())
+
+
 # --- the pages ----------------------------------------------------------------
 
 
@@ -608,11 +700,11 @@ class Article:
         return [review for review in self.reviews if review.critical]
 
 
-def page(title: str, body: str, *, root: str, site_title: str) -> str:
+def page(title: str, body: str, *, root: str, site_title: str, history: History | None = None) -> str:
     home = "" if root == "" else f'<header class="top"><a href="{root}index.html">{esc(site_title)}</a></header>\n'
     return (
         "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
+        f'<html lang="en"{data(history, site=history.site_key) if history else ""}>\n'
         "<head>\n"
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
@@ -628,7 +720,8 @@ def page(title: str, body: str, *, root: str, site_title: str) -> str:
         "</main>\n"
         '<footer class="bottom">Made with pgn-postmortem. Analysis by Stockfish; '
         "pieces by Colin M.L. Burnett.</footer>\n"
-        "</body>\n"
+        + (f"<script>{history.script}</script>\n" if history else "")
+        + "</body>\n"
         "</html>\n"
     )
 
@@ -735,7 +828,13 @@ def infobox_html(article: Article) -> str:
     )
 
 
-def moment_html(review: MoveReview, number: int) -> str:
+def move_key(board: chess.Board) -> str:
+    """The move about to be played on ``board`` as the reading history keys
+    it: ``31b`` for Black's 31st move, ``4w`` for White's 4th."""
+    return f"{board.fullmove_number}{'w' if board.turn == chess.WHITE else 'b'}"
+
+
+def moment_html(review: MoveReview, number: int, history: History | None = None) -> str:
     board = review.board_before
     mover = side(review.mover)
     previous = review.node.parent
@@ -777,7 +876,7 @@ def moment_html(review: MoveReview, number: int) -> str:
         f"{diagram}\n"
         f"<figcaption>Critical moment {number}. {esc(caption)} <b>What would you play?</b></figcaption>\n"
         "</figure>\n"
-        '<details class="answer">\n'
+        f'<details class="answer"{data(history, move=move_key(board))}>\n'
         "<summary>Show the answer</summary>\n"
         f"{answer}"
         "</details>\n"
@@ -785,7 +884,7 @@ def moment_html(review: MoveReview, number: int) -> str:
     )
 
 
-def moves_html(article: Article) -> str:
+def moves_html(article: Article, history: History | None = None) -> str:
     """The moves as paragraphs, with a note after each graded move, broken
     by a diagram and a question before each critical moment."""
     blocks: list[str] = []
@@ -802,7 +901,7 @@ def moves_html(article: Article) -> str:
         if review.critical:
             flush()
             number += 1
-            blocks.append(moment_html(review, number))
+            blocks.append(moment_html(review, number, history))
             need_number = True
         board = review.board_before
         san = esc(board.san(review.node.move) + review.symbol)
@@ -886,19 +985,19 @@ def pgn_text(item: CollectedGame) -> str:
 
 
 def article_html(article: Article, previous: Article | None, following: Article | None, *, site_title: str,
-                 thresholds: Thresholds) -> str:  # fmt: skip
+                 thresholds: Thresholds, history: History | None = None) -> str:  # fmt: skip
     nav = []
     if previous:
         nav.append(f'<a rel="prev" href="{previous.filename}">← {esc(previous.title)}</a>')
     if following:
         nav.append(f'<a rel="next" href="{following.filename}">{esc(following.title)} →</a>')
     body = (
-        "<article>\n"
+        f"<article{data(history, game=article.item.id)}>\n"
         f"<h1>{esc(article.title)}</h1>\n"
         f"{infobox_html(article)}"
         f"{lead_html(article, thresholds)}"
         '<h2 id="game">The game</h2>\n'
-        f"{moves_html(article)}"
+        f"{moves_html(article, history)}"
         '<h2 id="conclusion">Conclusion</h2>\n'
         f"{conclusion_html(article)}"
         '<h2 id="pgn">PGN</h2>\n'
@@ -906,10 +1005,10 @@ def article_html(article: Article, previous: Article | None, following: Article 
         "</article>\n"
         + (f'<nav class="pager">\n{chr(10).join(nav)}\n</nav>\n' if nav else "")
     )
-    return page(article.title, body, root="../", site_title=site_title)
+    return page(article.title, body, root="../", site_title=site_title, history=history)
 
 
-def index_html(articles: list[Article], site_title: str) -> str:
+def index_html(articles: list[Article], site_title: str, history: History | None = None) -> str:
     years: dict[int | None, list[Article]] = {}
     for article in articles:
         years.setdefault(article.year, []).append(article)
@@ -934,6 +1033,8 @@ def index_html(articles: list[Article], site_title: str) -> str:
         "“what would you play?”, with the answer hidden until you tap it."
     )
     parts = [f"<h1>{esc(site_title)}</h1>\n", f'<p class="lead">{summary}</p>\n']
+    if history:
+        parts.append(HISTORY_SECTION)
     if len(order) > 1:
         links = " ".join(f'<a href="#{anchor(year)}">{heading(year)}</a>' for year in order)
         parts.append(f'<nav class="years">{links}</nav>\n')
@@ -949,13 +1050,15 @@ def index_html(articles: list[Article], site_title: str) -> str:
                 meta.append(f"{number_word(k)} question{'' if k == 1 else 's'}" if k else "no questions")
             else:
                 meta.append("not analyzed")
+            questions = " ".join(move_key(review.board_before) for review in article.moments)
             parts.append(
-                f'<li><a href="games/{article.filename}">{esc(article.white)} vs. {esc(article.black)}</a> '
+                f'<li{data(history, game=article.item.id, moves=questions)}><a href="games/{article.filename}">'
+                f"{esc(article.white)} vs. {esc(article.black)}</a> "
                 f'<span class="result">{esc(result_text(article.result, "result not recorded"))}</span>'
                 f'<span class="meta">{esc(" · ".join(meta))}</span></li>\n'
             )
         parts.append("</ol>\n</section>\n")
-    return page(site_title, "".join(parts), root="", site_title=site_title)
+    return page(site_title, "".join(parts), root="", site_title=site_title, history=history)
 
 
 STYLE = """\
@@ -1076,6 +1179,8 @@ def build_site(
     thresholds: Thresholds = LICHESS_THRESHOLDS,
     presume_threshold: float = PRESUME_THRESHOLD,
     outcome_bands: tuple[float, float] = OUTCOME_BANDS,
+    history: bool = True,
+    site_key: str | None = None,
 ) -> SiteReport:
     """Write the site for ``games`` (a ``Collection``, or any iterable of
     ``CollectedGame``) to ``out_dir``: ``index.html``, ``assets/style.css``
@@ -1103,9 +1208,19 @@ def build_site(
     ``lower`` or less, White at ``upper`` or more, 40 and 60 by default. Both
     must be finite, with 0 < lower < 50 < upper < 100; any other pair raises
     ``ValueError`` before anything is written.
+
+    ``history`` puts the reading history in the pages (the rule is in the
+    module docstring); with ``history=False`` the pages carry no script, no
+    history section and no ``data-`` attribute for it. ``site_key`` is the
+    key the history is stored under, by default ``default_site_key(title)``:
+    1 to 64 ASCII letters, digits, ``.``, ``_`` and ``-``, starting with a
+    letter or a digit; any other value raises ``ValueError`` before anything
+    is written, with or without the history.
     """
     check_presume_threshold(presume_threshold)
     check_outcome_bands(outcome_bands)
+    key = check_site_key(site_key) if site_key is not None else default_site_key(title)
+    reading = History(key, history_script()) if history else None
     out_dir = Path(out_dir)
     articles = []
     for item in games:
@@ -1120,11 +1235,12 @@ def build_site(
         previous = articles[i - 1] if i > 0 else None
         following = articles[i + 1] if i + 1 < len(articles) else None
         path = out_dir / "games" / article.filename
-        write_text(path, article_html(article, previous, following, site_title=title, thresholds=thresholds))
+        html_text = article_html(article, previous, following, site_title=title, thresholds=thresholds, history=reading)
+        write_text(path, html_text)
         report.articles.append(path)
         report.analyzed += article.analyzed
         report.critical_moments += len(article.moments)
-    write_text(out_dir / "index.html", index_html(articles, title))
+    write_text(out_dir / "index.html", index_html(articles, title, reading))
 
     written = {path.name for path in report.articles}
     for path in sorted((out_dir / "games").glob("*.html")):

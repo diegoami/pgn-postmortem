@@ -23,3 +23,18 @@ jobs:
       - run: pip install -r requirements-dev.txt -e .
       - run: ruff check .
       - run: pytest -v
+      # The package ships the reading-history script (ROADMAP.md, F-8). The editable install above reads it
+      # from the source tree, so only a built wheel shows a missing package-data declaration. Offline:
+      # no build isolation, with the setuptools pinned in requirements-dev.txt.
+      - name: Check that the wheel ships the reading-history script
+        if: matrix.python-version == '3.13'
+        run: |
+          pip wheel --no-deps --no-build-isolation -w dist .
+          python -m zipfile -l dist/pgn_postmortem-*.whl | grep -F pgn_postmortem/static/history.js
+      - uses: actions/setup-node@v4
+        if: matrix.python-version == '3.13'
+        with:
+          node-version: "22"
+      - name: The script gate
+        if: matrix.python-version == '3.13'
+        run: node --test 'tests/js/*.test.mjs'

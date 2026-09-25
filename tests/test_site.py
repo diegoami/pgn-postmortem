@@ -9,9 +9,12 @@ no test here runs Stockfish.
                                   wrote them, once, with Stockfish 16:
       .venv/bin/python -m pgn_postmortem analyze tests/fixtures/site/games.pgn \\
           --out tests/fixtures/site/analyzed --depth 12 --workers 1
-  tests/golden/site/              the site built from them, byte for byte.
-                                  After an intended change to the pages,
-                                  regenerate it with the command in REGENERATE.
+  tests/golden/site/              the site built from them, byte for byte, with
+                                  the reading history (the default). After an
+                                  intended change to the pages, regenerate it
+                                  with the command in REGENERATE. The same site
+                                  without the history is in
+                                  tests/golden/site-no-history/ (test_history.py).
   tests/fixtures/site/odd.pgn     three unanalyzed games with awkward headers:
                                   <, >, & and quotes in the names, event, site
                                   and more; a Date whose year starts with a
@@ -219,11 +222,11 @@ def test_a_file_the_builder_did_not_write_is_never_removed(tmp_path):
 TAGS = {
     "html", "head", "meta", "title", "link", "body", "header", "main", "footer", "article", "nav", "section",
     "h1", "h2", "p", "b", "i", "span", "a", "ol", "li", "pre", "table", "caption", "tr", "th", "td", "div",
-    "figure", "figcaption", "details", "summary",
+    "figure", "figcaption", "details", "summary", "script", "button",  # the reading history's (F-8)
 }  # fmt: skip
 ATTRIBUTES = {
     "lang", "charset", "name", "content", "rel", "href", "class", "id", "role", "aria-label", "colspan",
-    "data-r", "data-f",
+    "data-r", "data-f", "hidden", "type", "data-site", "data-game", "data-move", "data-moves",  # F-8
 }  # fmt: skip
 
 
