@@ -76,3 +76,18 @@ Nothing else changed beyond what the commit message lists.
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged by the owner on 2026-09-25 as `db15a62` (pull request #16); the clean round, 02, covers `dedbcad`. CI on the merge commit passed: https://github.com/diegoami/pgn-postmortem/actions/runs/36133368719.
+
+- **F-8 to F-11 are queued** with the owner's verbatim wording and status `requested`, and are not shaped. The notes carry the constraints for shaping.
+- **The owner's decisions are recorded:**
+  - F-8 to F-11 come before F-1.3, in the rows and in `PLAN.md`.
+  - F-10 is a link to lichess's analysis board, with its default, reason and the alternative not chosen.
+- **F-6 is marked `landed`** (#15, `378dd9c`).
+- **Only `ROADMAP.md` and `PLAN.md` changed,** plus the review records.
+
+Left for F-8's shaping: round-02 findings 1 (the source of "no JavaScript by design" is `README.md` and `site.py`, not F-1's scope) and 2 (pointers in the iteration table and F-1's row to the new order).
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
