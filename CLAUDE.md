@@ -71,8 +71,9 @@ bootstrap applies as written there — one review, not two stages.
 
   It is reviewed by DeepSeek (`opencode/deepseek-v4-pro`, a model that
   implemented none of the range) with r5's milestone prompt
-  (`reviews/milestone-prompt.md` at `r5`) as the fixed prompt. The tag waits
-  for that review's AGREE.
+  (`reviews/milestone-prompt.md` at `r5`) as the fixed prompt. It agreed in
+  round 1 (issue #26, `reviews/026-milestone-v0.1.0-01.md`), and `v0.1.0` is
+  tagged on `724aa9d` (2026-09-26).
 - **paths to inspect:** `scripts/` (the code), `tests/`, `README.md`,
   `docs/book-plan.md`, `ROADMAP.md`, `.claude/skills/publish-games/SKILL.md`,
   `.github/workflows/`, `pgn_postmortem/` (the library of F-1). The older
