@@ -210,8 +210,9 @@ ended in checkmate, stalemate or insufficient material, the board decides it. Ot
 was analyzed, the final position decides it: a win for the side with at least 70% winning chances (a
 forced mate counts as 100%), a draw otherwise. The 70 is `build_site(..., presume_threshold=70)`, from
 55 to 95. Failing both, the article says the result was not recorded. The result is shown like a
-recorded one, in the infobox, the lead, after the moves, in the conclusion and in the index; the game's
-PGN, its id and its file name keep the source's `*`.
+recorded one, in the infobox, the lead, after the moves, in the conclusion and in the index. The
+source's `*` is left as it is: the article's PGN section shows it, and the game's id, and therefore its
+file name, is computed from that `*` result, not from the result shown.
 
 The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html).
 
