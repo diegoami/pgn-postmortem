@@ -1195,7 +1195,8 @@ def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str,
               thresholds: Thresholds, history: History | None = None) -> str:  # fmt: skip
     """The quiz page: one line per question, linking to it. ``games`` is the
     number of the player's games, ``unanalyzed`` how many of them have no
-    analysis yet."""
+    analysis yet; the page without questions says both. With questions, the
+    lead counts the games they come from."""
     title = quiz_title(label)
     name = esc(label)
     what = (
@@ -1216,8 +1217,11 @@ def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str,
         parts.append(f'<p class="lead">{lead}</p>\n')
         return page(title, "".join(parts), root="", site_title=site_title, history=history, home=True)
 
+    # the games the questions come from, not all of the player's games
+    sources = len({entry.article.item.id for entry in entries})
     parts.append(
-        f'<p class="lead">{plural(len(entries), "question").capitalize()} from {of_games}: '
+        f'<p class="lead">{plural(len(entries), "question").capitalize()} from '
+        f"{plural(sources, 'game')} of {name}'s: "
         f"{'it is' if len(entries) == 1 else 'each is'} a critical "
         f"moment where {name} was the one to move, {what}. The move that cost the most comes first, with the "
         "points of winning chances each one cost. Each line leads to its “what would you play?” question, where "

@@ -346,8 +346,10 @@ def test_the_lead_says_how_many_questions_from_how_many_games(tmp_path, site):
     def lead(root: Path) -> str:
         return plain(parse(root / "quiz.html").find_all("p", "lead")[0].text())
 
-    # others.pgn is in the site but not one of Ada Example's games
-    assert lead(site).startswith("Seven questions from six games of Ada Example's: each is a critical moment where "
+    # the games the questions come from, not all the player's: the quiz's seven come from five of Ada Example's
+    # six games (opponents-only.pgn gives none; others.pgn is not Ada Example's)
+    assert len({line["game"] for line in lines(site)}) == 5
+    assert lead(site).startswith("Seven questions from five games of Ada Example's: each is a critical moment where "
                                  "Ada Example was the one to move, a move that cost at least 20 points")  # fmt: skip
-    build([ANALYZED], tmp_path, *PLAYER)
-    assert lead(tmp_path).startswith("One question from six games of Ada Example's: it is a critical moment")
+    build([ANALYZED], tmp_path, *PLAYER)  # one question, in one of six games
+    assert lead(tmp_path).startswith("One question from one game of Ada Example's: it is a critical moment")
