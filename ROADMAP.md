@@ -327,11 +327,15 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     - an answer as **revealed** when its "what would you play?" answer (`<details class="answer">`) is
       opened.
   - **The history belongs to one site.** Browser storage is shared by every page of one origin:
-    all of a user's GitHub Pages sites share one, and some browsers give every local `file://` page
-    the same one. So:
+    all of a user's GitHub Pages sites under one `github.io` domain share one (a site on its own custom
+    domain has its own), and some browsers give every local `file://` page the same one. So:
     - every stored key starts with a prefix of the tool's own plus a **site key**. The site key is
-      written into the pages at build time from the site's player (or title), so it survives
-      rebuilds;
+      written into the pages at build time, so it survives rebuilds. By default it is derived from the
+      site's title, which is what `build_site` receives; a `site_key` parameter (and a command-line
+      option) can set it explicitly. Two books with the same title on one origin share one history,
+      and "Clear history" on one clears both. This is accepted, because the limit of 10 below is
+      applied after filtering to the index's own games, so each book still shows only its own games,
+      and an explicit site key separates them;
     - "Clear history" removes only keys with that prefix and site key;
     - "Recently viewed" and the marks show only games that are in the index's current list.
       Anything else stored (other books, games that no longer exist) is ignored.
@@ -339,14 +343,15 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     these:
     - each article: its game id (`PostmortemId`);
     - each answer: the move it is about (move number and side, e.g. `31b`);
-    - each game in the index: its id and the moves of its current questions.
+    - each game in the index: its id and the moves of its current questions;
+    - every page (on `<html>`): the site key.
 
     Answers are keyed by move, not by the moment's number, which can change when the rules for
     critical moments change (as F-6 did). A game's "k/m" counts only revealed answers whose move is
     among the game's current questions, so m is the current number of questions.
   - **The index shows:**
-    - a **"Recently viewed"** list at the top, newest first, limited to the latest 10 games, so it fits
-      a phone screen without scrolling;
+    - a **"Recently viewed"** list at the top, newest first: the latest 10 of this index's own games
+      (filtered first, then limited), so it fits a phone screen without scrolling;
     - in the game list, a **mark** on each viewed game, with how many of its answers were revealed
       out of its current number of questions (e.g. "2/4").
   - **A "Clear history" button** on the index removes the site's history after the reader confirms.
@@ -362,8 +367,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     page. `README.md` and `pgn_postmortem/site.py` stop saying "there is no JavaScript" and describe
     the optional history script instead.
   - **The EPUB (F-1.4) carries no script.**
-  - **A switch:** `build_site(..., history=False)` builds the pages without the script, the
-    containers and the `data-` attributes.
+  - **A switch:** `build_site(..., history=False)`, and a `--no-history` option on the `site` command,
+    build the pages without the script, the containers and the `data-` attributes.
 - **Done when:** the gates pass, including:
   1. **Python tests on the pages:**
      - every page carries the script inline, byte-identical to `pgn_postmortem/static/history.js`,
@@ -371,12 +376,24 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
      - the script contains no URL and no network or loading call: no `fetch`, `XMLHttpRequest`,
        `sendBeacon`, `WebSocket`, `EventSource`, `import(` or `importScripts`;
      - the history containers carry `hidden` in the static HTML;
-     - `build_site(..., history=False)` is **byte-identical to the golden pages from before F-8**,
-       which are kept as they are, so nothing else in the pages changed;
-     - the new golden pages with the history are generated with the documented command;
-     - an installed (not editable) build of the package includes the script file.
-  2. **A new gate, "script"**, with the command `node --test tests/js/` (the explicit path keeps it
-     out of `.claude/worktrees/`). It uses Node's built-in test runner and no npm packages, and the
+     - **two golden sets:**
+       - the pages without the history, built with `--no-history` into their own directory
+         (`tests/golden/site-no-history/`), are **byte-identical to today's golden pages on `main`**.
+         That proves `history=False` changes nothing. From then on the set is regenerated with its
+         own documented command, never edited by hand;
+       - the pages with the history go in `tests/golden/site/`, regenerated with the documented
+         command;
+     - **the history adds nothing else:** a test strips the script, the history containers and the
+       `data-` attributes from every page with the history, and finds exactly the page without it;
+     - **the package ships the script:** in CI, a step builds the wheel (`pip wheel --no-deps
+       --no-build-isolation .`, with `setuptools` pinned in `requirements-dev.txt`) and checks it
+       contains `pgn_postmortem/static/history.js`. Keeping this in CI keeps the local tests gate
+       free of the network.
+  2. **A new gate, "script"**, with the command `node --test 'tests/js/*.test.mjs'`. It must be a glob:
+     on Node 21 and newer a bare directory fails, and the explicit path keeps the gate out of
+     `.claude/worktrees/`. A glob that matches no file passes with 0 tests, which would be a false
+     green. So a Python test asserts the test files exist, and the gate's reported test count is
+     shown in the pull request. It uses Node's built-in test runner and no npm packages, and the
      script's logic is written so it can be tested with a stand-in storage and page. The tests
      cover:
      - opening an article records the game as viewed;
@@ -422,8 +439,9 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - **Proposed with this shaping, confirmed by the owner's merge:**
     - the limit of 10 recent games, so the list fits a phone screen;
     - answers keyed by move, and the `data-` attributes that carry the ids and moves;
-    - a site key for the history's storage, and a clear that removes only that site's history;
-    - the `history=False` switch;
+    - a site key for the history's storage (from the title by default, settable with `site_key`),
+      and a clear that removes only that site's history;
+    - the `history=False` switch and the `--no-history` option, with the second golden set;
     - the new "script" gate, with Node 22 pinned in CI.
 
 ## Statuses
