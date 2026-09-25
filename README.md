@@ -192,8 +192,9 @@ The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.
 `pgn-postmortem site` writes `index.html` (the games by year), one `games/<date>-<id>.html` article
 per game and one stylesheet. Open `index.html` in a browser, or copy the folder to a phone: every link
 is relative, nothing loads from the network, and the colours follow the system's light or dark mode.
-The only JavaScript is the optional reading history below; without it the pages read the same. Each article has an infobox with the final position, a lead paragraph,
-the moves, a conclusion and the PGN, all in template prose.
+The only JavaScript is the optional reading history below; without it the pages read the same. Each
+article has an infobox with the final position, a lead paragraph, the moves, a conclusion and the
+PGN, all in template prose.
 
 For an analyzed game the moves carry notes (`?!` inaccuracy, `?` mistake, `??` blunder), and each
 **critical moment** gets a diagram and a question, "What would you play?", with the answer hidden

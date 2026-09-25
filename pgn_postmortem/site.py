@@ -1,7 +1,9 @@
 """The static site: one Wikipedia-style article per game, and an index of the
 games by year.
 
-The site is plain HTML and one stylesheet, written to an output directory::
+The site is HTML and one stylesheet, with a small script inlined in every
+page for the optional reading history (below), written to an output
+directory::
 
     index.html              the games by year, each linking to its article
     games/<date>-<id>.html  one article per game, named like the game's PGN file
