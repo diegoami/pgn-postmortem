@@ -10,7 +10,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
 | id | request | status | iteration | notes |
 |---|---|---|---|---|
-| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-11 and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8, 6 is F-9). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
+| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-11 and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8, 6 is F-9, 7 is F-10). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
 | F-2 | "Yes, LLM, but of course Claude with API key would be too expensive, Deepseek is the realistic option, BYOK for other users" | requested | | The book's prose. Depends on F-1. `docs/book-plan.md`, *Prose*. |
 | F-3 | "then wire that into a pipeline that may fetch games from somewhere on the input or put the published files somewhere on the output" | requested | | Depends on F-1. Also in the owner's words: "as sources it must be able to parse a collection of games"; "if it has to be reusable we have to think about people who do not have a github, so output must be pluggable somehow"; "I am not maintaining their repository or web pages". `docs/book-plan.md`, *Layer 2*; the chess.com, lichess and git sources exist as spike code on `book-poc`. |
 | F-4 | "yes, queue the name matching improvement" | requested | | Raised in the owner's own trial run (2026-09-24), in the owner's words: "Why are there games that are not mine, they might be mislabeled". Reading the owner's 149 OTB games kept 140 and left out 8 of the owner's own, spelled `Amicabile Diego` and `Diego , Amicabile`, because player names match exactly except for letter case, so every spelling needs its own alias. The implementer's proposal, to be shaped when picked up: match names ignoring spacing, commas and word order; and have `read` report the names seen most often in the games it left out, so a missed alias is easy to spot. Touches F-1.1's reading; the owner decides at shaping whether it lands before F-1.3 or within it. |
@@ -18,8 +18,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 | F-6 | "I am looking at the games and I think there should be more diagrams, for instance in this game https://diegoami.github.io/chessgamescollection/games/2008-01-04-4e5d4e182f.html just an error is shown that did not affect the end result. It was move 40 that was deciding, not 31" | landed | 4 | The owner's choices on 2026-09-24, when asked which extra moments should get a diagram: "Swings that changed the outcome" (a move that changes the expected result, e.g. winning → level or level → losing, even below the 20-point critical-moment line), not the other two options offered ("the deciding moment" and "inaccuracies too"); and when: "Right after F-5, before F-1.3". The owner's example game (Pedroni vs. Amicabile, Verona 2008) has only 31... Qa2? as a critical moment; 37... Rg2+ (25% → 41% for White) and 40. Ra4 (49% → 32%) changed the outcome but cost 16 and 17 points. Shaped below. Landed in #15 (`378dd9c`), 2026-09-25, with the owner's band change to 40–60%. |
 | F-7 | "queue the library feature" | requested | | The owner's answer on 2026-09-25 to the question "F-7: should I queue the library feature? It would make re-reading a collection refresh the headers of games that are already analyzed, so corrections like this one reach the book without any manual header editing." It comes from correcting the owner's source (DA_chessgames `9e7c939` and `691eba6`: 23 "Saxonia Systems AG" placeholder Sites and 2 Events replaced). Reading again leaves an analyzed game's file alone, headers included, so the corrected headers were carried into `chessgamescollection` by hand (`a4a7d09`, `9be2978`). Header changes don't change a game's identity (moves, result, date, start position), but a corrected `Date` or `Result` would. Not shaped yet. |
 | F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | landed | 5 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server (F-1's scope) and no JavaScript (`README.md`, `pgn_postmortem/site.py`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. Shaped below. Landed in #18 (`3adbe08`), 2026-09-25; the owner's phone check was deferred to the live book. |
-| F-9 | "A list of proposed quiz, starting from your worse blunder, assuming the game are yours." | accepted | 6 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the player's own critical moments across all games, as a list of questions ordered from the worst (most winning chances lost) down, each linking to its position (every moment has a `moment-N` anchor). It relates to F-1.3's selection of best games. Shaped below. |
-| F-10 | "A link in critical position to a pop up link, where you can start stockfish and analyze the current position" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. **Owner decision (2026-09-25): a link that opens the position on lichess's analysis board** (by FEN). It was recommended as the default because it needs no JavaScript and no bundled engine, and brings in no licence question, at the cost of needing the network and a third-party site. The alternative not chosen was Stockfish in the browser (a bundled WebAssembly build: offline, several MB per site, JavaScript, and Stockfish's GPL licence; see F-1's licence question). Also in the owner's words (2026-09-25): "Another feature to add is having a link to open the full PGN game on lichess,". **Owner decision (2026-09-25): that request is part of F-10**, recommended as the default because both are plain links to lichess (the position's analysis board and the whole game), shaped and built as one iteration. The alternative, a separate request, was not chosen. |
+| F-9 | "A list of proposed quiz, starting from your worse blunder, assuming the game are yours." | landed | 6 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the player's own critical moments across all games, as a list of questions ordered from the worst (most winning chances lost) down, each linking to its position (every moment has a `moment-N` anchor). It relates to F-1.3's selection of best games. Shaped below. Landed in #21 (`f9c54d3`), 2026-09-25. |
+| F-10 | "A link in critical position to a pop up link, where you can start stockfish and analyze the current position" | accepted | 7 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. **Owner decision (2026-09-25): a link that opens the position on lichess's analysis board** (by FEN). It was recommended as the default because it needs no JavaScript and no bundled engine, and brings in no licence question, at the cost of needing the network and a third-party site. The alternative not chosen was Stockfish in the browser (a bundled WebAssembly build: offline, several MB per site, JavaScript, and Stockfish's GPL licence; see F-1's licence question). Also in the owner's words (2026-09-25): "Another feature to add is having a link to open the full PGN game on lichess,". **Owner decision (2026-09-25): that request is part of F-10**, recommended as the default because both are plain links to lichess (the position's analysis board and the whole game), shaped and built as one iteration. The alternative, a separate request, was not chosen. Shaped below. |
 | F-11 | "The possibilty to add notes in critical positions, also as a pop up-" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: with no server, notes would live in the reader's browser (per device), which brings JavaScript into the site (see F-8), and the EPUB would not carry them. Browser storage survives a rebuild of the site; the risk is a page renamed when a game's id changes (a corrected `Date` or `Result`, see F-7). Keeping notes across devices would need an export/import to a file, or a write-back into the owner's repository (the pipeline, F-3). How notes are kept is an owner decision. |
 
 ## Accepted requests
@@ -550,6 +550,103 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
       when both match;
     - the index's "Clear history" as the only clear;
     - removing a stale `quiz.html` the builder wrote.
+
+### F-10 — Lichess links: the whole game, and each critical position
+
+- **Original request:** "A link in critical position to a pop up link, where you can start stockfish and analyze the current position"
+- **Also in the owner's words** (2026-09-25), part of F-10 by the owner's decision: "Another feature
+  to add is having a link to open the full PGN game on lichess,".
+- **Player value:** from any article, the reader can open the whole game on lichess's free analysis
+  board, or put an engine on one critical position, without copying moves by hand. On the road, one
+  tap on a phone does it.
+- **Scope:** two plain links to lichess, with no script and nothing loaded by the page itself.
+  lichess is reached only when the reader taps a link.
+  - **"Open this game on lichess"** in each article's infobox. It links to
+    `https://lichess.org/analysis/pgn/<moves>`, the game's mainline moves in SAN, URL-encoded,
+    **without the check and mate signs** (`+`, `#`). These are optional in SAN, and a `+` in the path
+    is read by lichess as a space, so leaving them out avoids the ambiguity. There is no query and no
+    fragment. There is no game link for:
+    - **a game that starts from a set-up position** (a `FEN` header): lichess accepts a `[FEN …]`
+      tag in that path, but it is not verified that its board then starts from that position.
+      The game's critical positions still get their links;
+    - **a game with no moves**: there is nothing to open, and the empty path only redirects.
+  - **"Analyze this position on lichess"** inside each critical moment's hidden answer
+    (`<details class="answer">`), so it can't spoil the question. It links to
+    `https://lichess.org/analysis/<FEN>`, the position before the move (the question's position),
+    with the FEN's spaces written as `_`. It is shown only when the answer is revealed.
+  - **Both links open in a new tab** (`target="_blank"` with `rel="noopener noreferrer"`), so the
+    book stays open.
+  - **Both URL forms were checked against lichess on 2026-09-25:** a FEN path opened the analysis
+    board on that position, and a `pgn/` path with the moves loaded them. The implementer re-checks
+    them by hand. No test uses the network.
+  - **The pages change in both golden sets:** the links are not part of the history, so
+    `--no-history` pages have them too.
+  - **The quiz page, the index and the history script are unchanged.** The links need no new `data-`
+    attribute, so F-8's list is unchanged.
+  - **The site's "every link is relative" check is narrowed**, a change to what the tests gate
+    asserts, decided here. `check_links` in `tests/test_site.py`, also used by the quiz tests,
+    accepts an absolute link only if:
+    - it is `https://lichess.org/analysis/pgn/…` inside an article's infobox, or
+      `https://lichess.org/analysis/…` (not `pgn/`) inside an answer `<details>`; and
+    - it carries `target="_blank"` and `rel="noopener noreferrer"`.
+
+    Every other `href` and `src` must still be relative and resolve. The escape test's list of
+    allowed attributes gains `target` and `rel`, for those links only. Updated to match:
+    - the tests row's "covers" cell in `CLAUDE.md`, which today says every link is relative;
+    - `README.md`, which says the same;
+    - `pgn_postmortem/site.py`'s docstring.
+- **Done when:** the gates pass, including Python tests on fixtures that:
+  1. every article of a game from the standard start that has moves has exactly one game link, in the
+     infobox. Its URL's path, decoded with `unquote`, is exactly the game's mainline moves in SAN
+     without `+`/`#`, in order, and it has no query or fragment. A fixture game with checks and a
+     mate covers the signs;
+  2. **set-up games:** a new hand-written fixture (documented as hand-written) has a set-up game
+     (a `FEN` header) with at least one critical moment. It has no game link, its critical positions
+     have their links, and the test asserts that at least one such position link was checked. A game
+     with no moves has no game link;
+  3. every critical moment has exactly one position link, inside its closed answer `<details>`; its
+     FEN, with `_` read back as spaces, equals the position before the move (checked with
+     python-chess against the article's moves); no position link appears outside an answer;
+  4. **the narrowed link check:**
+     - every lichess link has `target="_blank"` and `rel="noopener noreferrer"`, its URL starts with
+       `https://lichess.org/analysis/`, and it is HTML-escaped;
+     - the check still fails an absolute link anywhere else, or of any other form, which is shown
+       failing first;
+     - the pages still load nothing by themselves: no new `src` and no script change;
+  5. both golden sets are regenerated with their documented commands, and the PR says which pages
+     changed and why.
+
+  Then **the owner's check:** before merging, on a served preview of the owner's book built from the
+  branch (no re-analysis), the owner taps a game link (of a game with checks) and a position link (on
+  a desktop browser, and on a phone if the owner chooses) and confirms lichess opens the right game
+  and position. The verdict is recorded on the PR.
+
+  Each new assertion is shown failing first.
+- **Out of scope:**
+  - Stockfish in the browser (not chosen; see F-10's row);
+  - importing games into a lichess account;
+  - a game link for set-up positions;
+  - notes (F-11);
+  - EPUB behaviour (F-1.4; the links would simply be external links there).
+- **Depends on:** F-6 (landed), F-9 (landed).
+- **Open questions:** decided by the owner, each against a recommended default:
+  - **Owner decision (2026-09-25): a link to lichess's analysis board**, not Stockfish in the browser.
+    This is recorded in F-10's row with its default and reason.
+  - **Owner decision (2026-09-25): the full-game link is part of F-10.** Recorded in F-10's row.
+  - **Owner decision (2026-09-25): the position link sits inside the hidden answer.**
+    - Recommended default: the same, because an engine on the question's position gives the answer
+      away.
+    - Owner's choice: the recommended default. Next to the diagram was not chosen.
+  - **Owner decision (2026-09-25): new tab, and the game link in the infobox.**
+    - Recommended default: the same, so the book stays open and the link sits with the game's facts.
+    - Owner's choice: the recommended default. The same tab, and the game link above the moves, were
+      not chosen.
+  - **Proposed with this shaping, confirmed by the owner's merge:**
+    - the two URL forms, and moves without check and mate signs;
+    - no game link for set-up positions or for games without moves;
+    - narrowing the link check to exactly these two lichess forms in these two places;
+    - the link texts;
+    - the links in both golden sets.
 
 ## Statuses
 
