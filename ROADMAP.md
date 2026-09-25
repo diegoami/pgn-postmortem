@@ -10,14 +10,14 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
 | id | request | status | iteration | notes |
 |---|---|---|---|---|
-| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1, 2, 5, 6 (F-1.1 to F-1.4; iterations 3 and 4 are F-5 and F-6). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
+| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-11 and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
 | F-2 | "Yes, LLM, but of course Claude with API key would be too expensive, Deepseek is the realistic option, BYOK for other users" | requested | | The book's prose. Depends on F-1. `docs/book-plan.md`, *Prose*. |
 | F-3 | "then wire that into a pipeline that may fetch games from somewhere on the input or put the published files somewhere on the output" | requested | | Depends on F-1. Also in the owner's words: "as sources it must be able to parse a collection of games"; "if it has to be reusable we have to think about people who do not have a github, so output must be pluggable somehow"; "I am not maintaining their repository or web pages". `docs/book-plan.md`, *Layer 2*; the chess.com, lichess and git sources exist as spike code on `book-poc`. |
 | F-4 | "yes, queue the name matching improvement" | requested | | Raised in the owner's own trial run (2026-09-24), in the owner's words: "Why are there games that are not mine, they might be mislabeled". Reading the owner's 149 OTB games kept 140 and left out 8 of the owner's own, spelled `Amicabile Diego` and `Diego , Amicabile`, because player names match exactly except for letter case, so every spelling needs its own alias. The implementer's proposal, to be shaped when picked up: match names ignoring spacing, commas and word order; and have `read` report the names seen most often in the games it left out, so a missed alias is easy to spot. Touches F-1.1's reading; the owner decides at shaping whether it lands before F-1.3 or within it. |
 | F-5 | "There are a few where the results is not recorded, default to victory for the one with much higher winning chances, or draw if unclear." | landed | 3 | Raised on the owner's own book (2026-09-24): 12 of the 148 OTB games, all from 2012, have no recorded result. Shaped below. Landed in #13 (`88ebc62`), 2026-09-25. |
 | F-6 | "I am looking at the games and I think there should be more diagrams, for instance in this game https://diegoami.github.io/chessgamescollection/games/2008-01-04-4e5d4e182f.html just an error is shown that did not affect the end result. It was move 40 that was deciding, not 31" | landed | 4 | The owner's choices on 2026-09-24, when asked which extra moments should get a diagram: "Swings that changed the outcome" (a move that changes the expected result, e.g. winning → level or level → losing, even below the 20-point critical-moment line), not the other two options offered ("the deciding moment" and "inaccuracies too"); and when: "Right after F-5, before F-1.3". The owner's example game (Pedroni vs. Amicabile, Verona 2008) has only 31... Qa2? as a critical moment; 37... Rg2+ (25% → 41% for White) and 40. Ra4 (49% → 32%) changed the outcome but cost 16 and 17 points. Shaped below. Landed in #15 (`378dd9c`), 2026-09-25, with the owner's band change to 40–60%. |
 | F-7 | "queue the library feature" | requested | | The owner's answer on 2026-09-25 to the question "F-7: should I queue the library feature? It would make re-reading a collection refresh the headers of games that are already analyzed, so corrections like this one reach the book without any manual header editing." It comes from correcting the owner's source (DA_chessgames `9e7c939` and `691eba6`: 23 "Saxonia Systems AG" placeholder Sites and 2 Events replaced). Reading again leaves an analyzed game's file alone, headers included, so the corrected headers were carried into `chessgamescollection` by hand (`a4a7d09`, `9be2978`). Header changes don't change a game's identity (moves, result, date, start position), but a corrected `Date` or `Result` would. Not shaped yet. |
-| F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server and no JavaScript by design (F-1's scope, `docs/book-plan.md`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. |
+| F-8 | "A local history reminding what games have you been watching and ideally the spoilers you have looked" | accepted | 5 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the site has no server (F-1's scope) and no JavaScript (`README.md`, `pgn_postmortem/site.py`), so a history kept in the reader's browser (per device and per browser, never shared) would bring JavaScript into the site, and the EPUB would not carry it. Browser storage for pages opened as local files (`file://`, which F-1 supports) differs between browsers. "Spoilers" would be the answers revealed (the `<details class="answer">` opened) at critical moments. Shaped below. |
 | F-9 | "A list of proposed quiz, starting from your worse blunder, assuming the game are yours." | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the player's own critical moments across all games, as a list of questions ordered from the worst (most winning chances lost) down, each linking to its position (every moment has a `moment-N` anchor). It relates to F-1.3's selection of best games. |
 | F-10 | "A link in critical position to a pop up link, where you can start stockfish and analyze the current position" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. **Owner decision (2026-09-25): a link that opens the position on lichess's analysis board** (by FEN). It was recommended as the default because it needs no JavaScript and no bundled engine, and brings in no licence question, at the cost of needing the network and a third-party site. The alternative not chosen was Stockfish in the browser (a bundled WebAssembly build: offline, several MB per site, JavaScript, and Stockfish's GPL licence; see F-1's licence question). |
 | F-11 | "The possibilty to add notes in critical positions, also as a pop up-" | requested | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: with no server, notes would live in the reader's browser (per device), which brings JavaScript into the site (see F-8), and the EPUB would not carry them. Browser storage survives a rebuild of the site; the risk is a page renamed when a game's id changes (a corrected `Date` or `Result`, see F-7). Keeping notes across devices would need an export/import to a file, or a write-back into the owner's repository (the pipeline, F-3). How notes are kept is an owner decision. |
@@ -312,6 +312,83 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
       answer, and small crossings near a band edge are noise.
     - On the owner's book this adds 285 questions in 109 games (at the 40–60% band).
     - Alternative: any band change, which would need re-analysis or questions without an answer.
+
+### F-8 — A reading history in the reader's browser
+
+- **Original request:** "A local history reminding what games have you been watching and ideally the spoilers you have looked"
+- **Player value:** on the road, the reader sees at a glance which games they have already opened and
+  how many of each game's answers they have already revealed, so they can go back to the questions
+  they haven't seen yet.
+- **Scope:** a small script, written into each page. It uses no libraries and loads nothing from the
+  network. It keeps a reading history in the reader's own browser (`localStorage`), per device and per
+  browser, never shared and never sent anywhere.
+  - **What it records:**
+    - a game as **viewed** (with the time) when its article is opened;
+    - an answer as **revealed** when its "what would you play?" answer (`<details class="answer">`) is
+      opened.
+  - **How records are keyed:** games by their id (`PostmortemId`), and answers by the move they are
+    about (move number and side), not by the moment's number, which can change when the rules for
+    critical moments change (as F-6 did).
+  - **The index shows:**
+    - a **"Recently viewed"** list at the top, newest first, limited to the latest 10 games;
+    - in the game list, a **mark** on each viewed game, with how many of its answers were revealed
+      out of its current number of questions (e.g. "2/4").
+  - **A "Clear history" button** on the index removes all the history after the reader confirms.
+  - **Everything still works without the script.** With scripts off, or where the browser gives no
+    storage (some private windows; some browsers for pages opened as `file://`), the pages read
+    exactly as today and the history parts stay hidden.
+  - **The EPUB (F-1.4) carries no script.** `README.md` and `pgn_postmortem/site.py` stop saying
+    "there is no JavaScript" and describe the optional history script instead.
+  - **No mark inside the articles:** a revealed answer isn't marked when the reader comes back. That
+    was an option the owner did not choose.
+- **Done when:** the gates pass, including:
+  1. **Python tests** that every page carries the script inline, with no `src` attribute and no URL
+     in it; that nothing else in the page changes except the script and the (hidden) history
+     containers; and that a page with the script removed is the same article as before. The golden
+     files are regenerated with the documented command.
+  2. **A new gate, `node --test`,** running script tests with Node's built-in test runner (no npm
+     packages; the script's logic is written so it can be tested with a stand-in storage and page).
+     They cover:
+     - opening an article records the game as viewed;
+     - revealing an answer records it once, keyed by move;
+     - the index lists the latest 10 games newest first;
+     - the "k/m" mark counts only answers of questions the game still has;
+     - "Clear history" removes everything, but only after the confirmation;
+     - storage that throws or is missing leaves the page working with the history hidden;
+     - corrupt stored data is ignored, not trusted.
+
+     CI installs Node (pinned) and runs this gate, and the gates table in `CLAUDE.md` gets the new
+     row with its command, coverage and failure model.
+  3. **The owner's check:** before merging, the owner's book is rebuilt from the branch (no
+     re-analysis). The owner opens some games on a phone and on a desktop browser, reveals some
+     answers, and checks the index's "Recently viewed" list, the marks and "Clear history". The
+     verdict is recorded on the PR, and a "no" sends it back.
+
+  Each new assertion is shown failing first.
+- **Out of scope:**
+  - syncing or exporting the history across devices (not chosen);
+  - notes (F-11);
+  - the quiz list (F-9);
+  - the engine link (F-10);
+  - marks inside articles (not chosen);
+  - any server or network use.
+- **Depends on:** F-6 (landed).
+- **Open questions:** decided by the owner on 2026-09-25, each against a recommended default:
+  - **Owner decision: a small inline script is allowed.**
+    - Recommended default: yes. There is no static way to remember what a reader viewed, and the
+      pages stay complete without it.
+    - Owner's choice: the recommended default.
+  - **Owner decision: where the history shows.**
+    - Recommended default: a "Recently viewed" list on the index and marks in the game list. The
+      third option offered, marks on the revealed answers inside articles, was not recommended.
+    - Owner's choice: the recommended default.
+  - **Owner decision: this browser only, with a reset.**
+    - Recommended default: the same, because anything more needs a file export or a server.
+    - Owner's choice: the recommended default. Export/import, the alternative, was not chosen.
+  - **Proposed with this shaping, confirmed by the owner's merge:**
+    - the limit of 10 recent games;
+    - answers keyed by move, not by moment number;
+    - the new `node --test` gate, with Node pinned in CI.
 
 ## Statuses
 
