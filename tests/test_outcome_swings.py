@@ -102,7 +102,8 @@ def answer_of(moment: Element) -> str:
     assert "open" not in details.attrs, "the answer is not hidden"
     summary = next(c for c in details.children if isinstance(c, Element))
     assert summary.tag == "summary" and summary.text() == "Show the answer"
-    return plain(details.text()[len(summary.text()) :])
+    after = details.children[details.children.index(summary) + 1 :]
+    return plain("".join(c if isinstance(c, str) else c.text() for c in after)).strip()
 
 
 # --- 1: swings of 10-20 points become critical moments ------------------------------------
@@ -208,7 +209,9 @@ def test_a_critical_moment_that_is_also_a_swing_is_shown_once(site):
 
     assert moments("critical-swing.pgn") == ["7. Re1"]
     dom = page(site, "critical-swing.pgn")
-    (moment,) = dom.find_all("div", "moment")
+    shown = dom.find_all("div", "moment")
+    assert len(shown) == 1, [m.attrs["id"] for m in shown]
+    (moment,) = shown
     assert len(dom.find_all("details")) == 1
     assert "played 7. Re1?, a mistake that turned a level game into a losing one" in answer_of(moment)
     assert notes(dom) == {
