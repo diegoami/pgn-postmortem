@@ -18,6 +18,7 @@ import chess.pgn
 import pytest
 
 from pgn_postmortem import Collection
+from pgn_postmortem.analysis import win_percent
 from pgn_postmortem.collection import file_stem, game_id
 from pgn_postmortem.site import build_site, shown_result
 from tests.test_site import Element, parse
@@ -142,6 +143,29 @@ def test_a_threshold_outside_55_to_95_is_rejected(tmp_path, threshold):
     assert not (tmp_path / "index.html").exists()  # rejected before anything is written
     with pytest.raises(ValueError, match="55"):
         shown_result(read("white-73.pgn").game, threshold)
+
+
+@pytest.mark.parametrize(
+    ("name", "result", "cp"),
+    [("white-73.pgn", "1-0", 275), ("white-27.pgn", "0-1", -275)],
+)
+def test_winning_chances_exactly_at_the_threshold_count_as_a_win(tmp_path, name, result, cp):
+    # "at least" the threshold: the threshold set to exactly the chances of the side ahead in the final position
+    game = read(name).game
+    assert game.end().eval().white().score() == cp
+    exactly = win_percent(cp) if cp > 0 else 100 - win_percent(cp)
+    assert shown_result(game, exactly) == result
+    assert_shows(build(tmp_path, presume_threshold=exactly), name, result)
+
+
+def test_build_site_rejects_a_threshold_out_of_range_up_front_even_with_no_games(tmp_path):
+    out = tmp_path / "site"
+    for threshold in (54.9, 95.1, float("nan")):
+        with pytest.raises(ValueError, match="55"):
+            build_site([], out, presume_threshold=threshold)
+        assert not out.exists()  # nothing written, not even the stylesheet or the index
+    build_site([], out)  # the default is accepted, and an empty collection is not an error
+    assert (out / "index.html").is_file()
 
 
 @pytest.mark.parametrize("threshold", [55, 95])
