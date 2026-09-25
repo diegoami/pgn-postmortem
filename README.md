@@ -202,12 +202,12 @@ until you tap it. A critical moment is a move that cost its side at least 20 poi
 percentage and thresholds that grade the moves.
 
 A move that changed the expected result is a critical moment too, even when it cost less. After each
-move the position is *White winning* (65% or more for White), *Black winning* (35% or less) or *level*.
+move the position is *White winning* (60% or more for White), *Black winning* (40% or less) or *level*.
 A move counts when it made that worse for its side (winning to level, level to losing, or winning to
 losing), cost its side at least 10 points (the inaccuracy threshold in use), and the analysis shows a
 better move there: an engine line that `analyze` stored at that position starts with another move. Only
 the stored analysis is read, so nothing is analyzed again. Its note says how the expected result changed, for example "an inaccuracy that turned a
-level game into a losing one". The bands are `build_site(..., outcome_bands=(35, 65))`: the lower one
+level game into a losing one". The bands are `build_site(..., outcome_bands=(40, 60))`: the lower one
 above 0 and below 50, the upper one above 50 and below 100.
 
 Games that have not been analyzed, or whose only
