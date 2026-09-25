@@ -12,16 +12,33 @@ directory::
     assets/style.css        the layout, the colours (light or dark, as the OS
                             says) and the one piece set every diagram uses
 
-Every link is relative and names a file (``../index.html``, not ``../``), so
-the site works from a web server, from a folder copied to a phone, and from
-``file://``. Nothing is loaded from the network. The only JavaScript is the
-optional reading history (below), inlined in every page; without it the
-pages read the same.
+Every link within the site is relative and names a file (``../index.html``,
+not ``../``), so the site works from a web server, from a folder copied to a
+phone, and from ``file://``. The only absolute links are the two lichess
+links of an article (below), which open in a new tab, and lichess is reached
+only when the reader taps one. Nothing is loaded from the network. The only
+JavaScript is the optional reading history (below), inlined in every page;
+without it the pages read the same.
 
 An article has an infobox (the players, the event, the result, the final
 position), a lead paragraph, the moves with notes, a diagram and a question at
 each critical moment, a conclusion and the game's PGN. All prose comes from
 templates (the LLM is F-2 in ``ROADMAP.md``).
+
+**The lichess links** (ROADMAP.md, F-10). Under the final position, the
+infobox links "Open this game on lichess" to lichess's analysis board with
+the game's moves, ``https://lichess.org/analysis/pgn/<moves>``: the mainline
+in SAN without move numbers and without the check and mate signs (a ``+`` in
+the path reads as a space), separated by spaces, URL-encoded
+(``lichess_game_url``). A game that does not start from the standard position
+(a ``FEN`` header that sets up another one) or has no moves has no game link.
+Inside each critical moment's hidden answer, "Analyze this position on
+lichess" links to ``https://lichess.org/analysis/<FEN>``, the question's
+position (before the move), with the FEN's spaces written as ``_``
+(``lichess_position_url``); it sits in the answer because an engine on the
+question's position gives the answer away. Both links carry
+``target="_blank"`` and ``rel="noopener noreferrer"``, with or without the
+reading history.
 
 **Critical moments.** They come from the ``[%eval]`` comments the analysis
 step writes (``pgn_postmortem.analysis``), and only from those: a game read
@@ -148,6 +165,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
+from urllib.parse import quote
 
 import chess
 import chess.engine
@@ -195,6 +213,8 @@ NBSP = "\u00a0"  # between a move number and its move, so a line never breaks be
 GENERATOR = '<meta name="generator" content="pgn-postmortem">'  # in every page; marks what a rebuild may delete
 QUIZ_PAGE = "quiz.html"  # the quiz list of the player's own mistakes (ROADMAP.md, F-9)
 SITE_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")  # the reading history's site key (ROADMAP.md, F-8)
+LICHESS_ANALYSIS = "https://lichess.org/analysis/"  # lichess's analysis board (ROADMAP.md, F-10)
+NEW_TAB = 'target="_blank" rel="noopener noreferrer"'  # the lichess links open in a new tab, so the book stays open
 
 
 # --- reading the analysis ---------------------------------------------------
@@ -626,6 +646,35 @@ def board_html(board: chess.Board, *, flipped: bool = False, highlight: Iterable
     return f'<div class="board" role="img" aria-label="{attr(description)}">\n' + "\n".join(rows) + "\n</div>"
 
 
+# --- the lichess links (ROADMAP.md, F-10) --------------------------------------
+
+
+def lichess_game_url(game: chess.pgn.Game) -> str | None:
+    """The game on lichess's analysis board: ``LICHESS_ANALYSIS`` ``pgn/``
+    and the mainline moves in SAN, without move numbers and without the check
+    and mate signs (``+`` in a path reads as a space), separated by spaces and
+    URL-encoded (``e4%20e5%20Qh5``). None for a game that does not start from
+    the standard position, or has no moves."""
+    board = game.board()
+    if board.fen() != chess.STARTING_FEN or game.next() is None:
+        return None
+    sans = []
+    for move in game.mainline_moves():
+        sans.append(board.san(move).rstrip("+#"))
+        board.push(move)
+    return f"{LICHESS_ANALYSIS}pgn/{quote(' '.join(sans), safe='')}"
+
+
+def lichess_position_url(board: chess.Board) -> str:
+    """The position on lichess's analysis board: ``LICHESS_ANALYSIS`` and
+    its FEN, with the spaces written as ``_``."""
+    return LICHESS_ANALYSIS + quote(board.fen().replace(" ", "_"), safe="/")
+
+
+def lichess_link(url: str, text: str) -> str:
+    return f'<a href="{attr(url)}" {NEW_TAB}>{esc(text)}</a>'
+
+
 # --- the reading history ------------------------------------------------------
 
 
@@ -854,6 +903,9 @@ def infobox_html(article: Article) -> str:
     if article.analyzed:
         links = ", ".join(f'<a href="#moment-{i}">{i}</a>' for i in range(1, len(article.moments) + 1))
         rows.append(("Critical moments", links or "None"))
+    # under the final position; none for a set-up position or a game without moves
+    game_url = lichess_game_url(article.game)
+    lichess = f'\n<div class="lichess">{lichess_link(game_url, "Open this game on lichess")}</div>' if game_url else ""
 
     highlight = (end.move.from_square, end.move.to_square) if end.move else ()
     board = board_html(end.board(), highlight=highlight, label=f"The final position{' ' + last if last else ''}.")
@@ -862,7 +914,7 @@ def infobox_html(article: Article) -> str:
         '<table class="infobox">\n'
         f"<caption>{esc(article.title)}</caption>\n"
         f'<tr><td colspan="2" class="figure">\n{board}\n'
-        f'<div class="caption">The final position{" " + esc(last) if last else ""}</div></td></tr>\n'
+        f'<div class="caption">The final position{" " + esc(last) if last else ""}</div>{lichess}</td></tr>\n'
         f"{body}\n"
         "</table>\n"
     )
@@ -910,6 +962,9 @@ def moment_html(review: MoveReview, number: int, history: History | None = None)
         moves, symbol = refutation
         answer += f" The refutation: {esc(line_text(review.node.board(), moves))}{symbol_html(symbol)}."
     answer += "</p>\n"
+    # inside the hidden answer, since an engine on the question's position gives the answer away
+    position = lichess_link(lichess_position_url(board), "Analyze this position on lichess")
+    answer += f'<p class="lichess">{position}</p>\n'
     return (
         f'<div class="moment" id="moment-{number}">\n'
         "<figure>\n"
@@ -1286,6 +1341,7 @@ h2 { font-size: 1.4rem; margin: 1.6rem 0 .5rem; border-bottom: 1px solid var(--r
 .infobox .figure { padding: .5rem; }
 .infobox .board { max-width: 100%; }
 .caption { font-size: .85rem; color: var(--muted); text-align: center; margin-top: .3rem; }
+.infobox .lichess { text-align: center; font-size: .85rem; margin-top: .3rem; }
 @media (min-width: 44rem) {
   .infobox { float: right; clear: right; width: 20rem; margin: 0 0 1rem 1.2rem; }
 }

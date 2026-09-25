@@ -192,7 +192,8 @@ The exact rule is in [`pgn_postmortem/collection.py`](pgn_postmortem/collection.
 
 `pgn-postmortem site` writes `index.html` (the games by year), one `games/<date>-<id>.html` article
 per game, one stylesheet and, for a player, `quiz.html` (below). Open `index.html` in a browser, or copy the folder to a phone: every link
-is relative, nothing loads from the network, and the colours follow the system's light or dark mode.
+within the site is relative, nothing loads from the network, and the colours follow the system's light or dark mode.
+The only links out are the two lichess links below, which open in a new tab only when you tap them.
 The only JavaScript is the optional reading history below; without it the pages read the same. Each
 article has an infobox with the final position, a lead paragraph, the moves, a conclusion and the
 PGN, all in template prose.
@@ -211,6 +212,15 @@ better move there: an engine line that `analyze` stored at that position starts 
 the stored analysis is read, so nothing is analyzed again. Its note says how the expected result changed, for example "an inaccuracy that turned a
 level game into a losing one". The bands are `build_site(..., outcome_bands=(40, 60))`: the lower one
 above 0 and below 50, the upper one above 50 and below 100.
+
+**Lichess links.** Under the final position in the infobox, "Open this game on lichess" opens the
+game on lichess's free analysis board: `https://lichess.org/analysis/pgn/<moves>`, the moves in SAN
+without move numbers and without `+` and `#`, URL-encoded (`e4%20e5%20Nf3`). A game that starts from a
+set-up position (a `FEN` header other than the standard start) or has no moves has no such link.
+Inside each hidden answer, "Analyze this position on lichess" opens the question's position there
+(`https://lichess.org/analysis/<FEN>`, the FEN's spaces written as `_`), so you can put an engine on
+it; it is in the answer because an engine on the question gives the answer away. Both need the
+network and lichess.org; the rest of the site does not.
 
 Games that have not been analyzed, or whose only
 evaluations came from their source, still get an article, without notes or questions. Pass the games

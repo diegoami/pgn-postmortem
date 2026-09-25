@@ -1,0 +1,9 @@
+[Event "Club blitz"]
+[Site "Verona"]
+[Date "2013.04.06"]
+[Round "?"]
+[White "Ada Example"]
+[Black "Bert Sample"]
+[Result "1-0"]
+
+1. e4 d5 2. exd5 c6 3. dxc6 Qb6 4. cxb7 Qxf2+ 5. Kxf2 Nf6 6. bxc8=Q# 1-0

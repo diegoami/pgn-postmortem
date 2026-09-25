@@ -1,0 +1,12 @@
+[Event "Club blitz"]
+[Site "Verona"]
+[Date "2013.04.07"]
+[Round "?"]
+[White "Bert Sample"]
+[Black "Ada Example"]
+[Result "*"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+
+1. d4 { [%eval 0.20] } 1... d5 { [%eval 0.25] } 2. c4 { [%eval 0.30] } *
