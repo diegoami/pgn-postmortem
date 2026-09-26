@@ -432,6 +432,15 @@ def move_heading_text(item: dict, white: str, black: str) -> str:
     return f"Move {move_no}{letter} {item['san']}{by} ({labels})"
 
 
+def summary_line(text: str) -> str:
+    """The one-line <summary> of a <details> block. markdown="span" makes
+    kramdown (GitHub Pages' Jekyll, with parse_block_html) read its text as
+    inline Markdown; without it kramdown reads the text as a block, misses
+    the closing tag and prints "</summary>" and "</details>" on the page.
+    GitHub's own Markdown view drops the attribute."""
+    return f'<summary markdown="span">{text}</summary>'
+
+
 def is_inaccuracy(item: dict) -> bool:
     return bool(INACCURACY_NAGS & set(item["nags"]))
 
@@ -523,7 +532,7 @@ def write_game_markdown(
         for n, (svg_name, item) in enumerate(flagged_with_svg, start=1):
             if is_inaccuracy(item):
                 parts.append("<details>")
-                parts.append(f"<summary>{move_heading_text(item, white, black)}</summary>")
+                parts.append(summary_line(move_heading_text(item, white, black)))
                 parts.append("")
                 parts.extend(render_flagged_move(index, n, svg_name, item, white, black, include_heading=False))
                 parts.append("</details>")
@@ -534,7 +543,7 @@ def write_game_markdown(
     parts.append("## Full PGN")
     parts.append("")
     parts.append("<details>")
-    parts.append("<summary>Show movetext</summary>")
+    parts.append(summary_line("Show movetext"))
     parts.append("")
     parts.append("```pgn")
     parts.append(pgn_path.read_text(encoding="utf-8").strip())
