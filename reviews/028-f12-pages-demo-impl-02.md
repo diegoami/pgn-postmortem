@@ -135,7 +135,7 @@ Merged on 2026-09-26 as `ddc2982` (pull request #28), on the owner's go ("fix no
   - `/markdown/` returns 200. Its first game link, as served, is `/pgn-postmortem/markdown/games/1.html` and returns 200.
   - On that page, the first diagram's `src`, `/pgn-postmortem/markdown/games/1/opening_deviation.svg`, returns 200.
   - The old deep link `/pgn-postmortem/games/1.html` returns 404, as F-12's out-of-scope list records.
-- **Done-when 4, the owner's look at the live demo:** pending. The owner is asked on 2026-09-26; a "no" goes the defect path.
+- **Done-when 4, the owner's look at the live demo:** done on 2026-09-26. The owner's look first found the Markdown pages at `/markdown/` printing `</summary>` and `</details>` as text. That defect is older than F-12 and was fixed by #29 (`reviews/029-…`). The owner then said the demo "has overall a different format than my wiki": the orchestrator checked that the root is built by the same library code as the owner's book with a byte-identical stylesheet, and that the different format is the legacy Markdown demo under `/markdown/`, kept by F-12. The owner's verdict: "Ok, now it is correct, thx".
 
 Left open (non-blocking, not fixed):
 - **Round 01, finding 2** (owner, 2026-09-26: "fix note first", this one only): `tests/test_demo.py` repeats the workflow's `--title` and `--site-key` instead of reading them from `pages.yml`.
