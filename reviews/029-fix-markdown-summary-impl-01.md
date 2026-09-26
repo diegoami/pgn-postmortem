@@ -144,3 +144,14 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-26 as `e7e18e2` (pull request #29), on the owner's go ("ok, merge"), with the head `a94712e` green in CI. CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36265973702.
+
+- **The assertion that would have caught the defect** landed: `tests/test_publish.py` checks that every `<summary>` the Markdown generator writes is one line carrying `markdown="span"`. It was shown failing on `main` (3 failed, 1 passed). The gates pass: ruff clean, pytest 221 passed, node 32/32 (PR #29, re-run by the reviewer).
+- **The Pages redeploy fixed the live demo:** https://github.com/diegoami/pgn-postmortem/actions/runs/36265973668 built and deployed. Afterwards, the five served pages `/pgn-postmortem/markdown/games/1.html` to `5.html` (fetched with `curl` and a cache-busting query) have 0 escaped `&lt;/summary&gt;` or `&lt;/details&gt;`, no `<summary>` wrapping a `<p>`, and 3, 1, 1, 1 and 2 `<details>` blocks respectively. That matches the Markdown sources.
+
+Left open (non-blocking, not fixed): the review's findings 1 to 4 above. In particular, a `*` or `_` in a player's name would now render as emphasis on Pages (finding 3); no example is affected.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
