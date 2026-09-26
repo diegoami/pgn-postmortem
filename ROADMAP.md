@@ -105,9 +105,11 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   4. **Owner decision — the current Markdown pipeline** (before F-1.4). Default: **keep it
      unchanged until F-1.4 lands**, then decide whether to retire it or keep it as a second
      renderer; the live demo keeps working meanwhile.
-     **Annotated on 2026-09-26 (F-12):** the owner moved the Markdown demo to `/markdown/` of the
-     Pages site, its pipeline and its content unchanged, to make room for the library's site at the
-     root. The decision to retire or keep the pipeline is still open, before F-1.4.
+     **Annotated on 2026-09-26 (F-12):** the owner decided to move the Markdown demo to
+     `/markdown/` of the Pages site, its pipeline and its content unchanged, to make room for the
+     library's site at the root. The demo keeps working at the new address; its old deep links
+     (`/pgn-postmortem/games/N.html`) are not redirected (F-12, *Out of scope*). The decision to
+     retire or keep the pipeline is still open, before F-1.4.
   5. **Owner decision — the spike on `book-poc`** (before F-1.1). Default: **F-1.1 reuses the
      reading, duplicate removal and parallel analysis code** (already run on real data), reviewed
      like any new code, and leaves the fetching and config code for F-3.
@@ -723,15 +725,21 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
         and `/pgn-postmortem/games/1/blunder_2_move23b.svg`;
       - without the new `baseurl`, every link of the moved pages would point back into the root.
     - **Neither build removes the other's output.** The library's rebuild removes only the pages it
-      wrote; the order of the two builds is the implementer's choice.
+      wrote. The library's site is built first (or the output directory is created before Jekyll
+      runs): `actions/jekyll-build-pages` is a Docker action running as root, so a directory it
+      creates first may not be writable by the library's step (review 027-01, finding 2).
     - **Triggers:** a push to `main` touching `examples/docs/**`, `examples/site/**`,
       `pgn_postmortem/**`, `pyproject.toml`, `requirements.txt` or the workflow, and
       `workflow_dispatch`. A library change redeploys the demo, so the demo always shows the library
       as it is on `main`.
   - **`CLAUDE.md`,** in the implementation change:
     - the post-merge check paragraph describes the new build and its triggers. It still cannot
-      block a merge, and the workflow still needs no Stockfish;
-    - the list of generated paths gains `examples/site/analyzed/**`, with the command above;
+      block a merge, and the workflow still needs no Stockfish. Its defect clause, which today
+      counts only "the workflow or the content of `examples/docs/`" as a failure caused by this
+      repository, also counts `pgn_postmortem/**`, the package manifests (`pyproject.toml`,
+      `requirements.txt`) and `examples/site/analyzed/`;
+    - the list of generated paths gains `examples/site/analyzed/**`, with the command above, and so
+      do the paths to normally ignore, next to `examples/analyzed_games/**`;
     - the tests row's "covers" cell gains the new test (done-when 1).
   - **`README.md`:** the "Live demo" line says the demo is the library's site of the five classic
     games and that the Markdown pages are at `/markdown/`. It links the owner's book
@@ -747,16 +755,25 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
      A broken demo input is then caught before the merge, not only by the post-merge deploy. Each
      assertion is shown failing first (for example on a scratch copy with a game removed, a marker
      stripped, or a game replaced).
-  2. **Both parts are built locally before the merge:** the library site with the workflow's
-     command, and the Markdown part with Jekyll as far as Jekyll is available locally (if it isn't,
-     the PR says so, and the deploy decides). The PR lists the contents of the root and of
-     `/markdown/`.
+  2. **Both parts are built before the merge:**
+     - **locally:** the library site with the workflow's command, and the Markdown part with Jekyll
+       as far as Jekyll is available locally (if it isn't, the PR says so). The PR lists the
+       contents of the root and of `/markdown/`, and, if Jekyll ran, shows one rewritten link of
+       the Markdown index, starting with the base path plus `/markdown/`;
+     - **on GitHub:** a `workflow_dispatch` run of the workflow on the implementation branch. The
+       `github-pages` environment deploys only from `main`, so the build job runs and the deploy
+       job is expected to be refused. The PR records the run's URL and the contents of the built
+       artifact (the root and `/markdown/`).
   3. **After the merge,** the post-merge Pages run deploys it (the post-merge check in `CLAUDE.md`,
      which cannot block the merge). The completion note records the run's URL, and that:
-     - the root serves the library's index, listing the five games;
-     - `/markdown/` serves the Markdown index;
-     - a Markdown game page under `/markdown/` loads its diagrams (a request for one of its SVGs
-       returns 200).
+     - the root serves the library's index, listing the five games, and its first article link,
+       followed as served, returns 200;
+     - `/markdown/` serves the Markdown index. Its first game link, taken from the served page,
+       starts with the base path plus `/markdown/` and returns 200;
+     - on that game page, one diagram's `src`, as written in the served page, returns 200.
+
+     These follow the links as the served pages write them: a direct request for a file under
+     `/markdown/` would return 200 even with a wrong `baseurl` (review 027-01, finding 1).
 
      A failure caused by the workflow or the content goes the defect path (`PRINCIPLES.md`).
   4. **The owner's check,** after the deploy, since only the live site shows the result: the owner
@@ -770,7 +787,12 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - changing the Markdown pipeline, `examples/docs/` or its golden files;
   - rewriting the README beyond the demo line (it still introduces the Markdown pipeline first;
     F-1.4's documentation);
-  - running Stockfish in the Pages workflow.
+  - running Stockfish in the Pages workflow;
+  - redirects from the Markdown demo's old URLs. Its deep links, such as
+    `https://diegoami.github.io/pgn-postmortem/games/1.html` and its diagrams, stop resolving,
+    since the root's `games/` then holds the library's `<date>-<id>.html` pages. Nothing in the
+    repository links them (`README.md` links only the root), and GitHub Pages has no server-side
+    redirects.
   - **Noted, not fixed:** the Jekyll theme's "edit this page" link on the Markdown pages already
     points to a file that doesn't exist (`edit/main/index.md`, not `examples/docs/index.md`, on the
     live demo on 2026-09-26). It is older than F-12, and moving the pages doesn't change it.
@@ -781,6 +803,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - **Owner decision: the Markdown demo moves to `/markdown/`, unchanged.** Recorded in F-12's row,
     and annotated under F-1's open question 4.
   - **Proposed with this shaping, confirmed by the owner's merge:**
+    - F-12 as iteration 8, before F-1.3 (the owner asked for it after v0.1.0 was tagged, with F-1.3
+      next in the plan);
     - analyzing from `examples/daily_games/` (not the generated `examples/analyzed_games/`), at depth
       22, into `examples/site/analyzed/`;
     - the site's title, and the explicit site key `pgn-postmortem-demo`;

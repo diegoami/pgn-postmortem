@@ -47,7 +47,7 @@ so; the exception is recorded, never improvised.
 | after F-1.3 | F-1.4 of F-1, "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | F-1.4 in F-1's block | F-2, F-3 | chosen by the owner | written when the iteration starts (OpenCode mode) | medium | the assignment table (OpenCode) or a fresh-context session (Claude) |
 | next | the first unblocked roadmap request, in the owner's order | that request's block in `ROADMAP.md` | the other requests | chosen by the owner | written when the request is shaped (OpenCode mode) | per request | as above |
 
-The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Each gets its iteration number when it is shaped, and F-1.3 and F-1.4 then move after them. F-11 was then parked by the owner (2026-09-25), so after F-10 the next was F-1.3, once the first release (v0.1.0) was tagged. v0.1.0 was tagged on `724aa9d` (2026-09-26); the owner then asked for F-12 (2026-09-26), which comes first, so the next after F-12 is F-1.3.
+The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Each gets its iteration number when it is shaped, and F-1.3 and F-1.4 then move after them. F-11 was then parked by the owner (2026-09-25), so after F-10 the next was F-1.3, once the first release (v0.1.0) was tagged. v0.1.0 was tagged on `724aa9d` (2026-09-26); the owner then asked for F-12 (2026-09-26), which its shaping proposes before F-1.3 (confirmed by the owner's merge of the shaping, `ROADMAP.md`, F-12's block), so the next after F-12 is F-1.3.
 
 F-1 was split into F-1.1 to F-1.4 when it was shaped (`ROADMAP.md`, *Size it
 to one iteration*).
