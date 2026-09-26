@@ -10,7 +10,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 
 | id | request | status | iteration | notes |
 |---|---|---|---|---|
-| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-10 (F-11 is parked) and the first release and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8, 6 is F-9, 7 is F-10). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
+| F-1 | "first publishing a pip / python library that creates a wikipedia / epub from a pgn collection" | accepted | 1 and 2 (F-1.1, F-1.2); F-1.3 and F-1.4 come after F-8 to F-10 (F-11 is parked), the first release (v0.1.0, tagged on `724aa9d`) and F-12, and are numbered when they start (iterations 3 and 4 are F-5 and F-6, 5 is F-8, 6 is F-9, 7 is F-10, 8 is F-12). F-1.1 landed in #6 (`ccc0f89`), F-1.2 in #8 (`05c6270`) | The direction is in [`docs/book-plan.md`](docs/book-plan.md), *Layer 1*. Also in the owner's words: "I would like to read a book about me and my best and worst games like I was Fischer or Capablanca"; ""worst games" is kind of a bad idea, "best games that I lost", not just blunders.  But all games must be there, wikipedia style."; "in English, German comments are from old engines, strip comments and variants from games". Spike code on the branch `book-poc`. |
 | F-2 | "Yes, LLM, but of course Claude with API key would be too expensive, Deepseek is the realistic option, BYOK for other users" | requested | | The book's prose. Depends on F-1. `docs/book-plan.md`, *Prose*. |
 | F-3 | "then wire that into a pipeline that may fetch games from somewhere on the input or put the published files somewhere on the output" | requested | | Depends on F-1. Also in the owner's words: "as sources it must be able to parse a collection of games"; "if it has to be reusable we have to think about people who do not have a github, so output must be pluggable somehow"; "I am not maintaining their repository or web pages". `docs/book-plan.md`, *Layer 2*; the chess.com, lichess and git sources exist as spike code on `book-poc`. |
 | F-4 | "yes, queue the name matching improvement" | requested | | Raised in the owner's own trial run (2026-09-24), in the owner's words: "Why are there games that are not mine, they might be mislabeled". Reading the owner's 149 OTB games kept 140 and left out 8 of the owner's own, spelled `Amicabile Diego` and `Diego , Amicabile`, because player names match exactly except for letter case, so every spelling needs its own alias. The implementer's proposal, to be shaped when picked up: match names ignoring spacing, commas and word order; and have `read` report the names seen most often in the games it left out, so a missed alias is easy to spot. Touches F-1.1's reading; the owner decides at shaping whether it lands before F-1.3 or within it. |
@@ -21,6 +21,7 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
 | F-9 | "A list of proposed quiz, starting from your worse blunder, assuming the game are yours." | landed | 6 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: the player's own critical moments across all games, as a list of questions ordered from the worst (most winning chances lost) down, each linking to its position (every moment has a `moment-N` anchor). It relates to F-1.3's selection of best games. Shaped below. Landed in #21 (`f9c54d3`), 2026-09-25. |
 | F-10 | "A link in critical position to a pop up link, where you can start stockfish and analyze the current position" | landed | 7 | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. **Owner decision (2026-09-25): a link that opens the position on lichess's analysis board** (by FEN). It was recommended as the default because it needs no JavaScript and no bundled engine, and brings in no licence question, at the cost of needing the network and a third-party site. The alternative not chosen was Stockfish in the browser (a bundled WebAssembly build: offline, several MB per site, JavaScript, and Stockfish's GPL licence; see F-1's licence question). Also in the owner's words (2026-09-25): "Another feature to add is having a link to open the full PGN game on lichess,". **Owner decision (2026-09-25): that request is part of F-10**, recommended as the default because both are plain links to lichess (the position's analysis board and the whole game), shaped and built as one iteration. The alternative, a separate request, was not chosen. Shaped below. Landed in #23 (`f3b4dea`), 2026-09-25. |
 | F-11 | "The possibilty to add notes in critical positions, also as a pop up-" | parked | | Asked by the owner on 2026-09-25, after F-6 landed, as one of four requested features (F-8 to F-11). Not shaped yet. The owner decided on 2026-09-25 that F-8 to F-11 come before F-1.3. Notes for shaping: with no server, notes would live in the reader's browser (per device), which brings JavaScript into the site (see F-8), and the EPUB would not carry them. Browser storage survives a rebuild of the site; the risk is a page renamed when a game's id changes (a corrected `Date` or `Result`, see F-7). Keeping notes across devices would need an export/import to a file, or a write-back into the owner's repository (the pipeline, F-3). How notes are kept is an owner decision. **Parked by the owner on 2026-09-25** ("let us postpone F-11"), before the first release (v0.1.0). It is picked up again when the owner asks. |
+| F-12 | "ok can we update the pgn postmortem demo to reflect the chess games collection ?" | accepted | 8 | Asked by the owner on 2026-09-26, after v0.1.0 was tagged. The project's Pages demo (https://diegoami.github.io/pgn-postmortem/) is still the Markdown pipeline's output (`examples/docs/`, five classic games, built with Jekyll by `.github/workflows/pages.yml`), while the owner's book (https://diegoami.github.io/chessgamescollection/) is built by the library (`pgn-postmortem site`). **Owner decision (2026-09-26): the demo is the library's site built from the five public-domain classic games already in `examples/`.** It was recommended as the default because only five games need analyzing and it matches the "any player" demo of `docs/book-plan.md` (*Demo*); the README links the owner's book as a real collection built with the library. The alternatives not chosen: a copy of the owner's 148 over-the-board games (it duplicates `chessgamescollection` and would need copying again on each rebuild there), or only relinking the README to the owner's book, with no new build. **Owner decision (2026-09-26): the Markdown demo moves to `/markdown/`, its content unchanged.** It was recommended as the default because it respects F-1's open question 4 (the Markdown pipeline stays unchanged until F-1.4 decides whether to retire it). The alternative not chosen: retiring it now. Shaped below. |
 
 ## Accepted requests
 
@@ -79,8 +80,9 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   - Analyzing the owner's whole archive: it runs only when the owner asks (`CLAUDE.md`,
     *conventions*); fixtures and the demo collection are enough to build and test F-1.
   - Book languages other than English.
-  - Changing the current Markdown pipeline (`scripts/`, `examples/docs/`, the Pages demo), beyond
-    what open question 4 decides.
+  - Changing the current Markdown pipeline (`scripts/`, `examples/docs/`), beyond what open
+    question 4 decides. The Pages demo is changed by F-12 (the library's site at the root, the
+    Markdown demo moved unchanged to `/markdown/`); the pipeline and its pages stay as they are.
 - **Depends on:** nothing. (The harness is adopted; `book-poc` holds spike code that F-1.1 may reuse,
   see open question 5.)
 - **Open questions** — owner decisions, each with a recommended default, its reason, and the slice
@@ -103,6 +105,11 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   4. **Owner decision — the current Markdown pipeline** (before F-1.4). Default: **keep it
      unchanged until F-1.4 lands**, then decide whether to retire it or keep it as a second
      renderer; the live demo keeps working meanwhile.
+     **Annotated on 2026-09-26 (F-12):** the owner decided to move the Markdown demo to
+     `/markdown/` of the Pages site, its pipeline and its content unchanged, to make room for the
+     library's site at the root. The demo keeps working at the new address; its old deep links
+     (`/pgn-postmortem/games/N.html`) are not redirected (F-12, *Out of scope*). The decision to
+     retire or keep the pipeline is still open, before F-1.4.
   5. **Owner decision — the spike on `book-poc`** (before F-1.1). Default: **F-1.1 reuses the
      reading, duplicate removal and parallel analysis code** (already run on real data), reviewed
      like any new code, and leaves the fetching and config code for F-3.
@@ -114,6 +121,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   7. **Owner decision — the demo collection** (before F-1.3). Default: **Capablanca's games** from a
      public source whose terms allow redistribution; the builder proposes the source when F-1.3 is
      shaped for its session, and it is named in the README.
+     **Unchanged by F-12 (2026-09-26):** F-1.3's demo book is still Capablanca's games. F-12's site
+     demo of the five classic games in `examples/` may be replaced by it then.
   8. **Owner decision — the e-readers the EPUB must work in** (before F-1.4). Default: **Apple
      Books and Kindle** (via Send to Kindle). Alternative: add Google Play Books, which
      `docs/book-plan.md` lists too.
@@ -653,6 +662,156 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
     - narrowing the link check to exactly these two lichess forms in these two places;
     - the link texts;
     - the links in both golden sets.
+
+### F-12 — The Pages demo shows the library's site
+
+- **Original request:** "ok can we update the pgn postmortem demo to reflect the chess games collection ?"
+- **Player value:** a visitor to the project sees what the library produces today (the
+  Wikipedia-style site with its "what would you play?" questions, diagrams, reading history and
+  lichess links) instead of the older Markdown pages, and can follow a link to a real collection
+  built with it, the owner's book.
+- **Scope:**
+  - **The demo's games** are the five public-domain classic games already in `examples/`
+    (Chigorin–Steinitz 1892 to Carlsen–Anand 2014). The library analyzes them from
+    `examples/daily_games/`, the Markdown pipeline's own input, not from `examples/analyzed_games/`,
+    which is that pipeline's generated output (`CLAUDE.md`, *the canonical source*). Both hold the
+    same five games. This was checked on 2026-09-26 by reading a scratch copy of each with
+    `pgn-postmortem read` (no analysis):
+    - both read as 5 games, with 0 unparseable, 0 without moves and 0 duplicates, and the two sets
+      of stripped PGNs are byte-identical (the `{ +0.36 }` comments of `analyzed_games` are
+      stripped on reading);
+    - every game has the seven standard headers, a well-formed `Date` and a recorded result, and
+      none starts from a set-up position. One (Chigorin–Steinitz) has no `ECO` header, which the
+      library doesn't need.
+
+    So no game needs special handling.
+  - **The analysis** is run once, by the implementer, with Stockfish on their own machine, at
+    depth 22 (the depth of the owner's book, as `chessgamescollection`'s README records), into a new
+    committed, generated directory, `examples/site/analyzed/`:
+
+    ```
+    .venv/bin/python -m pgn_postmortem analyze examples/daily_games --depth 22 --out examples/site/analyzed
+    ```
+
+    - Each game's `PostmortemAnalysis` header records the engine and the depth; the PR quotes them.
+    - It is a short run (five games) on public-domain games, not on the owner's data, so the
+      conventions' rule on long runs doesn't apply.
+    - Changing the engine or the depth later means deleting the directory and analyzing again,
+      since the library never re-analyzes a game it already analyzed.
+  - **The Pages workflow** (`.github/workflows/pages.yml`) builds one Pages artifact with two parts.
+    It never runs Stockfish: it only builds from the committed analysis.
+    - **The root is the library's site.** The workflow installs the pinned dependencies and the
+      package from the checkout (`pip install -r requirements.txt .`), then runs:
+
+      ```
+      pgn-postmortem site examples/site/analyzed --title "pgn-postmortem demo — five classic games" --site-key pgn-postmortem-demo --out <the root>
+      ```
+
+      - **No `--player`,** so there is no quiz page and no link to one. The quiz lists one player's
+        own mistakes (F-9), and five classic games between ten players have no single player.
+      - **An explicit site key.** F-8's reading history is stored per origin, and the demo shares
+        `diegoami.github.io` with the owner's book (whose site key is
+        `diego-amicabile-over-the-board-games-73e534ff`). The key derived from the demo's title
+        would already differ; an explicit one also keeps readers' history if the title is reworded
+        later.
+    - **`/markdown/` is the Markdown demo,** built with Jekyll as today: the same staging and
+      `_config.yml` settings, and `examples/docs/` unchanged. One setting is added: its `baseurl` is
+      the Pages base path plus `/markdown` (for example from `actions/configure-pages`'s
+      `base_path` output). The reason:
+      - the pages' own Markdown links are all relative (`games/N.md` in the index, `N/<file>` in
+        each game page; checked on 2026-09-26);
+      - but Jekyll rewrites them, and the theme's stylesheet and header links, into root-relative
+        URLs under the `baseurl`. The live demo on 2026-09-26 links `/pgn-postmortem/games/1.html`
+        and `/pgn-postmortem/games/1/blunder_2_move23b.svg`;
+      - without the new `baseurl`, every link of the moved pages would point back into the root.
+    - **Neither build removes the other's output.** The library's rebuild removes only the pages it
+      wrote. The library's site is built first (or the output directory is created before Jekyll
+      runs): `actions/jekyll-build-pages` is a Docker action running as root, so a directory it
+      creates first may not be writable by the library's step (review 027-01, finding 2).
+    - **Triggers:** a push to `main` touching `examples/docs/**`, `examples/site/**`,
+      `pgn_postmortem/**`, `pyproject.toml`, `requirements.txt` or the workflow, and
+      `workflow_dispatch`. A library change redeploys the demo, so the demo always shows the library
+      as it is on `main`.
+  - **`CLAUDE.md`,** in the implementation change:
+    - the post-merge check paragraph describes the new build and its triggers. It still cannot
+      block a merge, and the workflow still needs no Stockfish. Its defect clause, which today
+      counts only "the workflow or the content of `examples/docs/`" as a failure caused by this
+      repository, also counts `pgn_postmortem/**`, the package manifests (`pyproject.toml`,
+      `requirements.txt`) and `examples/site/analyzed/`;
+    - the list of generated paths gains `examples/site/analyzed/**`, with the command above, and so
+      do the paths to normally ignore, next to `examples/analyzed_games/**`;
+    - the tests row's "covers" cell gains the new test (done-when 1).
+  - **`README.md`:** the "Live demo" line says the demo is the library's site of the five classic
+    games and that the Markdown pages are at `/markdown/`. It links the owner's book
+    (https://diegoami.github.io/chessgamescollection/) as a real collection built with the library.
+- **Done when:**
+  1. **The gates pass,** including a new test in the tests gate, on `examples/site/analyzed/`:
+     - it reads as exactly five games, each carrying the `PostmortemAnalysis` marker;
+     - their `PostmortemId`s equal those of `examples/daily_games/` read by the library, so the
+       committed analysis is of the demo's own games;
+     - it builds a site of exactly five articles whose links pass `check_links`
+       (`tests/test_site.py`).
+
+     A broken demo input is then caught before the merge, not only by the post-merge deploy. Each
+     assertion is shown failing first (for example on a scratch copy with a game removed, a marker
+     stripped, or a game replaced).
+  2. **Both parts are built before the merge:**
+     - **locally:** the library site with the workflow's command, and the Markdown part with Jekyll
+       as far as Jekyll is available locally (if it isn't, the PR says so). The PR lists the
+       contents of the root and of `/markdown/`, and, if Jekyll ran, shows one rewritten link of
+       the Markdown index, starting with the base path plus `/markdown/`;
+     - **on GitHub:** a `workflow_dispatch` run of the workflow on the implementation branch. The
+       `github-pages` environment deploys only from `main`, so the build job runs and the deploy
+       job is expected to be refused. The PR records the run's URL and the contents of the built
+       artifact (the root and `/markdown/`).
+  3. **After the merge,** the post-merge Pages run deploys it (the post-merge check in `CLAUDE.md`,
+     which cannot block the merge). The completion note records the run's URL, and that:
+     - the root serves the library's index, listing the five games, and its first article link,
+       followed as served, returns 200;
+     - `/markdown/` serves the Markdown index. Its first game link, taken from the served page,
+       starts with the base path plus `/markdown/` and returns 200;
+     - on that game page, one diagram's `src`, as written in the served page, returns 200.
+
+     These follow the links as the served pages write them: a direct request for a file under
+     `/markdown/` would return 200 even with a wrong `baseurl` (review 027-01, finding 1).
+
+     A failure caused by the workflow or the content goes the defect path (`PRINCIPLES.md`).
+  4. **The owner's check,** after the deploy, since only the live site shows the result: the owner
+     opens the live demo (on a phone if the owner chooses): the root, an article with its questions
+     and lichess links, and `/markdown/`. A "no" goes the defect path.
+- **Out of scope:**
+  - the Capablanca demo book (F-1.3, F-1's open question 7);
+  - retiring the Markdown pipeline or its demo (F-1's open question 4, before F-1.4);
+  - a quiz page on the demo;
+  - copying the owner's games;
+  - changing the Markdown pipeline, `examples/docs/` or its golden files;
+  - rewriting the README beyond the demo line (it still introduces the Markdown pipeline first;
+    F-1.4's documentation);
+  - running Stockfish in the Pages workflow;
+  - redirects from the Markdown demo's old URLs. Its deep links, such as
+    `https://diegoami.github.io/pgn-postmortem/games/1.html` and its diagrams, stop resolving,
+    since the root's `games/` then holds the library's `<date>-<id>.html` pages. Nothing in the
+    repository links them (`README.md` links only the root), and GitHub Pages has no server-side
+    redirects.
+  - **Noted, not fixed:** the Jekyll theme's "edit this page" link on the Markdown pages already
+    points to a file that doesn't exist (`edit/main/index.md`, not `examples/docs/index.md`, on the
+    live demo on 2026-09-26). It is older than F-12, and moving the pages doesn't change it.
+- **Depends on:** F-1.2 and F-10 (landed). Nothing open.
+- **Open questions:** decided by the owner on 2026-09-26, each against a recommended default:
+  - **Owner decision: the demo is the library's site of the five classic games in `examples/`.**
+    Recorded in F-12's row with its default, reason and alternatives.
+  - **Owner decision: the Markdown demo moves to `/markdown/`, unchanged.** Recorded in F-12's row,
+    and annotated under F-1's open question 4.
+  - **Proposed with this shaping, confirmed by the owner's merge:**
+    - F-12 as iteration 8, before F-1.3 (the owner asked for it after v0.1.0 was tagged, with F-1.3
+      next in the plan);
+    - analyzing from `examples/daily_games/` (not the generated `examples/analyzed_games/`), at depth
+      22, into `examples/site/analyzed/`;
+    - the site's title, and the explicit site key `pgn-postmortem-demo`;
+    - no quiz page on the demo;
+    - the Markdown part's `baseurl`, and the workflow's triggers;
+    - the new test, and the done-when checks after the merge;
+    - the README's wording.
 
 ## Statuses
 
