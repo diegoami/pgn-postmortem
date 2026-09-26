@@ -123,3 +123,23 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-26 as `ddc2982` (pull request #28), on the owner's go ("fix note first and then merge": round 01's finding 1 was fixed in `98cacfe`, round 02 was clean, and CI on the head `88d8d26` passed on 3.11 and 3.13). CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36243061534.
+
+- **Done-when 1:** the gates pass: ruff clean, pytest 219 passed with Stockfish, node 32/32 (`98cacfe`, re-run by the round-02 reviewer). `tests/test_demo.py` checks the five games, their `PostmortemId`s against `examples/daily_games/`, the `Stockfish 19, depth 22` header, an `[%eval]` after every move that doesn't end the game, at least one critical moment, and the site's links. Each assertion was shown failing first (PR #28's answer comment and the round-01 and round-02 records).
+- **Done-when 2:** the `workflow_dispatch` run on the branch, https://github.com/diegoami/pgn-postmortem/actions/runs/36241545554, passed its build job, and its deploy job was skipped by the `main` guard. Its artifact matched the local build, and the Markdown index's links read `/pgn-postmortem/markdown/…` (PR #28).
+- **Done-when 3:** the post-merge Pages run, https://github.com/diegoami/pgn-postmortem/actions/runs/36243061582, built and deployed. The served pages were checked with `curl`, following links as they are written:
+  - The root serves `pgn-postmortem demo — five classic games`, listing the five games with no quiz link. Its first article link, `games/1892-02-28-9b0f13d4d6.html`, returns 200, with 3 questions and 4 lichess links.
+  - `/markdown/` returns 200. Its first game link, as served, is `/pgn-postmortem/markdown/games/1.html` and returns 200.
+  - On that page, the first diagram's `src`, `/pgn-postmortem/markdown/games/1/opening_deviation.svg`, returns 200.
+  - The old deep link `/pgn-postmortem/games/1.html` returns 404, as F-12's out-of-scope list records.
+- **Done-when 4, the owner's look at the live demo:** pending. The owner is asked on 2026-09-26; a "no" goes the defect path.
+
+Left open (non-blocking, not fixed):
+- **Round 01, finding 2** (owner, 2026-09-26: "fix note first", this one only): `tests/test_demo.py` repeats the workflow's `--title` and `--site-key` instead of reading them from `pages.yml`.
+- **Round 02, finding 1:** a demo input with its engine lines stripped but its evals kept still passes. The site would then drop from 9 moments to 6.
+- **Round 02, finding 2:** `CLAUDE.md` says a branch dispatch "builds and deploys nothing"; it builds but deploys nothing.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
