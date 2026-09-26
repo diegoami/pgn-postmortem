@@ -144,3 +144,19 @@
 
 — Claude Opus 5.5 (claude-opus-5-5), reviewer
 No blocking finding remains.
+
+## Completion
+
+Merged on 2026-09-26 as `dd10a86` (pull request #27) by the owner ("ok merged"). CI on the merge commit: success https://github.com/diegoami/pgn-postmortem/actions/runs/36231997070.
+
+- **F-12's block has every field of the block format,** with the owner's two decisions (the library site from the five classic games; the Markdown demo moved to `/markdown/`), each with its default and reason, and the proposed items marked (the `daily_games` input, the site key `pgn-postmortem-demo`, the Jekyll `baseurl`, the pre-merge `workflow_dispatch` run).
+- **Statuses and the iteration table are consistent:** F-12 is iteration 8, and F-1.3 comes after it; F-1's open questions 4 and 7 are annotated.
+- **Only `ROADMAP.md` and `PLAN.md` changed,** plus the review records.
+
+Left for F-12's implementation (put in the implementer's brief), round 02's non-blocking findings:
+- **Finding 1:** the `workflow_dispatch` run on the branch shares the `pages` concurrency group and its deploy job is refused, leaving the run red; guard the deploy job to `main` or scope the group by branch.
+- **Finding 2:** check one rewritten `/markdown/` link in the GitHub run's artifact.
+- **Finding 3:** reword README's "The same pages are also browsable on GitHub" sentence too.
+- **Finding 4:** done-when 3's closing line refers to `CLAUDE.md`'s widened defect clause.
+
+— Implementer, Claude Opus 5.5 (claude-opus-5-5)
