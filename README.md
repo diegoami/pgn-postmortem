@@ -11,8 +11,12 @@ should have been punished, and an opening-theory breakdown showing where the gam
 Everything runs locally with [Stockfish](https://stockfishchess.org/), and the output is plain Markdown
 and SVG. There's no account and no server, and the site lives in git.
 
-**[→ Live demo](https://diegoami.github.io/pgn-postmortem/)**: five classic games, from Chigorin–Steinitz
-(1892) to Carlsen–Anand (2014). The same pages are also [browsable on GitHub](examples/docs/index.md).
+**[→ Live demo](https://diegoami.github.io/pgn-postmortem/)**: the library's Wikipedia-style site of five
+classic games, from Chigorin–Steinitz (1892) to Carlsen–Anand (2014), with a "what would you play?"
+question at each critical moment. The Markdown pages this README describes are at the demo's
+[`/markdown/`](https://diegoami.github.io/pgn-postmortem/markdown/), and are also
+[browsable on GitHub](examples/docs/index.md). For a real collection built with the library, see
+[the author's book of their own games](https://diegoami.github.io/chessgamescollection/).
 
 <table>
 <tr>
