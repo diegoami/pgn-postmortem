@@ -1,0 +1,38 @@
+[Event "Man vs Machine"]
+[Site "Bonn GER"]
+[Date "2006.11.27"]
+[Round "2"]
+[White "Deep Fritz 10"]
+[Black "Vladimir Kramnik"]
+[Result "1-0"]
+[ECO "D10"]
+[PostmortemId "5e65903b8b"]
+[PostmortemAnalysis "Stockfish 19, depth 22"]
+
+1. d4 { [%eval 0.19] } 1... d5 { [%eval 0.23] } 2. c4 { [%eval 0.17] } 2...
+dxc4 { [%eval 0.29] } 3. e4 { [%eval 0.22] } 3... b5 { [%eval 0.32] } 4. a4
+{ [%eval 0.29] } 4... c6 { [%eval 0.40] } 5. Nc3 { [%eval 0.22] } 5... b4
+{ [%eval 0.16] } 6. Na2 { [%eval 0.17] } 6... Nf6 { [%eval 0.13] } 7. e5
+{ [%eval 0.09] } 7... Nd5 { [%eval 0.14] } 8. Bxc4 { [%eval 0.16] } 8... e6
+{ [%eval 0.13] } 9. Nf3 { [%eval 0.19] } 9... a5 { [%eval 0.14] } 10. Bg5
+{ [%eval 0.21] } 10... Qb6 { [%eval 0.17] } 11. Nc1 { [%eval 0.17] } 11... Ba6
+{ [%eval 0.25] } 12. Qe2 { [%eval -0.09] } 12... h6 { [%eval -0.09] } 13. Be3
+{ [%eval -0.05] } 13... Bxc4 { [%eval -0.11] } 14. Qxc4 { [%eval -0.19] } 14...
+Nd7 { [%eval -0.11] } 15. Nb3 { [%eval -0.04] } 15... Be7 { [%eval -0.01] } 16.
+Rc1 { [%eval 0.04] } 16... O-O { [%eval 0.00] } 17. O-O { [%eval 0.00] } 17...
+Rfc8 { [%eval 0.00] } 18. Qe2 { [%eval -0.14] } 18... c5 { [%eval -0.12] } 19.
+Nfd2 { [%eval -0.21] } 19... Qc6 { [%eval -0.14] } 20. Qh5 { [%eval -0.80] }
+20... Qxa4 { [%eval -1.11] } 21. Nxc5 { [%eval -1.42] } 21... Nxc5
+{ [%eval -0.99] } 22. dxc5 { [%eval -1.10] } 22... Nxe3 { [%eval -1.02] } 23.
+fxe3 { [%eval -0.90] } 23... Bxc5 { [%eval -1.24] } 24. Qxf7+ { [%eval -1.34] }
+24... Kh8 { [%eval -1.07] } 25. Qf3 { [%eval -1.05] } 25... Rf8
+{ [%eval -1.12] } 26. Qe4 { [%eval -1.11] } 26... Qd7 { [%eval -0.94] } 27. Nb3
+{ [%eval -0.94] } 27... Bb6 { [%eval -0.86] } 28. Rfd1 { [%eval -0.88] } 28...
+Qf7 { [%eval -1.16] } 29. Rf1 { [%eval -0.86] } 29... Qa7 { [%eval -0.86] } 30.
+Rxf8+ { [%eval -1.59] } 30... Rxf8 { [%eval -1.68] } 31. Nd4 { [%eval -1.99] }
+31... a4 $6 { [%eval -0.39] } ( 31... Rd8 32. Rc4 b3 33. Ra4 Qd7 34. Rc4 a4 35.
+h4 $17 ) 32. Nxe6 { [%eval -0.71] } ( 32. Nxe6 Bxe3+ 33. Kh1 Rb8 34. Rf1 Qa6
+35. Ra1 a3 $10 ) 32... Bxe3+ { [%eval -0.31] } 33. Kh1 { [%eval -0.25] } 33...
+Bxc1 { [%eval 0.00] } 34. Nxf8 { [%eval 0.00] } 34... Qe3 $4 { [%eval #1] } (
+34... Kg8 35. Ng6 Bxb2 36. e6 Qf2 37. Qa8+ Kh7 38. Nf8+ $10 ) 35. Qh7# ( 35.
+Qh7# $18 ) 1-0

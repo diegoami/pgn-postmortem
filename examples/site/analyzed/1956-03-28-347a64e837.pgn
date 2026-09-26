@@ -1,0 +1,39 @@
+[Event "Candidates Tournament"]
+[Site "Amsterdam NED"]
+[Date "1956.03.28"]
+[Round "2"]
+[White "Tigran Petrosian"]
+[Black "David Bronstein"]
+[Result "0-1"]
+[ECO "E66"]
+[PostmortemId "347a64e837"]
+[PostmortemAnalysis "Stockfish 19, depth 22"]
+
+1. c4 { [%eval 0.18] } 1... Nf6 { [%eval 0.27] } 2. Nc3 { [%eval 0.12] } 2...
+g6 { [%eval 0.36] } 3. g3 { [%eval 0.20] } 3... Bg7 { [%eval 0.19] } 4. Bg2
+{ [%eval 0.24] } 4... O-O { [%eval 0.36] } 5. Nf3 { [%eval 0.17] } 5... c5
+{ [%eval 0.14] } 6. O-O { [%eval 0.19] } 6... Nc6 { [%eval 0.30] } 7. d4
+{ [%eval 0.40] } 7... d6 { [%eval 0.32] } 8. dxc5 { [%eval 0.16] } 8... dxc5
+{ [%eval 0.13] } 9. Be3 { [%eval 0.21] } 9... Nd7 { [%eval 0.88] } 10. Qc1
+{ [%eval 0.94] } 10... Nd4 { [%eval 1.06] } 11. Rd1 { [%eval 1.22] } 11... e5
+{ [%eval 1.24] } 12. Bh6 { [%eval 1.05] } 12... Qa5 { [%eval 2.19] } 13. Bxg7
+{ [%eval 2.42] } 13... Kxg7 { [%eval 2.23] } 14. Kh1 { [%eval 1.06] } 14... Rb8
+{ [%eval 1.07] } 15. Nd2 { [%eval 1.15] } 15... a6 { [%eval 1.49] } 16. e3
+{ [%eval 1.38] } 16... Ne6 { [%eval 1.61] } 17. a4 { [%eval 1.46] } 17... h5
+{ [%eval 2.03] } 18. h4 { [%eval 1.74] } 18... f5 { [%eval 2.41] } 19. Nd5
+{ [%eval 2.79] } 19... Kh7 { [%eval 3.08] } 20. b3 { [%eval 1.88] } 20... Rf7
+$6 { [%eval 3.23] } ( 20... Qd8 21. a5 b6 22. axb6 Nxb6 23. Nf3 Nd7 24. Qc3 $16
+) 21. Nf3 { [%eval 2.48] } ( 21. e4 Qd8 22. exf5 Rxf5 23. Ne4 Nd4 24. b4 b6 $18
+) 21... Qd8 { [%eval 3.14] } 22. Qc3 { [%eval 3.29] } 22... Qh8
+{ [%eval 3.43] } 23. e4 { [%eval 3.49] } 23... fxe4 { [%eval 4.23] } 24. Nd2
+{ [%eval 3.42] } 24... Qg7 { [%eval 2.94] } 25. Nxe4 { [%eval 2.94] } 25... Kh8
+{ [%eval 3.37] } 26. Rd2 { [%eval 3.34] } 26... Rf8 { [%eval 3.51] } 27. a5
+{ [%eval 3.88] } 27... Nd4 { [%eval 4.59] } 28. b4 { [%eval 4.67] } 28... cxb4
+{ [%eval 4.32] } 29. Qxb4 { [%eval 4.77] } 29... Nf5 { [%eval 5.93] } 30. Rad1
+{ [%eval 5.68] } 30... Nd4 { [%eval 6.20] } 31. Re1 { [%eval 4.40] } 31... Nc6
+{ [%eval 5.65] } 32. Qa3 { [%eval 5.94] } 32... Nd4 { [%eval 8.07] } 33. Rb2
+{ [%eval 5.79] } 33... Nc6 { [%eval 6.12] } 34. Reb1 { [%eval 5.97] } 34... Nd4
+{ [%eval 6.98] } 35. Qd6 { [%eval 5.96] } 35... Nf5 { [%eval 5.97] } 36. Ng5 $4
+{ [%eval -7.40] } ( 36. Qa3 b5 37. cxb5 Bb7 38. Ndc3 Rbc8 39. bxa6 Bxa6 $18 )
+36... Nxd6 { [%eval -7.38] } ( 36... Nxd6 37. Ne6 Qg8 38. Ng5 Nxc4 39. Rc2 Nxa5
+40. Ne7 $19 ) 0-1
