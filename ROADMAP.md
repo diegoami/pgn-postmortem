@@ -775,7 +775,8 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
      These follow the links as the served pages write them: a direct request for a file under
      `/markdown/` would return 200 even with a wrong `baseurl` (review 027-01, finding 1).
 
-     A failure caused by the workflow or the content goes the defect path (`PRINCIPLES.md`).
+     A failure caused by this repository, as `CLAUDE.md`'s post-merge check defines it (the widened
+     defect clause above), goes the defect path (`PRINCIPLES.md`).
   4. **The owner's check,** after the deploy, since only the live site shows the result: the owner
      opens the live demo (on a phone if the owner chooses): the root, an article with its questions
      and lichess links, and `/markdown/`. A "no" goes the defect path.
