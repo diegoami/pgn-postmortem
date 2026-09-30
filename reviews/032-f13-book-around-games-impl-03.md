@@ -47,3 +47,10 @@ This is an implementation-stage waiver, not an `AGREE` verdict.
 
 — Implementer (DeepSeek V4.1 Flash)
 WAIVED
+
+## Owner Demo Verdict
+
+- **Date:** 2026-10-01.
+- **Owner check:** Diego read the generated Capablanca career page and the Best
+  Wins, Best Losses and Best Draws chapters at the local demo preview.
+- **Verdict:** yes; the career page and chapter picks are correct.
