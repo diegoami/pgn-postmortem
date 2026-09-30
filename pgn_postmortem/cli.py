@@ -34,6 +34,7 @@ import sys
 from pgn_postmortem import __version__
 from pgn_postmortem.analysis import DEFAULT_TIME, EngineFailure, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection
+from pgn_postmortem.selection import SelectionOptions
 from pgn_postmortem.site import build_site, check_site_key, display_name
 
 
@@ -100,6 +101,7 @@ def cmd_site(args: argparse.Namespace) -> int:
         site_key=args.site_key,
         player=args.player,
         aliases=args.alias,
+        selection_options=SelectionOptions(chapter_size=args.chapter_size, minimum_length=args.minimum_length),
     )
     print(report.summary(args.out))
     return 0
@@ -146,6 +148,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_false",
         help="write the pages without the reading-history script, its section and its data- attributes",
     )
+    site.add_argument("--chapter-size", type=int, default=5, help="number of games in each featured chapter")
+    site.add_argument("--minimum-length", type=int, default=20, help="minimum game length in full moves for selection")
     site.set_defaults(func=cmd_site)
     return parser
 
@@ -154,6 +158,6 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (FileNotFoundError, EngineFailure) as err:
+    except (FileNotFoundError, EngineFailure, ValueError) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1

@@ -130,10 +130,11 @@ book.write_epub("my-games.epub")
 
 ### Demo
 The README demo should be a book generated from a well-known collection, such as Capablanca's games.
-The F-1.3 demo uses the archived Caissabase 2024-04-27 release, whose page states CC BY-NC and
-requires attribution; the README names the exact subset, archive URL and non-commercial terms. It
-shows at a glance what the library does for "any player". The validated F-12 Pages demo remains a
-separate five-game site; the Capablanca book demo is local until a later owner decision changes that.
+The F-1.3 demo uses a five-game subset from PGN Mentor's Capablanca collection. Its downloads page
+says the PGN files are available completely free but publishes no separate open-source license, so
+the README names the exact subset and source pages without claiming one. It shows at a glance what
+the library does for "any player". The validated F-12 Pages demo remains a separate five-game site;
+the Capablanca book demo is local.
 
 ---
 

@@ -267,7 +267,13 @@ def test_a_rebuild_without_a_player_removes_the_quiz_page_the_builder_wrote(tmp_
     assert (tmp_path / "quiz.html").is_file() and links_quiz(tmp_path)
     report = build_site(games, tmp_path)
     assert not (tmp_path / "quiz.html").exists()
-    assert report.removed == [tmp_path / "quiz.html"]
+    assert set(report.removed) == {
+        tmp_path / "quiz.html",
+        tmp_path / "career.html",
+        tmp_path / "chapters" / "best-wins.html",
+        tmp_path / "chapters" / "best-losses.html",
+        tmp_path / "chapters" / "best-draws.html",
+    }
     assert not links_quiz(tmp_path)
 
 

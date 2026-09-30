@@ -1,0 +1,40 @@
+[Event "USA m"]
+[Site "New York"]
+[Date "1909.??.??"]
+[Round "6"]
+[White "Capablanca, Jose Raul"]
+[Black "Marshall, Frank James"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C62"]
+[PostmortemId "154d5c2994"]
+[PostmortemAnalysis "Stockfish 19, depth 22"]
+
+1. e4 { [%eval 0.19] } 1... e5 { [%eval 0.26] } 2. Nf3 { [%eval 0.23] } 2...
+Nc6 { [%eval 0.19] } 3. Bb5 { [%eval 0.21] } 3... d6 { [%eval 0.65] } 4. c3
+{ [%eval 0.41] } 4... Bg4 { [%eval 0.78] } 5. d3 { [%eval 0.47] } 5... Be7
+{ [%eval 0.47] } 6. Nbd2 { [%eval 0.49] } 6... Nf6 { [%eval 0.46] } 7. O-O
+{ [%eval 0.46] } 7... O-O { [%eval 0.45] } 8. Re1 { [%eval 0.41] } 8... h6
+{ [%eval 0.47] } 9. Nf1 { [%eval 0.54] } 9... Nh7 { [%eval 0.61] } 10. Ne3
+{ [%eval 0.51] } 10... Bh5 { [%eval 0.60] } 11. g4 { [%eval 0.66] } 11... Bg6
+{ [%eval 0.64] } 12. Nf5 { [%eval 0.66] } 12... h5 $6 { [%eval 1.82] } ( 12...
+Ng5 13. Kh1 Kh8 14. Rg1 d5 15. Qe2 Nxf3 16. Qxf3 $14 ) 13. h3 { [%eval 1.65] }
+( 13. h3 Bf6 14. Ng3 h4 15. Nf5 a6 16. Ba4 Ng5 $16 ) 13... hxg4
+{ [%eval 2.86] } 14. hxg4 { [%eval 2.98] } 14... Bg5 { [%eval 3.08] } 15. Nxg5
+{ [%eval 2.36] } 15... Nxg5 { [%eval 2.36] } 16. Kg2 { [%eval 2.21] } 16... d5
+{ [%eval 2.14] } 17. Qe2 { [%eval 1.99] } 17... Re8 { [%eval 3.19] } 18. Rh1
+{ [%eval 3.25] } 18... Re6 { [%eval 5.04] } 19. Qe3 { [%eval 3.84] } 19... f6
+{ [%eval 3.86] } 20. Ba4 { [%eval 3.10] } 20... Ne7 { [%eval 3.72] } 21. Bb3
+{ [%eval 3.48] } 21... c6 { [%eval 3.79] } 22. Qg3 { [%eval 3.79] } 22... a5
+{ [%eval 3.81] } 23. a4 { [%eval 3.84] } 23... Nf7 { [%eval 4.35] } 24. Be3
+{ [%eval 4.50] } 24... b6 { [%eval 4.60] } 25. Rh4 { [%eval 4.86] } 25... Kf8
+{ [%eval 5.08] } 26. Rah1 { [%eval 5.41] } 26... Ng8 { [%eval 5.64] } 27. Qf3
+{ [%eval 5.51] } 27... Bxf5 { [%eval 6.73] } 28. gxf5 { [%eval 6.28] } 28...
+Rd6 { [%eval 6.73] } 29. Qh5 { [%eval 5.42] } 29... Ra7 { [%eval 6.36] } 30.
+Qg6 { [%eval 6.94] } 30... Nfh6 { [%eval 7.57] } 31. Rxh6 { [%eval 8.20] }
+31... gxh6 { [%eval 7.84] } 32. Bxh6+ { [%eval 8.08] } 32... Ke7
+{ [%eval 8.10] } 33. Qh7+ { [%eval 8.08] } 33... Ke8 { [%eval 7.96] } 34. Qxg8+
+{ [%eval 7.99] } 34... Kd7 { [%eval 8.16] } 35. Qh7+ { [%eval 8.16] } 35... Qe7
+{ [%eval 8.16] } 36. Bf8 { [%eval 7.80] } 36... Qxh7 { [%eval 7.71] } 37. Rxh7+
+{ [%eval 7.61] } 37... Kc8 { [%eval 9.64] } 38. Rxa7 { [%eval 9.74] } 1-0

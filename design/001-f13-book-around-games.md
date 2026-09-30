@@ -1,6 +1,6 @@
 # F-1.3: the book around the games
 
-Status: agreed (Review 005)
+Status: agreed (Review 008)
 
 Owner amendment (2026-09-27): after Review 003's third-round BLOCK, the owner
 authorized one final design amendment to bind the selection defaults/custom
@@ -9,6 +9,11 @@ weights and define empty-feature scoring before another design review.
 Owner amendment (2026-09-27): after Review 004's BLOCK, the owner authorized
 one additional amendment to define accuracy aggregation and marker-only or
 partial-analysis eligibility before another design review.
+
+Owner decision (2026-09-30): because the archived Caissabase page is readable
+but its linked 630 MB download returns 404 from Wayback, use PGN Mentor's
+Capablanca collection as the demo fallback. Verify and name its free-download
+terms; do not claim an open-source license that the source does not publish.
 
 ## Problem
 
@@ -19,8 +24,8 @@ must add that book layer without changing the existing Markdown pipeline or
 analyzing the owner's archive.
 
 The demo must make the result inspectable by a stranger. It will use a committed
-Capablanca subset from the archived Caissabase release, with its source,
-attribution and non-commercial terms named in the README.
+Capablanca subset from the selected public download, with its source and terms
+named in the README.
 
 ## Findings
 
@@ -181,20 +186,19 @@ Commit the selected Capablanca PGN subset under
 `examples/book_demo/analyzed/`, and source metadata in the README. This is a
 separate local book demo: it does not replace the validated F-12 root Pages
 demo, does not change `.github/workflows/pages.yml` or `tests/test_demo.py`, and
-does not feed any file to `scripts/publish_games.py`. The source is the archived
-Caissabase page:
+does not feed any file to `scripts/publish_games.py`. The source is PGN Mentor's
+Capablanca collection:
 
-`https://web.archive.org/web/20241007103203/http://caissabase.co.uk/`
+`https://www.pgnmentor.com/players/Capablanca.zip`
 
-The page identifies the release as 2024-04-27, states `CC BY-NC`, and says the
-game moves are facts. The README will identify the subset, link that snapshot,
-credit Caissabase, link the direct
-[CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/), and
-state that the committed source subset is redistributed under the non-commercial
-term while the Stockfish 19 depth-22 files are derived/analyzed data from that
-subset. If the snapshot's downloadable data cannot be obtained or
-the terms cannot be verified during implementation, the demo data step stops
-for an owner decision rather than substituting another source.
+PGN Mentor's download page lists the collection as Capablanca's 597 games and
+states that its PGN files are available for download completely free. It does
+not publish a separate open-source license, so the README will not claim one.
+It will identify the five-game subset, link the collection and download pages,
+state the free-download terms, and label the Stockfish 19 depth-22 files as
+derived/analyzed data. The archived Caissabase page and its unavailable download
+remain recorded in `ROADMAP.md` as the original source decision and reason for
+the fallback.
 
 The README will provide the local command that builds this book from the
 committed analyzed data; it will not run Stockfish. The existing five-game
@@ -226,9 +230,11 @@ demo arrangement on 2026-09-27 because F-12 is already landed and its root and
   match, checks Stockfish 19 at depth 22, and checks the generated book pages
   and links without invoking Stockfish. The existing F-12 demo test remains
   unchanged.
-- The README acceptance check names the exact 2024-04-27 subset, links both the
-  archived source and the direct CC BY-NC 4.0 license, credits Caissabase,
-  states the non-commercial condition, and labels the Stockfish output as
+- The README acceptance check names the five checked-in games (the 1906
+  Raubitschek game and Marshall rounds 1, 2, 5 and 6 from 1909), links both the
+  Capablanca collection download and PGN Mentor's downloads page, states that
+  the page says the files are available completely free, makes no unsupported
+  open-source-license claim, and labels the Stockfish output as
   derived/analyzed data.
 - The lint, Python test and JavaScript test gates pass.
 - Before merge, the owner reads the book built from the demo collection and
@@ -422,6 +428,89 @@ BLOCK
 - The generated-page contract preserves the existing wrapper and relative links, defines marker-only stale cleanup, and specifies no-player, no-analysis, mixed, empty and user-authored-file behavior plus history and no-history output (`design/001-f13-book-around-games.md:158-175`).
 - The separate Capablanca demo remains outside the validated F-12 root and Markdown demos and outside `scripts/publish_games.py`; the source release, archived URL, direct CC BY-NC 4.0 license, attribution, non-commercial condition and derived Stockfish data wording remain required (`design/001-f13-book-around-games.md:177-203`).
 - The done-when contract covers the required fixture, career, stale-page, golden/link, history, demo, licensing, lint and test evidence, with the owner's final read of the demo picks explicitly required before merge (`design/001-f13-book-around-games.md:205-236`).
+
+No blocking finding remains.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+AGREE
+
+## Review 006
+
+- **Revision covered:** the current worktree source amendment: committed `HEAD` `3b59488130514d1fe1f11eac722718832d1ebb35` plus the uncommitted `README.md`, `ROADMAP.md` and this design record. No commit contains this amendment. The uncommitted F-1.3 implementation files are outside this design-source review.
+- **Target proof:** `git rev-parse HEAD` gave `3b59488130514d1fe1f11eac722718832d1ebb35`; `git merge-base main HEAD` gave `241143e12ef9e81584cfb4ac3d2b700305db0865`; `git diff --name-only HEAD -- README.md ROADMAP.md design/001-f13-book-around-games.md` listed exactly those three amendment files. `git diff --quiet HEAD -- .github/workflows/pages.yml scripts/publish_games.py examples/docs` confirmed no F-12 workflow, Markdown-pipeline script or generated Markdown-output change in the source amendment. The worktree also contains uncommitted implementation files and a mode-only change to `scripts/update_games.sh`; those are outside this review.
+- **Files checked:** `design/001-f13-book-around-games.md`, `README.md`, `ROADMAP.md`, `docs/book-plan.md`, `PLAN.md`, `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `design/README.md`, `reviews/README.md`, `.github/workflows/pages.yml`, `scripts/update_games.sh`, `scripts/publish_games.py`, `examples/book_demo/source/capablanca.pgn`, `tests/test_demo.py` and `tests/test_publish.py`. The amendment file list was obtained from the local diff from `HEAD`; the remaining files were read as governing and boundary context.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** read-only inspection of the current amendment and Reviews 001–005; target-proof and boundary `git` checks; a read-only fetch of PGN Mentor's downloads page, which identifies Capablanca's 597 games and says the PGN files are available completely free; a read-only fetch of the archived Caissabase page, which identifies the `2024-04-27` release and its 630 MB link; and a read-only fetch of that archived download URL, which returned HTTP 404. No implementation, test suite or Stockfish run was performed.
+
+### Owner decision and source verification
+
+- **Verified.** The owner decision is now recorded in `ROADMAP.md:124-135` and at the top of this design: the unavailable archived Caissabase download is not substituted silently; the five-game PGN Mentor Capablanca subset is the fallback, its downloads page says the files are free to download, and no separate open-source license is claimed. The checked-in source contains the five intended games: the 1906 Raubitschek game and the 1909 Marshall rounds 1, 2, 5 and 6 (`examples/book_demo/source/capablanca.pgn:1-64`).
+
+### What holds
+
+- The separate-demo boundary remains explicit in the design (`design/001-f13-book-around-games.md:184-207`) and the owner record (`ROADMAP.md:128-135`). The Pages workflow still builds the five classic games from `examples/site/analyzed/` at the root and stages the unchanged Markdown output at `/markdown/` (`.github/workflows/pages.yml:48-76`); the source amendment does not alter that workflow, `scripts/publish_games.py` or `examples/docs/**`.
+- The prior F-1.3 contracts remain materially unchanged in the amendment: the exact selection features, eligibility, defaults, options and allocation rules (`design/001-f13-book-around-games.md:75-136`); career aggregation and notable-game rules (`design/001-f13-book-around-games.md:142-156`); generated-page, stale-cleanup, collection-state and history rules (`design/001-f13-book-around-games.md:163-180`); and the required fixture, golden, link, demo and gate evidence (`design/001-f13-book-around-games.md:211-240`).
+
+### Findings
+
+1. **blocking** — The amended design still carries the superseded Caissabase README acceptance contract and labels the fallback source inconsistently.
+   - The new source section correctly names PGN Mentor at `design/001-f13-book-around-games.md:189-200`, but line 189 still says “The source is the archived Caissabase page” immediately before the PGN Mentor URL. More importantly, the done-when at `design/001-f13-book-around-games.md:233-236` still requires the exact `2024-04-27` subset, the archived source, a direct CC BY-NC 4.0 link, Caissabase credit and the non-commercial term. Those requirements contradict the owner decision at `design/001-f13-book-around-games.md:13-16`, the corrected source terms at `design/001-f13-book-around-games.md:194-200`, and the current fallback README at `README.md:172-181`.
+   - Replace the acceptance contract with the verified PGN Mentor terms: identify the exact five checked-in games (the 1906 Raubitschek game and Marshall rounds 1, 2, 5 and 6 from 1909), link both the Capablanca collection download and PGN Mentor's downloads page, state that the page says “available for download, completely free,” and state that no separate open-source license is published or claimed. If “non-commercial demo only” remains in the README, label it as this repository's distribution policy rather than as a PGN Mentor source term. The acceptance text must also label the Stockfish 19 depth-22 files as derived/analyzed data, as already required at `design/001-f13-book-around-games.md:197-199`.
+
+2. **blocking** — The repository's shaping document still records the old source and license for F-1.3.
+   - `docs/book-plan.md:133-136` says that the F-1.3 demo uses the archived Caissabase 2024-04-27 release, requires attribution under its non-commercial terms, and is changed only by a later owner decision. The owner has now made that decision in `ROADMAP.md:128-135`; the current text therefore contradicts the design amendment and the README's PGN Mentor/no-license contract. Reconcile this source-of-truth sentence before approval, while retaining the separate F-12 five-game site and unchanged `/markdown/` boundary.
+
+The fallback decision, its unavailable Caissabase reason, the F-12 separation, the Markdown-pipeline exclusion and the prior F-1.3 behavioral contracts are otherwise verified. The design is not ready for approval while the stale README acceptance and shaping-record source terms remain.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+BLOCK
+
+## Review 007
+
+- **Revision covered:** the current worktree source amendment: committed `HEAD` `3b59488130514d1fe1f11eac722718832d1ebb35` plus the uncommitted `README.md`, `ROADMAP.md`, `docs/book-plan.md` and this design record. No commit contains this amendment. The uncommitted F-1.3 implementation files are outside this design-source review.
+- **Target proof:** `git rev-parse HEAD` gave `3b59488130514d1fe1f11eac722718832d1ebb35`; `git merge-base main HEAD` gave `241143e12ef9e81584cfb4ac3d2b700305db0865`; `git diff --name-only HEAD -- README.md ROADMAP.md docs/book-plan.md design/001-f13-book-around-games.md` listed exactly those four amendment files. `git diff --quiet HEAD -- .github/workflows/pages.yml scripts/publish_games.py examples/docs` exited 0, confirming no F-12 workflow, Markdown-pipeline script or generated Markdown-output change in the source amendment. The worktree also contains uncommitted F-1.3 implementation files and a mode-only `scripts/update_games.sh` change; those are outside this review.
+- **Files checked:** `design/001-f13-book-around-games.md`, `README.md`, `ROADMAP.md`, `docs/book-plan.md`, `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `design/README.md`, `reviews/README.md`, `.github/workflows/pages.yml`, `scripts/publish_games.py`, `examples/book_demo/source/capablanca.pgn` and `tests/test_demo.py`. The amendment file list was obtained from the local diff from `HEAD`; the remaining files were read as governing and boundary context.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** read-only inspection of the current amendment and Reviews 001–006; target-proof and boundary `git` checks; a read-only fetch of PGN Mentor's downloads page, which says “The files below are available for download, completely free” and lists José Raúl Capablanca's collection as 597 games; and inspection of all five checked-in PGN headers. No implementation, test suite or Stockfish run was performed.
+
+### Review 006 findings
+
+1. **Resolved.** The active source amendment no longer uses Caissabase or CC BY-NC as the demo's acceptance terms. Its active F-1.3 source contract names PGN Mentor's Capablanca collection, the collection download, the free-download wording, the absence of a separate open-source license, and Stockfish output as derived/analyzed data (`design/001-f13-book-around-games.md:182-201`). `docs/book-plan.md` now states the same PGN Mentor/no-license terms (`docs/book-plan.md:131-137`). The historical Review 001–006 entries retain prior review evidence and findings as required by the canonical record; they are not active acceptance requirements.
+2. **Partially resolved.** The amended design acceptance requirement names the exact intended subset, and the current source contains it: the 1906 Raubitschek game plus Marshall rounds 1, 2, 5 and 6 from 1909 (`design/001-f13-book-around-games.md:229-238`, `examples/book_demo/source/capablanca.pgn:1-64`). The PGN Mentor collection/download links and the free-download/no-license claims in the README are accurate (`README.md:172-181`, `design/001-f13-book-around-games.md:192-198`), but the README itself does not yet spell out the five games or label its non-commercial phrase as repository policy; see the blocking finding below.
+3. **Resolved.** The separate-demo boundary remains intact. The F-12 workflow still builds the five classic root games from `examples/site/analyzed/`, the `/markdown/` staging remains unchanged, and Capablanca is not sent through `scripts/publish_games.py` (`.github/workflows/pages.yml:48-76`, `tests/test_demo.py:1-35`). The prior F-1.3 selection, career, generated-page, stale-cleanup, collection-state, history and verification contracts remain unchanged in the active design (`design/001-f13-book-around-games.md:75-180`, `209-242`).
+
+### Finding
+
+1. **blocking** — The actual README still does not satisfy the exact-subset and policy-label requirement that the amended design now makes part of the acceptance contract.
+   - `README.md:174-181` calls this a “five-game Capablanca subset” but does not name the 1906 Raubitschek game or Marshall rounds 1, 2, 5 and 6 from 1909. The exact names appear only in the design's future acceptance assertion (`design/001-f13-book-around-games.md:233-238`), so the stranger-readable source documentation is not yet self-verifying.
+   - The same README paragraph says the derived files are “included for the non-commercial demo only” (`README.md:178-180`) without identifying that as this repository's distribution policy. After the source-license correction, that phrase must not be readable as a PGN Mentor restriction. State explicitly that it is this repository's demo distribution policy, separately from PGN Mentor's “completely free” statement and absence of a published open-source license.
+   - Update the README acceptance text/documentation, then re-review this source amendment. The required wording must retain both PGN Mentor links, the exact five-game list, the free-download statement, the no-license claim, and the derived/analyzed Stockfish 19 depth-22 label.
+
+The stale Caissabase/CC BY-NC acceptance text is removed from the active amendment and `docs/book-plan.md`; the remaining historical references are preserved review history, not current terms. The F-1.3, F-12 and Markdown contracts otherwise remain intact, but the README documentation mismatch is blocking.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+BLOCK
+
+## Review 008
+
+- **Revision covered:** the current worktree source amendment: committed `HEAD` `3b59488130514d1fe1f11eac722718832d1ebb35` plus the uncommitted `README.md`, `ROADMAP.md`, `docs/book-plan.md` and this design record. No commit contains this amendment. The uncommitted F-1.3 implementation files and the mode-only `scripts/update_games.sh` change are outside this design-source review.
+- **Target proof:** `git rev-parse HEAD` gave `3b59488130514d1fe1f11eac722718832d1ebb35`; `git merge-base main HEAD` gave `241143e12ef9e81584cfb4ac3d2b700305db0865`; `git diff --name-only HEAD -- README.md ROADMAP.md docs/book-plan.md design/001-f13-book-around-games.md` listed exactly those four amendment files. `git diff --quiet HEAD -- .github/workflows/pages.yml scripts/publish_games.py examples/docs` exited 0, confirming no F-12 workflow, Markdown-pipeline script or generated Markdown-output change in the source amendment.
+- **Files checked:** `design/001-f13-book-around-games.md`, `README.md`, `ROADMAP.md`, `docs/book-plan.md`, `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `design/README.md`, `reviews/README.md`, `.github/workflows/pages.yml`, `scripts/publish_games.py`, `examples/book_demo/source/capablanca.pgn` and `tests/test_demo.py`. The amendment file list was obtained from the local diff from `HEAD`; the remaining files were read as governing, source and boundary context.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** read-only inspection of the current amendment and Reviews 001–007; target-proof and boundary `git` checks; a read-only fetch of PGN Mentor's downloads page, which says “The files below are available for download, completely free” and lists José Raúl Capablanca's collection as 597 games; inspection of all five checked-in PGN headers; and a read-only fetch of the Capablanca collection download. No implementation, test suite or Stockfish run was performed.
+
+### Review 007 finding
+
+1. **Resolved.** `README.md:172-182` now names the exact five checked-in games: the 1906 Raubitschek game and Marshall rounds 1, 2, 5 and 6 from 1909. It retains both PGN Mentor links, states the published “available for download completely free” wording, says that PGN Mentor publishes no separate open-source license without claiming one, labels the Stockfish 19 depth-22 files as derived/analyzed data, and explicitly identifies non-commercial use as this repository's distribution policy rather than as a PGN Mentor term. The five PGN headers match that list (`examples/book_demo/source/capablanca.pgn:1-64`).
+
+### What holds
+
+- The active source terms are consistent across the design, README, roadmap and shaping document: PGN Mentor is the fallback source, its published free-download wording is recorded, no unsupported open-source license is claimed, and the unavailable Caissabase source remains historical owner-decision context (`design/001-f13-book-around-games.md:13-16`, `182-207`; `README.md:172-182`; `ROADMAP.md:124-135`; `docs/book-plan.md:131-137`).
+- The prior F-1.3 contracts remain unchanged and reviewable: selection features, eligibility, defaults, options and allocation (`design/001-f13-book-around-games.md:75-136`); career aggregation and notable-game rules (`design/001-f13-book-around-games.md:142-156`); generated-page, stale-cleanup, collection-state and history behavior (`design/001-f13-book-around-games.md:163-180`); and the fixture, golden, link, demo and gate evidence (`design/001-f13-book-around-games.md:211-242`).
+- The F-12 and Markdown boundaries remain intact. The Pages workflow still builds the five classic root games from `examples/site/analyzed/` and stages `examples/docs/` under `/markdown/` (`.github/workflows/pages.yml:48-76`); `tests/test_demo.py` still checks that root five-game contract (`tests/test_demo.py:1-35`); and the design keeps the Capablanca book in `examples/book_demo/` and excludes it from `scripts/publish_games.py` (`design/001-f13-book-around-games.md:184-207`). The boundary diff is clean, and no Stockfish or implementation run was needed for this source review.
 
 No blocking finding remains.
 
