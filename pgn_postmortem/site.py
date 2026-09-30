@@ -1237,7 +1237,7 @@ def chapter_html(
 
 
 def index_html(articles: list[Article], site_title: str, history: History | None = None,
-               quiz: Quiz | None = None, book: bool = False) -> str:  # fmt: skip
+               quiz: Quiz | None = None, book: set[str] | None = None) -> str:  # fmt: skip
     sections = index_years(articles)
     dated = [year for year, _ in sections if year is not None]
 
@@ -1265,12 +1265,11 @@ def index_html(articles: list[Article], site_title: str, history: History | None
         count = plural(quiz.questions, "question") if quiz.questions else "no questions"
         parts.append(f'<p class="quiz-link"><a href="{QUIZ_PAGE}">{esc(quiz.title)}</a>: {count}.</p>\n')
     if book:
-        parts.append(
-            '<nav class="book-nav"><a href="career.html">Career</a> · '
-            '<a href="chapters/best-wins.html">Best wins</a> · '
-            '<a href="chapters/best-losses.html">Best losses</a> · '
-            '<a href="chapters/best-draws.html">Best draws</a></nav>\n'
-        )
+        links = ['<a href="career.html">Career</a>']
+        for chapter, title in (("wins", "Best wins"), ("losses", "Best losses"), ("draws", "Best draws")):
+            if chapter in book:
+                links.append(f'<a href="chapters/best-{chapter}.html">{title}</a>')
+        parts.append(f'<nav class="book-nav">{" · ".join(links)}</nav>\n')
     if history:
         parts.append(HISTORY_SECTION)
     if len(order) > 1:
@@ -1641,7 +1640,7 @@ def build_site(
         report.quiz, report.quiz_questions = out_dir / QUIZ_PAGE, len(entries)
     write_text(
         out_dir / "index.html",
-        index_html(articles, title, reading, quiz, bool(names and any(chapters.values()))),
+        index_html(articles, title, reading, quiz, set(chapter for chapter, entries in chapters.items() if entries)),
     )
 
     written = {path.name for path in report.articles}

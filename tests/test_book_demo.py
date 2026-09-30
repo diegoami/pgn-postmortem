@@ -29,6 +29,7 @@ def test_the_book_demo_builds_the_career_and_three_chapters(tmp_path):
     selected = [article.item.id for entries in chapters.values() for article, _ in entries]
     assert all(len(entries) <= 1 for entries in chapters.values())
     assert len(selected) == len(set(selected))
+    assert not any(select_chapters(articles, {PLAYER.casefold()}, SelectionOptions(minimum_length=100)).values())
     report = build_site(games, tmp_path, title="Jose Raul Capablanca")
     assert report.articles and report.quiz == tmp_path / "quiz.html"
     assert (tmp_path / "career.html").is_file()
@@ -39,4 +40,30 @@ def test_the_book_demo_builds_the_career_and_three_chapters(tmp_path):
         "../games/" in (tmp_path / "chapters" / f"best-{chapter}.html").read_text(encoding="utf-8")
         for chapter in ("wins", "losses", "draws")
     )
+    for chapter in ("wins", "losses", "draws"):
+        chapter_text = (tmp_path / "chapters" / f"best-{chapter}.html").read_text(encoding="utf-8")
+        game_link = chapter_text.split('href="../', 1)[1].split('"', 1)[0]
+        assert f'href="{game_link}"' in career
     assert check_links(tmp_path).total > 0
+
+
+def test_unanalyzed_rebuild_removes_generated_chapters_but_keeps_authored_page(tmp_path):
+    analyzed = Collection.read(ANALYZED, player=PLAYER, keep_analysis=True)
+    build_site(analyzed, tmp_path, title="Jose Raul Capablanca")
+    authored = tmp_path / "chapters" / "best-losses.html"
+    authored.write_text("author page", encoding="utf-8")
+    source = Collection.read(SOURCE, player=PLAYER)
+    build_site(source, tmp_path, title="Jose Raul Capablanca")
+    assert not (tmp_path / "chapters" / "best-wins.html").exists()
+    assert not (tmp_path / "chapters" / "best-draws.html").exists()
+    assert authored.read_text(encoding="utf-8") == "author page"
+
+
+def test_index_links_only_to_available_chapters(tmp_path):
+    collection = Collection.read(ANALYZED, player=PLAYER, keep_analysis=True)
+    win = next(item for item in collection if item.game.headers["Result"] == "1-0")
+    build_site([win], tmp_path, player=PLAYER, title="Jose Raul Capablanca")
+    index = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert "chapters/best-wins.html" in index
+    assert "chapters/best-losses.html" not in index
+    assert "chapters/best-draws.html" not in index
