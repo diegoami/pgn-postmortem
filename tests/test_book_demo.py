@@ -4,7 +4,8 @@ from pathlib import Path
 
 from pgn_postmortem import Collection
 from pgn_postmortem.collection import ANALYSIS_HEADER
-from pgn_postmortem.site import build_site
+from pgn_postmortem.selection import SelectionOptions, select_chapters
+from pgn_postmortem.site import build_site, make_articles
 from tests.test_site import check_links
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -23,8 +24,19 @@ def test_the_committed_book_demo_has_five_complete_analyses():
 
 def test_the_book_demo_builds_the_career_and_three_chapters(tmp_path):
     games = Collection.read(ANALYZED, player=PLAYER, keep_analysis=True)
+    articles = make_articles(games)
+    chapters = select_chapters(articles, {PLAYER.casefold()}, SelectionOptions(chapter_size=1))
+    selected = [article.item.id for entries in chapters.values() for article, _ in entries]
+    assert all(len(entries) <= 1 for entries in chapters.values())
+    assert len(selected) == len(set(selected))
     report = build_site(games, tmp_path, title="Jose Raul Capablanca")
     assert report.articles and report.quiz == tmp_path / "quiz.html"
     assert (tmp_path / "career.html").is_file()
     assert all((tmp_path / "chapters" / f"best-{chapter}.html").is_file() for chapter in ("wins", "losses", "draws"))
+    career = (tmp_path / "career.html").read_text(encoding="utf-8")
+    assert "Notable games" in career and "selection score" in career
+    assert all(
+        "../games/" in (tmp_path / "chapters" / f"best-{chapter}.html").read_text(encoding="utf-8")
+        for chapter in ("wins", "losses", "draws")
+    )
     assert check_links(tmp_path).total > 0

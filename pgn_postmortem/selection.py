@@ -149,15 +149,24 @@ def features(article: Article, names: set[str], minimum_length: int) -> Selectio
     if not own or not _complete_analysis(article):
         return None
     reviews = article.reviews
-    player = [
-        review for review in reviews if review.mover in own and review.before is not None and review.after is not None
-    ]
+    by_side = {
+        side: [
+            review
+            for review in reviews
+            if review.mover == side and review.before is not None and review.after is not None
+        ]
+        for side in (True, False)
+    }
     opponent = [
         review
         for review in reviews
         if review.mover not in own and review.before is not None and review.after is not None
     ]
-    player_accuracy = 1 - (sum(review.loss for review in player) / len(player) if player else 50) / 100
+    side_accuracy = {
+        side: 1 - (sum(review.loss for review in side_reviews) / len(side_reviews) if side_reviews else 50) / 100
+        for side, side_reviews in by_side.items()
+    }
+    player_accuracy = sum(side_accuracy[side] for side in own) / len(own)
     opponent_accuracy = 1 - (sum(review.loss for review in opponent) / len(opponent) if opponent else 50) / 100
     ratings = []
     if own == {True}:
@@ -168,7 +177,7 @@ def features(article: Article, names: set[str], minimum_length: int) -> Selectio
     opponent_strength = max(0.0, min(1.0, (rating - 1800) / 600)) if rating is not None else 0.5
     plies = sum(1 for _ in article.game.mainline_moves())
     fight = max(0.0, min(1.0, (plies - 2 * minimum_length) / (4 * minimum_length)))
-    losses = [review.loss for review in player if review.node.ply() <= 20]
+    losses = [review.loss for side in own for review in by_side[side] if review.node.ply() <= 20]
     early_blunder_avoidance = 1 - (max(losses, default=50) / 100)
     chances = [_player_chances(review, own) for review in reviews]
     recovery = max(

@@ -88,7 +88,7 @@ def test_every_page_carries_the_script_inline_byte_identical_to_the_package_file
         assert body == script, f"{page.name}: the inlined script differs from {SCRIPT.name}"
         assert text.count("<script") == 1, page.name
         checked += 1
-    assert checked == 12  # the index, six articles, career, three chapters and the quiz
+    assert checked == 9  # the index, six articles, career and the quiz
 
 
 def test_the_script_makes_no_network_use_and_cannot_break_out_of_its_element():

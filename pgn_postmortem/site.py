@@ -1138,13 +1138,14 @@ def numeric_header(game: chess.pgn.Game, key: str) -> int | None:
 
 
 def career_html(
-    articles: list[Article], names: set[str], label: str, site_title: str, history: History | None = None
+    articles: list[Article], names: set[str], label: str, site_title: str,
+    chapters: dict[str, list[tuple[Article, float]]], history: History | None = None,
 ) -> str:
     """The player's aggregate career page."""
     result_order = ("1-0", "0-1", "1/2-1/2", NOT_RECORDED)
     counts = {result: 0 for result in result_order}
     years: dict[int, dict[str, int]] = {}
-    opponents: dict[str, int] = {}
+    opponents: dict[str, list[object]] = {}
     repertoire: dict[tuple[str, str], list[float]] = {}
     peaks = {"WhiteElo": None, "BlackElo": None}
     for article in articles:
@@ -1165,7 +1166,11 @@ def career_html(
                     peaks[key] = rating
         if len(own) == 1:
             opponent = article.black if chess.WHITE in own else article.white
-            opponents[opponent] = opponents.get(opponent, 0) + 1
+            key = opponent.casefold()
+            if key in opponents:
+                opponents[key][1] += 1
+            else:
+                opponents[key] = [opponent, 1]
         eco = known(article.game.headers.get("ECO")) or ""
         opening = known(article.game.headers.get("Opening")) or ""
         if eco or opening:
@@ -1186,7 +1191,7 @@ def career_html(
         summary = ", ".join(f"{result_text(key, 'not recorded')} {values[key]}" for key in result_order if values[key])
         body.append(f"<tr><td>{year}</td><td>{sum(values.values())}</td><td>{esc(summary)}</td></tr>\n")
     body.append('</table>\n<h2>Frequent opponents</h2>\n<ol class="career-list">\n')
-    for opponent, count in sorted(opponents.items(), key=lambda item: (-item[1], item[0]))[:10]:
+    for opponent, count in sorted(opponents.values(), key=lambda item: (-item[1], item[0].casefold(), item[0]))[:10]:
         body.append(f"<li>{esc(opponent)}: {count}</li>\n")
     body.append('</ol>\n<h2>Peak ratings</h2>\n<ul class="career-results">\n')
     for key in ("WhiteElo", "BlackElo"):
@@ -1198,9 +1203,17 @@ def career_html(
     for (eco, opening), (games, wins, draws) in sorted(repertoire.items()):
         title = " ".join(part for part in (eco, opening) if part) or "Unknown"
         body.append(f"<tr><td>{esc(title)}</td><td>{int(games)}</td><td>{(wins + draws / 2) / games:.3f}</td></tr>\n")
-    body.append('</table>\n<h2>Featured chapters</h2>\n<ul class="career-results">\n')
-    for href, title in (("best-wins", "Best wins"), ("best-losses", "Best losses"), ("best-draws", "Best draws")):
-        body.append(f'<li><a href="chapters/{href}.html">{title}</a></li>\n')
+    body.append('</table>\n<h2>Notable games</h2>\n<ul class="career-results">\n')
+    for chapter, title, href in (
+        ("wins", "Best wins", "best-wins"),
+        ("losses", "Best losses", "best-losses"),
+        ("draws", "Best draws", "best-draws"),
+    ):
+        for article, score in chapters[chapter]:
+            body.append(
+                f'<li><a href="games/{article.filename}">{esc(article.title)}</a> '
+                f'(<a href="chapters/{href}.html">{title}</a>, selection score {score:.3f})</li>\n'
+            )
     body.append('</ul>\n')
     return page("Career", "".join(body), root="", site_title=site_title, history=history)
 
@@ -1608,12 +1621,13 @@ def build_site(
     if names:
         chapters = select_chapters(articles, names, selection_options)
         career = out_dir / "career.html"
-        write_text(career, career_html(articles, names, player_label(player, aliases), title, reading))
+        write_text(career, career_html(articles, names, player_label(player, aliases), title, chapters, reading))
         generated_book.append(career)
         for chapter in ("wins", "losses", "draws"):
-            path = out_dir / "chapters" / f"best-{chapter}.html"
-            write_text(path, chapter_html(chapter, chapters[chapter], title, reading))
-            generated_book.append(path)
+            if chapters[chapter]:
+                path = out_dir / "chapters" / f"best-{chapter}.html"
+                write_text(path, chapter_html(chapter, chapters[chapter], title, reading))
+                generated_book.append(path)
     quiz = None
     if names:
         in_order = index_order(articles)
@@ -1625,7 +1639,10 @@ def build_site(
         write_text(out_dir / QUIZ_PAGE, quiz_text)
         quiz = Quiz(quiz_title(label), len(entries))
         report.quiz, report.quiz_questions = out_dir / QUIZ_PAGE, len(entries)
-    write_text(out_dir / "index.html", index_html(articles, title, reading, quiz, bool(names)))
+    write_text(
+        out_dir / "index.html",
+        index_html(articles, title, reading, quiz, bool(names and any(chapters.values()))),
+    )
 
     written = {path.name for path in report.articles}
     for path in sorted((out_dir / "games").glob("*.html")):
