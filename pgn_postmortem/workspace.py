@@ -240,10 +240,11 @@ def _clean_profile(directory: Path, slug: str) -> None:
             return
         if not isinstance(files, list):
             return
-        if len(set(files)) != len(files):
+        normalized = [Path(relative).as_posix() for relative in files if isinstance(relative, str)]
+        if len(normalized) != len(files) or len(set(normalized)) != len(normalized):
             return
         validated = []
-        for relative in files:
+        for relative in normalized:
             path = Path(relative)
             if path.is_absolute() or ".." in path.parts or not _generated_profile_path(path):
                 return

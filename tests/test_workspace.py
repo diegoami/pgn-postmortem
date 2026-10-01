@@ -166,6 +166,20 @@ def test_duplicate_marker_entries_do_not_partially_delete_generated_files(tmp_pa
     assert marker.is_file()
 
 
+def test_normalized_duplicate_marker_entries_do_not_partially_delete_files(tmp_path):
+    output = tmp_path / "site"
+    profile = CollectionProfile("otb", "OTB", (FIXTURE,), player="Ada Example")
+    Workspace((profile,)).build(output)
+    marker = output / "otb" / ".pgn-postmortem-profile.json"
+    data = json.loads(marker.read_text(encoding="utf-8"))
+    data["files"].append("./index.html")
+    marker.write_text(json.dumps(data), encoding="utf-8")
+    before = (output / "otb" / "index.html").read_bytes()
+    Workspace(()).build(output)
+    assert (output / "otb" / "index.html").read_bytes() == before
+    assert marker.is_file()
+
+
 def test_workspace_rejects_cache_ancestor_and_rolls_back_later_failure(tmp_path):
     out = tmp_path / "site"
     with pytest.raises(WorkspaceConfigError):
