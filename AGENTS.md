@@ -11,18 +11,19 @@ This file adds the OpenCode-specific process and nothing else.
 | role | who |
 |---|---|
 | implementer | DeepSeek — `opencode/deepseek-v4.1-flash` |
-| reviewer | GPT-5.6 Luna, high effort — `opencode/gpt-5.6-luna#high` |
+| reviewer | A fresh-context reviewer selected for each change from a model family different from the implementer |
 
 - The **implementer** writes the design, the code and the tests, and answers
   the review in the record, signed `— Implementer (DeepSeek V4.1 Flash)`.
 - The **reviewer** is invoked as a **subagent**, in a **fresh context**, with an
   **explicit model id**, at **high reasoning effort**, from a **different model
-  family than the implementer**. It verifies against the real code rather than
-  trusting the description, and signs its verdict as
+  family than the implementer**. The model is selected per change; the table
+  records the rule, not a permanent reviewer identity. It verifies against the
+  real code rather than trusting the description, and signs its verdict as
   [`reviews/README.md`](reviews/README.md) defines.
-- **The invariant is the different model family; the table above is the current
-  assignment, not the rule.** Whoever changes an assignment updates the table in
-  the same change.
+- **The invariant is the different model family.** Every change selects and
+  records an explicit reviewer model from a family different from the
+  implementer.
 - The implementer never reviews its own change; the reviewer never shares the
   implementer's context.
 

@@ -36,6 +36,7 @@ from pgn_postmortem.analysis import DEFAULT_TIME, EngineFailure, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection
 from pgn_postmortem.selection import SelectionOptions
 from pgn_postmortem.site import build_site, check_site_key, display_name
+from pgn_postmortem.workspace import Workspace
 
 
 def add_reading_options(parser: argparse.ArgumentParser) -> None:
@@ -107,6 +108,12 @@ def cmd_site(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_workspace(args: argparse.Namespace) -> int:
+    report = Workspace.from_toml(args.manifest).build(args.out, history=args.history)
+    print(f"Wrote workspace landing page to {report.landing} with {len(report.profiles)} collection(s).")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pgn-postmortem", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -151,6 +158,17 @@ def build_parser() -> argparse.ArgumentParser:
     site.add_argument("--chapter-size", type=int, default=5, help="number of games in each featured chapter")
     site.add_argument("--minimum-length", type=int, default=20, help="minimum game length in full moves for selection")
     site.set_defaults(func=cmd_site)
+
+    workspace = sub.add_parser("workspace", help="write isolated collection sites and a landing page")
+    workspace.add_argument("manifest", metavar="MANIFEST", help="the profile-only collections.toml manifest")
+    workspace.add_argument("--out", metavar="DIR", required=True, help="where the workspace is written")
+    workspace.add_argument(
+        "--no-history",
+        dest="history",
+        action="store_false",
+        help="write collection pages without the reading-history script",
+    )
+    workspace.set_defaults(func=cmd_workspace, history=True)
     return parser
 
 

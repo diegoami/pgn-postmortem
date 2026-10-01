@@ -789,12 +789,17 @@ class Article:
 
 
 def page(title: str, body: str, *, root: str, site_title: str, history: History | None = None,
-         home: bool | None = None) -> str:  # fmt: skip
+         home: bool | None = None, workspace_home: str | None = None) -> str:  # fmt: skip
     """A whole page. ``home`` puts the link to the index at the top: by
     default on every page but the index (``root`` is empty only there and on
     the quiz page, which asks for it)."""
     home = root != "" if home is None else home
     home = f'<header class="top"><a href="{root}index.html">{esc(site_title)}</a></header>\n' if home else ""
+    workspace = (
+        f'<div class="workspace-home"><a href="{attr(workspace_home)}">All collections</a></div>\n'
+        if workspace_home
+        else ""
+    )
     return (
         "<!DOCTYPE html>\n"
         f'<html lang="en"{data(history, site=history.site_key) if history else ""}>\n'
@@ -807,7 +812,7 @@ def page(title: str, body: str, *, root: str, site_title: str, history: History 
         f'<link rel="stylesheet" href="{root}assets/style.css">\n'
         "</head>\n"
         "<body>\n"
-        f"{home}"
+        f"{home}{workspace}"
         "<main>\n"
         f"{body}"
         "</main>\n"
@@ -1084,7 +1089,8 @@ def pgn_text(item: CollectedGame) -> str:
 
 
 def article_html(article: Article, previous: Article | None, following: Article | None, *, site_title: str,
-                 thresholds: Thresholds, history: History | None = None) -> str:  # fmt: skip
+                 thresholds: Thresholds, history: History | None = None,
+                 workspace_home: str | None = None) -> str:  # fmt: skip
     nav = []
     if previous:
         nav.append(f'<a rel="prev" href="{previous.filename}">← {esc(previous.title)}</a>')
@@ -1104,7 +1110,7 @@ def article_html(article: Article, previous: Article | None, following: Article 
         "</article>\n"
         + (f'<nav class="pager">\n{chr(10).join(nav)}\n</nav>\n' if nav else "")
     )
-    return page(article.title, body, root="../", site_title=site_title, history=history)
+    return page(article.title, body, root="../", site_title=site_title, history=history, workspace_home=workspace_home)
 
 
 def index_years(articles: list[Article]) -> list[tuple[int | None, list[Article]]]:
@@ -1140,6 +1146,7 @@ def numeric_header(game: chess.pgn.Game, key: str) -> int | None:
 def career_html(
     articles: list[Article], names: set[str], label: str, site_title: str,
     chapters: dict[str, list[tuple[Article, float]]], history: History | None = None,
+    workspace_home: str | None = None,
 ) -> str:
     """The player's aggregate career page."""
     result_order = ("1-0", "0-1", "1/2-1/2", NOT_RECORDED)
@@ -1215,11 +1222,12 @@ def career_html(
                 f'(<a href="chapters/{href}.html">{title}</a>, selection score {score:.3f})</li>\n'
             )
     body.append('</ul>\n')
-    return page("Career", "".join(body), root="", site_title=site_title, history=history)
+    return page("Career", "".join(body), root="", site_title=site_title, history=history, workspace_home=workspace_home)
 
 
 def chapter_html(
-    chapter: str, selected: list[tuple[Article, float]], site_title: str, history: History | None = None
+    chapter: str, selected: list[tuple[Article, float]], site_title: str, history: History | None = None,
+    workspace_home: str | None = None,
 ) -> str:
     title = {"wins": "Best wins", "losses": "Best losses", "draws": "Best draws"}[chapter]
     body = [
@@ -1233,11 +1241,12 @@ def chapter_html(
             f'<span class="score">selection score {score:.3f}</span></li>\n'
         )
     body.append('</ol>\n')
-    return page(title, "".join(body), root="../", site_title=site_title, history=history)
+    return page(title, "".join(body), root="../", site_title=site_title, history=history, workspace_home=workspace_home)
 
 
 def index_html(articles: list[Article], site_title: str, history: History | None = None,
-               quiz: Quiz | None = None, book: set[str] | None = None) -> str:  # fmt: skip
+               quiz: Quiz | None = None, book: set[str] | None = None,
+               workspace_home: str | None = None) -> str:  # fmt: skip
     sections = index_years(articles)
     dated = [year for year, _ in sections if year is not None]
 
@@ -1295,7 +1304,9 @@ def index_html(articles: list[Article], site_title: str, history: History | None
                 f'<span class="meta">{esc(" · ".join(meta))}</span></li>\n'
             )
         parts.append("</ol>\n</section>\n")
-    return page(site_title, "".join(parts), root="", site_title=site_title, history=history)
+    return page(
+        site_title, "".join(parts), root="", site_title=site_title, history=history, workspace_home=workspace_home
+    )
 
 
 # --- the quiz (ROADMAP.md, F-9) -----------------------------------------------------
@@ -1361,7 +1372,8 @@ def quiz_title(label: str) -> str:
 
 
 def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str, site_title: str,
-              thresholds: Thresholds, history: History | None = None) -> str:  # fmt: skip
+               thresholds: Thresholds, history: History | None = None,
+               workspace_home: str | None = None) -> str:  # fmt: skip
     """The quiz page: one line per question, linking to it. ``games`` is the
     number of the player's games, ``unanalyzed`` how many of them have no
     analysis yet; the page without questions says both. With questions, the
@@ -1384,7 +1396,10 @@ def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str,
                 "yet, and only analyzed games have critical moments."
             )
         parts.append(f'<p class="lead">{lead}</p>\n')
-        return page(title, "".join(parts), root="", site_title=site_title, history=history, home=True)
+        return page(
+            title, "".join(parts), root="", site_title=site_title, history=history, home=True,
+            workspace_home=workspace_home,
+        )
 
     # the games the questions come from, not all of the player's games
     sources = len({entry.article.item.id for entry in entries})
@@ -1411,7 +1426,10 @@ def quiz_html(entries: list[QuizEntry], games: int, unanalyzed: int, label: str,
             f'<span class="meta">{esc(meta)}</span></li>\n'
         )
     parts.append("</ol>\n")
-    return page(title, "".join(parts), root="", site_title=site_title, history=history, home=True)
+    return page(
+        title, "".join(parts), root="", site_title=site_title, history=history, home=True,
+        workspace_home=workspace_home,
+    )
 
 
 STYLE = """\
@@ -1550,6 +1568,7 @@ def build_site(
     player: str | None = None,
     aliases: Iterable[str] = (),
     selection_options: SelectionOptions | None = None,
+    workspace_home: str | None = None,
 ) -> SiteReport:
     """Write the site for ``games`` (a ``Collection``, or any iterable of
     ``CollectedGame``) to ``out_dir``: ``index.html``, ``assets/style.css``
@@ -1610,7 +1629,10 @@ def build_site(
         previous = articles[i - 1] if i > 0 else None
         following = articles[i + 1] if i + 1 < len(articles) else None
         path = out_dir / "games" / article.filename
-        html_text = article_html(article, previous, following, site_title=title, thresholds=thresholds, history=reading)
+        html_text = article_html(
+            article, previous, following, site_title=title, thresholds=thresholds, history=reading,
+            workspace_home="../../index.html" if workspace_home else None,
+        )
         write_text(path, html_text)
         report.articles.append(path)
         report.analyzed += article.analyzed
@@ -1620,12 +1642,24 @@ def build_site(
     if names:
         chapters = select_chapters(articles, names, selection_options)
         career = out_dir / "career.html"
-        write_text(career, career_html(articles, names, player_label(player, aliases), title, chapters, reading))
+        write_text(
+            career,
+            career_html(articles, names, player_label(player, aliases), title, chapters, reading, workspace_home),
+        )
         generated_book.append(career)
         for chapter in ("wins", "losses", "draws"):
             if chapters[chapter]:
                 path = out_dir / "chapters" / f"best-{chapter}.html"
-                write_text(path, chapter_html(chapter, chapters[chapter], title, reading))
+                write_text(
+                    path,
+                    chapter_html(
+                        chapter,
+                        chapters[chapter],
+                        title,
+                        reading,
+                        "../../index.html" if workspace_home else None,
+                    ),
+                )
                 generated_book.append(path)
     quiz = None
     if names:
@@ -1634,13 +1668,20 @@ def build_site(
         players = [article for article in in_order if own_colors(article.game, names)]
         label = player_label(player, aliases)
         unanalyzed = sum(not article.analyzed for article in players)
-        quiz_text = quiz_html(entries, len(players), unanalyzed, label, title, thresholds, reading)
+        quiz_text = quiz_html(entries, len(players), unanalyzed, label, title, thresholds, reading, workspace_home)
         write_text(out_dir / QUIZ_PAGE, quiz_text)
         quiz = Quiz(quiz_title(label), len(entries))
         report.quiz, report.quiz_questions = out_dir / QUIZ_PAGE, len(entries)
     write_text(
         out_dir / "index.html",
-        index_html(articles, title, reading, quiz, set(chapter for chapter, entries in chapters.items() if entries)),
+        index_html(
+            articles,
+            title,
+            reading,
+            quiz,
+            set(chapter for chapter, entries in chapters.items() if entries),
+            workspace_home,
+        ),
     )
 
     written = {path.name for path in report.articles}
