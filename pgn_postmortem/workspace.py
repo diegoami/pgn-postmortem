@@ -189,7 +189,7 @@ def _mark_profile(directory: Path, slug: str, report: SiteReport) -> None:
     files.update(
         path.relative_to(directory).as_posix()
         for path in (directory / "chapters").glob("best-*.html")
-        if path.is_file()
+        if path.is_file() and is_generated(path)
     )
     write_text(
         directory / PROFILE_MANIFEST,

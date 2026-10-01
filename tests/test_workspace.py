@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 
 from pgn_postmortem.cli import main
-from pgn_postmortem.workspace import CollectionProfile, Workspace, WorkspaceConfigError
+from pgn_postmortem.workspace import CollectionProfile, Workspace, WorkspaceBuildError, WorkspaceConfigError
 
 FIXTURE = Path(__file__).parent / "fixtures" / "site" / "games.pgn"
 
 
-def manifest(tmp_path: Path, cache: Path | None = None) -> Path:
+def manifest(tmp_path: Path, cache: Path | None = None, second_input: Path = FIXTURE) -> Path:
     cache_line = f'\nanalyzed_dir = "{cache.as_posix()}"' if cache else ""
     path = tmp_path / "collections.toml"
     path.write_text(
@@ -26,7 +26,7 @@ description = "OTB"
 [[collection]]
 slug = "correspondence"
 title = "Correspondence games"
-inputs = ["{FIXTURE.as_posix()}"]
+inputs = ["{second_input.as_posix()}"]
 player = "Ada Example"
 aliases = ["adaex", "Example, Ada"]
 description = "Correspondence"
@@ -37,7 +37,7 @@ description = "Correspondence"
 
 
 def test_workspace_api_and_manifest_cli_build_isolated_sites(tmp_path):
-    config = manifest(tmp_path)
+    config = manifest(tmp_path, second_input=Path(__file__).parent / "fixtures" / "site" / "odd.pgn")
     workspace = Workspace.from_toml(config)
     report = workspace.build(tmp_path / "site", history=False)
     assert report.landing == tmp_path / "site" / "index.html"
@@ -47,6 +47,8 @@ def test_workspace_api_and_manifest_cli_build_isolated_sites(tmp_path):
     assert 'href="otb/index.html"' in root and 'href="correspondence/index.html"' in root
     assert (tmp_path / "site" / "otb" / "career.html").is_file()
     assert (tmp_path / "site" / "correspondence" / "career.html").is_file()
+    assert len(report.profiles["otb"].articles) == 6
+    assert len(report.profiles["correspondence"].articles) == 2
     assert 'href="../index.html"' in (tmp_path / "site" / "otb" / "index.html").read_text(encoding="utf-8")
     game = next((tmp_path / "site" / "otb" / "games").glob("*.html"))
     assert 'href="../../index.html"' in game.read_text(encoding="utf-8")
@@ -92,10 +94,14 @@ def test_workspace_removes_generated_removed_profile_but_keeps_authored_file(tmp
     Workspace.from_toml(config).build(output)
     authored = output / "correspondence" / "notes.txt"
     authored.write_text("keep", encoding="utf-8")
+    authored_chapter = output / "correspondence" / "chapters" / "best-authored.html"
+    authored_chapter.parent.mkdir()
+    authored_chapter.write_text("keep chapter", encoding="utf-8")
     one = Workspace((CollectionProfile("otb", "Over-the-board games", (FIXTURE,), player="Ada Example"),))
     one.build(output)
     assert not (output / "correspondence" / "index.html").exists()
     assert authored.read_text(encoding="utf-8") == "keep"
+    assert authored_chapter.read_text(encoding="utf-8") == "keep chapter"
 
 
 def test_untrusted_profile_marker_cannot_remove_authored_file(tmp_path):
@@ -117,3 +123,31 @@ def test_untrusted_profile_marker_cannot_remove_authored_file(tmp_path):
     one = Workspace((CollectionProfile("otb", "Over-the-board games", (FIXTURE,), player="Ada Example"),))
     one.build(output)
     assert authored.read_text(encoding="utf-8") == "keep"
+
+
+def test_workspace_rejects_cache_ancestor_and_rolls_back_later_failure(tmp_path):
+    out = tmp_path / "site"
+    with pytest.raises(WorkspaceConfigError):
+        Workspace((CollectionProfile("otb", "OTB", (FIXTURE,), analyzed_dir=tmp_path),)).build(out)
+    assert not out.exists()
+
+    valid = CollectionProfile("otb", "OTB", (FIXTURE,), player="Ada Example")
+    Workspace((valid,)).build(out)
+    before = (out / "index.html").read_bytes()
+    broken = CollectionProfile("broken", "Broken", (tmp_path / "missing.pgn",), player="Ada Example")
+    with pytest.raises(WorkspaceBuildError) as error:
+        Workspace((valid, broken)).build(out)
+    assert error.value.slug == "broken"
+    assert "workspace profile 'broken' failed:" in str(error.value)
+    assert (out / "index.html").read_bytes() == before
+
+
+def test_untrusted_root_manifest_cannot_remove_a_profile(tmp_path):
+    output = tmp_path / "site"
+    Workspace.from_toml(manifest(tmp_path)).build(output)
+    root_manifest = output / ".pgn-postmortem-workspace.json"
+    data = json.loads(root_manifest.read_text(encoding="utf-8"))
+    data["slugs"] = ["../outside"]
+    root_manifest.write_text(json.dumps(data), encoding="utf-8")
+    Workspace((CollectionProfile("otb", "OTB", (FIXTURE,), player="Ada Example"),)).build(output)
+    assert (output / "correspondence" / "index.html").is_file()
