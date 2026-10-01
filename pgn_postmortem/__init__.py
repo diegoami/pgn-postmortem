@@ -26,6 +26,13 @@ from pgn_postmortem.selection import (
     select_chapters,
 )
 from pgn_postmortem.site import SiteReport, build_site, critical_moments, shown_result
+from pgn_postmortem.workspace import (
+    CollectionProfile,
+    Workspace,
+    WorkspaceBuildError,
+    WorkspaceConfigError,
+    WorkspaceReport,
+)
 
 __version__ = "0.1.0"
 
@@ -48,4 +55,9 @@ __all__ = [
     "find_pgn_files",
     "shown_result",
     "select_chapters",
+    "CollectionProfile",
+    "Workspace",
+    "WorkspaceBuildError",
+    "WorkspaceConfigError",
+    "WorkspaceReport",
 ]
