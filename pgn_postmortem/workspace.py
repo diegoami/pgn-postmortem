@@ -240,6 +240,8 @@ def _clean_profile(directory: Path, slug: str) -> None:
             return
         if not isinstance(files, list):
             return
+        if len(set(files)) != len(files):
+            return
         validated = []
         for relative in files:
             path = Path(relative)

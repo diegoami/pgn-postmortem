@@ -56,6 +56,13 @@ def test_workspace_api_and_manifest_cli_build_isolated_sites(tmp_path):
     assert saved == {"format": 1, "generator": "pgn-postmortem workspace", "slugs": ["otb", "correspondence"]}
     assert main(["workspace", str(config), "--out", str(tmp_path / "cli-site"), "--no-history"]) == 0
     assert (tmp_path / "cli-site" / "otb" / "index.html").is_file()
+    assert (tmp_path / "site" / "index.html").read_bytes() == (tmp_path / "cli-site" / "index.html").read_bytes()
+    assert (tmp_path / "site" / "otb" / "index.html").read_bytes() == (
+        tmp_path / "cli-site" / "otb" / "index.html"
+    ).read_bytes()
+    assert (tmp_path / "site" / "otb" / "assets" / "style.css").is_file()
+    assert (tmp_path / "site" / "otb" / "career.html").read_text(encoding="utf-8").find("<script") == -1
+    assert (tmp_path / "cli-site" / "otb" / "career.html").read_text(encoding="utf-8").find("<script") == -1
 
 
 def test_workspace_rejects_duplicate_or_unsafe_profiles_before_writing(tmp_path):
@@ -86,6 +93,26 @@ def test_workspace_does_not_modify_read_only_analysis_cache(tmp_path):
     )
     assert report.landing.is_file()
     assert source.read_bytes() == before
+
+
+def test_profiles_keep_overlap_but_have_profile_specific_games(tmp_path):
+    odd = Path(__file__).parent / "fixtures" / "site" / "odd.pgn"
+    first = CollectionProfile("otb", "OTB", (FIXTURE,), player="Ada Example")
+    second = CollectionProfile("correspondence", "Correspondence", (FIXTURE, odd), player="Ada Example")
+    report = Workspace((first, second)).build(tmp_path / "site")
+    assert len(report.profiles["correspondence"].articles) > len(report.profiles["otb"].articles)
+    assert (tmp_path / "site" / "correspondence" / "quiz.html").is_file()
+    assert (tmp_path / "site" / "otb" / "quiz.html").is_file()
+
+
+def test_unanalyzed_profile_has_no_chapters_and_history_is_optional(tmp_path):
+    profile = CollectionProfile("otb", "OTB", (FIXTURE,), player="Ada Example")
+    output = tmp_path / "site"
+    Workspace((profile,)).build(output, history=True)
+    assert not list((output / "otb" / "chapters").glob("*.html"))
+    assert "<script>" in (output / "otb" / "career.html").read_text(encoding="utf-8")
+    Workspace((profile,)).build(output, history=False)
+    assert "<script>" not in (output / "otb" / "career.html").read_text(encoding="utf-8")
 
 
 def test_workspace_removes_generated_removed_profile_but_keeps_authored_file(tmp_path):
@@ -125,6 +152,20 @@ def test_untrusted_profile_marker_cannot_remove_authored_file(tmp_path):
     assert authored.read_text(encoding="utf-8") == "keep"
 
 
+def test_duplicate_marker_entries_do_not_partially_delete_generated_files(tmp_path):
+    output = tmp_path / "site"
+    profile = CollectionProfile("otb", "OTB", (FIXTURE,), player="Ada Example")
+    Workspace((profile,)).build(output)
+    marker = output / "otb" / ".pgn-postmortem-profile.json"
+    data = json.loads(marker.read_text(encoding="utf-8"))
+    data["files"].append("index.html")
+    marker.write_text(json.dumps(data), encoding="utf-8")
+    before = (output / "otb" / "index.html").read_bytes()
+    Workspace(()).build(output)
+    assert (output / "otb" / "index.html").read_bytes() == before
+    assert marker.is_file()
+
+
 def test_workspace_rejects_cache_ancestor_and_rolls_back_later_failure(tmp_path):
     out = tmp_path / "site"
     with pytest.raises(WorkspaceConfigError):
@@ -138,8 +179,10 @@ def test_workspace_rejects_cache_ancestor_and_rolls_back_later_failure(tmp_path)
     with pytest.raises(WorkspaceBuildError) as error:
         Workspace((valid, broken)).build(out)
     assert error.value.slug == "broken"
+    assert isinstance(error.value.cause, FileNotFoundError)
     assert "workspace profile 'broken' failed:" in str(error.value)
     assert (out / "index.html").read_bytes() == before
+    assert not list(out.parent.glob(f".{out.name}.workspace-*"))
 
 
 def test_untrusted_root_manifest_cannot_remove_a_profile(tmp_path):
