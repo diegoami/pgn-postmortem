@@ -18,6 +18,9 @@ question at each critical moment. The Markdown pages this README describes are a
 [browsable on GitHub](examples/docs/index.md). For a real collection built with the library, see
 [the author's book of their own games](https://diegoami.github.io/chessgamescollection/).
 
+**[→ A real collection](https://diegoami.github.io/chessgamescollection/)**: the author's own games, built with
+this library (source in [diegoami/chessgamescollection](https://github.com/diegoami/chessgamescollection)).
+
 <table>
 <tr>
 <td width="50%"><img src="examples/docs/games/1/blunder_4_move32w.svg" alt="Position before 32. Bb4"></td>
