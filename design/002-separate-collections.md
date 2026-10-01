@@ -1,6 +1,6 @@
 # F-13: separate collections and landing pages
 
-Status: in review
+Status: agreed (Review 006)
 
 Owner decisions (2026-10-01):
 
@@ -449,3 +449,30 @@ The final design resolves the prior report-path rebasing, atomic failure, naviga
 
 — GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
 BLOCK
+
+## Review 006
+
+- **Revision covered:** `5a0826a5f539a907aa6faede5024348924f1ed59`.
+- **Target proof:** `git rev-parse --verify '5a0826a5f539a907aa6faede5024348924f1ed59^{commit}'` returned `5a0826a5f539a907aa6faede5024348924f1ed59`; `git rev-parse --verify 'main^{commit}'` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; `git merge-base main 5a0826a5f539a907aa6faede5024348924f1ed59` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; and `git diff --name-status 2391c4210c6bed5c5c7a08531a9cfa4012400d7e..5a0826a5f539a907aa6faede5024348924f1ed59` returned exactly `M design/002-separate-collections.md`. Before this appended verdict, the target design content matched the target revision; the unrelated worktree modification to `scripts/update_games.sh` is outside this review.
+- **Files checked:** the complete target design record, including Reviews 001-005; the exact merge-base diff; `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `PLAN.md`, `ROADMAP.md`, `design/README.md`, `reviews/README.md`, `docs/book-plan.md` and `pyproject.toml`; the current `pgn_postmortem/collection.py`, `pgn_postmortem/site.py`, `pgn_postmortem/cli.py`, `pgn_postmortem/analysis.py` and `pgn_postmortem/__init__.py`; and the relevant collection, site and CLI tests. The design file list was obtained from the exact local diff from the merge-base.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, final design re-review.
+- **Checks run:** exact revision and merge-base verification; exact merge-base file-list and diff inspection; `git diff --check`; `.venv/bin/python -m ruff check .`; and `.venv/bin/python -m pytest -q`. All passed. No implementation code was changed.
+
+### Review 005 findings
+
+1. **Resolved.** Persisted root-manifest slugs are revalidated before cleanup with the same syntax, reserved-name, uniqueness and resolved-path-under-`out_dir` rules used for new profiles. The design requires malformed-but-marker-authenticated persisted slug lists to fail trust validation without deleting authored files (`design/002-separate-collections.md:217-231`, `262-274`).
+2. **Resolved.** A trusted profile marker now permits only normalized relative regular files in the complete generated set (`index.html`, `career.html`, `quiz.html`, `assets/style.css`, `chapters/*.html` and `games/*.html`), requires the exact HTML/CSS markers and an adjacent marker file, and excludes the marker from its own list. The tests explicitly cover malformed marker lists and authored files (`design/002-separate-collections.md:221-231`, `262-274`).
+3. **Resolved.** Cache/output isolation is bidirectional: every resolved input and analysis path must be disjoint from every managed profile output, including both the output-under-cache and cache-under-output cases, before any write. The corresponding no-write collision tests are required (`design/002-separate-collections.md:191-203`, `263-267`).
+
+### Final contract
+
+- The public report is deterministic: `WorkspaceReport` returns the landing path and per-slug existing `SiteReport` values, with every `landing`, `articles`, `removed` and `quiz` path rebased to the final output root after staging (`design/002-separate-collections.md:93-121`).
+- Configuration failures use `WorkspaceConfigError(ValueError)` before output; profile read/build failures use `WorkspaceBuildError(RuntimeError)` with `slug`, `cause` and the exact message shape. Staging is removed on failure and an existing output tree is unchanged; successful report paths do not point into deleted staging (`design/002-separate-collections.md:107-121`, `269-272`).
+- The isolation and boundary contract remains within F-13: separate explicit profiles, read-only precomputed analysis caches, additive API/CLI workspace support, profile-local output and navigation, with no source/fetching/publishing/credentials/scheduling pipeline, real-archive processing, desktop application, EPUB/PyPI release, LLM prose, combined statistics, Markdown pipeline or F-12 demo work (`design/002-separate-collections.md:99-105`, `123-156`, `233-235`, `278-284`).
+- The required tests cover API/CLI parity, separate and overlapping collections, profile-local counts and cleanup, authored-file preservation, links and markers, persisted-state trust, both path-collision directions, cache immutability, atomic later-profile failure, exact report/error contracts, final report paths and unchanged one-site output (`design/002-separate-collections.md:237-274`). This aligns with the F-13 done-when and out-of-scope rules in `ROADMAP.md:830-838`.
+
+No blocking finding remains. The design is sufficiently explicit and safe to implement within the stated F-13 scope.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+AGREE
