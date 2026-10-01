@@ -64,11 +64,44 @@ Add immutable `CollectionProfile` and `Workspace` API values:
 
 - `slug`: an ASCII URL/path slug, unique within the workspace;
 - `title`: the visible collection title;
-- `inputs`: PGN files, directories or globs for this collection only;
+- `inputs`: a tuple of PGN files, directories or globs for this collection only;
 - `player` and `aliases`: the player identity for this collection;
-- `analyzed_dir`: that collection's analysis cache;
-- `site_dir`: its generated site directory relative to the workspace output;
-- optional short description and source label for the landing page.
+- `analyzed_dir`: an optional read-only analysis cache, resolved relative to
+  the manifest; it is never written by the workspace builder;
+- optional `description` and `source_label` for the landing page.
+
+The exact Python contract is:
+
+```python
+@dataclass(frozen=True)
+class CollectionProfile:
+    slug: str
+    title: str
+    inputs: tuple[str | Path, ...]
+    analyzed_dir: str | Path | None = None
+    player: str | None = None
+    aliases: tuple[str, ...] = ()
+    description: str = ""
+    source_label: str = ""
+
+@dataclass(frozen=True)
+class Workspace:
+    profiles: tuple[CollectionProfile, ...]
+
+    def build(self, out_dir: str | Path, *, history: bool = True) -> WorkspaceReport: ...
+```
+
+`Workspace.build` reads each profile with `Collection.read` on
+`inputs + analyzed_dir` and `keep_analysis=True`, then calls the existing
+`build_site` primitive for that profile. It does not run Stockfish. Analysis is
+performed beforehand by the existing per-profile `Collection.analyze` API into
+the profile's `analyzed_dir`; engine path, depth/time, workers and failure
+behavior remain the existing analysis contract. An absent `analyzed_dir` is
+valid and yields the normal unanalyzed-site behavior.
+
+`WorkspaceReport` returns the landing page path and one per-profile report. A
+profile read/build failure stops the build and reports the profile slug; config
+validation happens for every profile before any output is written.
 
 The workspace takes an ordered list of profiles. It validates all slugs and
 paths before writing anything: slugs are non-empty, ASCII, stable and unique;
@@ -76,19 +109,44 @@ reserved `assets`/`index.html` collisions are rejected; and a profile cannot
 write outside the workspace output. Profiles are the only boundary mechanism.
 The implementation never guesses OTB versus correspondence from PGN headers.
 
-The owner repository can construct profiles in Python or from a small local
-configuration file. The F-13 implementation should choose one representation
-and document it; the recommended default is a Python API plus a simple CLI
-manifest, while fetching and remote credentials remain F-3.
+The owner repository constructs profiles in Python or from a local
+`collections.toml` manifest. The manifest is deliberately profile-only and is
+not the future `pgn-postmortem.toml` pipeline configuration:
+
+```toml
+[[collection]]
+slug = "otb"
+title = "Over-the-board games"
+inputs = ["otb/source/**/*.pgn"]
+analyzed_dir = "otb/analyzed"
+player = "Diego Amicabile"
+aliases = ["diegoami"]
+description = "Over-the-board games"
+
+[[collection]]
+slug = "correspondence"
+title = "Correspondence games"
+inputs = ["correspondence/source/**/*.pgn"]
+analyzed_dir = "correspondence/analyzed"
+player = "Diego Amicabile"
+aliases = ["diegoami"]
+description = "Correspondence games"
+```
+
+The CLI command is `pgn-postmortem workspace collections.toml --out site/`
+with `--no-history` matching the existing `site` command. Manifest paths are
+resolved relative to the manifest file. Fetching, publishing destinations,
+credentials and scheduling remain F-3.
 
 ### Build and output
 
-Add a workspace builder and a `book`/`workspace` CLI command that, for each
+Add a workspace builder and the `workspace` CLI command that, for each
 profile in order:
 
 1. reads only that profile's inputs;
-2. writes/uses only that profile's analysis directory;
-3. builds the existing site under `workspace/<slug>/`; and
+2. reads, but does not write, only that profile's analysis directory;
+3. builds the existing site under `workspace/<slug>`, with the profile slug as
+   the site directory (there is no independent `site_dir` field); and
 4. records the profile summary for the workspace landing page.
 
 The root output is:
@@ -106,8 +164,26 @@ workspace/correspondence/chapters/...
 The landing page contains one card per profile with its title, description,
 game count and link to `<slug>/index.html`. It does not aggregate games,
 results, opponents, ratings or chapter scores across profiles. A collection's
-existing pages link only within that collection and back to the workspace
-landing page through an explicit home link.
+existing pages link only within that collection and get an explicit
+workspace-home link. The exact workspace-home hrefs are `../index.html` from
+collection-root pages (`index.html`, `career.html`, `quiz.html`),
+`../../index.html` from `chapters/*.html` and `games/*.html`, and no extra link
+on the workspace root itself. The existing one-collection `site` command passes
+no workspace-home value and keeps its current output.
+
+Profiles are validated before writing: slugs match
+`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`, are unique and cannot be `assets`;
+`inputs` and `analyzed_dir` are read-only paths; the derived site path is
+`out_dir / slug`; absolute/traversal paths are rejected where output paths are
+accepted; and no profile output path may equal, contain or be contained by
+another profile output path. Analysis directories are distinct when used by a
+future explicit analysis step.
+
+The workspace writes generated root `index.html` and `assets/style.css` with a
+workspace generator marker and a generated manifest listing current slugs. On
+a rebuild it removes generated root files and generated files for profiles
+removed from the manifest, but never removes a file without the generator
+marker. A profile's existing `build_site` cleanup remains local to its slug.
 
 The existing `site` command remains unchanged for users who want one collection
 without a workspace. The desktop application is not part of F-13; it will later
@@ -115,8 +191,10 @@ call this same workspace API.
 
 ### Tests and owner check
 
-Use hand-written fixtures with two profiles whose game IDs overlap and whose
-results differ. Tests must prove:
+Use hand-written fixtures with two profiles containing the same game with the
+same result/date/moves, plus profile-specific games and results. The current
+game identity includes the result, so “same ID with different results” is not a
+valid fixture. Tests must prove:
 
 - the profiles produce two separate sites and two separate landing cards;
 - the overlapping game is retained once in each profile and never deduplicated
@@ -129,10 +207,26 @@ results differ. Tests must prove:
   preserves authored pages in other profiles;
 - all workspace and collection links resolve, including the stylesheet and
   workspace-home links.
+- the Python API and `workspace` TOML CLI produce the same landing/profile
+  structure;
+- the root stylesheet and generated manifest marker exist;
+- removing a profile removes its generated pages but preserves an authored file
+  in that profile and all other profile pages;
+- invalid, duplicate, traversal and overlapping output paths fail before any
+  output is written;
+- the existing one-collection `site` command's golden output remains unchanged.
 
 The owner reads an OTB landing page and a correspondence landing page before
 merge and confirms that the collections are visibly separate. A negative
 verdict returns the iteration to implementation.
+
+## Out of scope
+
+- processing or analyzing the owner's real OTB/correspondence archive;
+- fetching remote sources, publishing to external destinations, credentials,
+  scheduling or the broader F-3 pipeline configuration;
+- EPUB/PyPI release work, LLM prose, a desktop application, combined
+  cross-collection statistics, the Markdown pipeline and the F-12 Pages demo.
 
 ## Open questions
 
@@ -159,6 +253,53 @@ a wrong target rather than a design finding. The review stopped before assessing
 owner decisions, OTB/correspondence isolation, workspace/profile scope, or the
 done-when and out-of-scope contract. A revision whose merge-base range contains
 the intended F-13 change is required for a design verdict.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+BLOCK
+
+## Review 002
+
+- **Revision covered:** `875f556175d725d266c48b63caaab89f0168866d`.
+- **Target proof:** `git rev-parse --verify '875f556^{commit}'` returned `875f556175d725d266c48b63caaab89f0168866d`; `git rev-parse --verify 'main^{commit}'` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; `git merge-base main 875f556` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; `git diff --name-only 2391c4210c6bed5c5c7a08531a9cfa4012400d7e..875f556175d725d266c48b63caaab89f0168866d` returned exactly `design/002-separate-collections.md`. The worktree also had an unrelated modification to `scripts/update_games.sh`, which is outside this review.
+- **Files checked:** the target design record, including Review 001; the exact merge-base diff; `PLAN.md`, `ROADMAP.md`, `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `design/README.md`, `reviews/README.md`, `docs/book-plan.md`, `README.md`; the current `pgn_postmortem/collection.py`, `pgn_postmortem/site.py`, `pgn_postmortem/cli.py`, `pgn_postmortem/analysis.py` and `pgn_postmortem/__init__.py`; `tests/test_site.py` and `tests/test_cli.py`; and `pyproject.toml`. The design file list was obtained from the local diff from the merge-base; the other files were read as governing and implementation context.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** exact revision and merge-base proof, exact merge-base file-list check and diff inspection; full read of this design and the prior wrong-target review; read-only inspection of the project rules, plans, roadmap, current Collection/site/CLI/analysis contracts and relevant tests. No implementation or code changes were made.
+
+### Review 001 finding
+
+1. **Resolved.** This revision is the requested child of `main`, and its merge-base range is non-empty and contains the intended F-13 design record. The review can therefore assess the proposal rather than stopping on Review 001's wrong-target condition.
+
+### What holds
+
+- The owner decisions are recorded and agree with the roadmap: the workspace owns profile metadata, the library remains generic, the visible profile titles are supplied as data, and the top-level page is generated from summaries rather than a cross-collection game set (`design/002-separate-collections.md:5-19`, `ROADMAP.md:830-838`).
+- The isolation intent is explicit and appropriate: profiles, not PGN heuristics, define the OTB/correspondence boundary; the landing page receives summaries only; and a profile's games are not passed to another profile's `Collection.read` or `build_site` (`design/002-separate-collections.md:14-19`, `61-82`). This matches the current `Collection.read` duplicate scope (`pgn_postmortem/collection.py:299-351`) and the per-output-directory site primitive (`pgn_postmortem/collection.py:393-400`).
+- The existing generated-page marker and local cleanup behavior are useful foundations for profile-local cleanup (`pgn_postmortem/site.py:1532-1537`, `1540-1660`), and the additive intent for the existing one-site command is correctly stated (`design/002-separate-collections.md:86-114`).
+
+### Findings
+
+1. **blocking** — The workspace API, CLI contract and analysis flow are not defined sufficiently to implement the proposed builder.
+   - `design/002-separate-collections.md:61-92` names immutable values and a `Workspace` builder but does not give their field types, constructors, build method/signature, result/report contract, validation errors, or the exact ownership of `site_dir` and `analyzed_dir`. It also leaves the CLI as the alternatives “`book`/`workspace`” and leaves the manifest representation as an implementation choice (`design/002-separate-collections.md:79-82`, `137-141`). A command and its input format are observable API, not an unspecified internal detail.
+   - More importantly, the four build steps do not say whether the builder calls `Collection.analyze`, reads `analyzed_dir` back with `keep_analysis=True`, or expects `inputs` already to be analyzed. The current library keeps these operations separate: `Collection.analyze` writes an analysis directory (`pgn_postmortem/collection.py:386-391`), while `Collection.build_site` only delegates the games it is given (`pgn_postmortem/collection.py:393-400`), and analysis preservation requires the separate `Collection.read(..., keep_analysis=True)` path (`pgn_postmortem/collection.py:312-316`). No engine, depth/time, worker, cache, or failure behavior is specified for a workspace command that “writes/uses” an analysis directory.
+   - Make the public Python/config contract exact and choose one command/manifest schema. State whether F-13 analyzes source inputs or only builds from an existing cache, how the cache is read and matched to inputs, which analysis options are accepted, and what `Workspace` returns or leaves after a failure. If analysis is deliberately out of scope, remove the implied analysis orchestration and define the analyzed input instead.
+
+2. **blocking** — The output-path and workspace-cleanup contract is incomplete and internally inconsistent.
+   - `CollectionProfile.site_dir` is an arbitrary directory “relative to the workspace output” (`design/002-separate-collections.md:63-71`), but the landing page is required to link to `<slug>/index.html` and the example assumes `site_dir == slug` (`design/002-separate-collections.md:94-110`). Either require that equality or define the link from the normalized `site_dir`; otherwise a valid profile can generate a broken card.
+   - Validation mentions slugs, `assets`/`index.html`, and escaping the root (`design/002-separate-collections.md:73-77`), but not absolute paths, normalized `..` paths, symlink escapes, duplicate or ancestor-overlapping site/analyzed directories, or an analyzed directory overlapping another profile's managed output. These are required to make “the workspace output root as the only writable root” and profile isolation enforceable before any write.
+   - The output tree omits the workspace landing page's stylesheet even though the tests must resolve it (`design/002-separate-collections.md:94-104`, `116-131`). It also does not define generator markers or cleanup for the root `index.html`/`assets/style.css`, a removed or renamed profile directory, or generated files left by a previous workspace manifest. The design only says cleanup occurs “within the affected profile” (`design/002-separate-collections.md:127-129`), while the roadmap's done-when requires a rebuild to remove generated pages for the named workspace and preserve authored pages (`ROADMAP.md:834-836`). Specify the complete generated-file set, root and profile marker rules, behavior for removed/renamed profiles, and preservation rules for authored files.
+
+3. **blocking** — The navigation contract cannot be implemented unambiguously without changing the existing site behavior, and the required changes are not specified.
+   - The design requires collection pages to link back to the workspace landing while remaining collection-local (`design/002-separate-collections.md:106-110`), but it does not say which pages carry that link, whether the existing collection-index link remains, or the exact relative href from `index.html`, `career.html`, `quiz.html`, `chapters/*.html` and `games/*.html`. The current wrapper derives both the stylesheet and its home link from one `root` value (`pgn_postmortem/site.py:791-818`); article, quiz, career and chapter pages currently point to the collection index or have no home link (`pgn_postmortem/site.py:1107`, `1218`, `1236`, `1387-1414`).
+   - Define an explicit workspace-home parameter/link graph for the workspace build, including the root landing page stylesheet and each page depth, and state that the default one-collection `site` command retains its current bytes/links. Add exact assertions for the workspace-home links rather than relying only on generic link resolution.
+
+4. **blocking** — A required isolation fixture is impossible under the current game identity rule, and the verification list does not cover the roadmap's API/CLI and workspace-level obligations.
+   - `design/002-separate-collections.md:118-129` asks for two profiles whose game IDs overlap and whose results differ. The current identity is computed from start position, moves, result and date (`pgn_postmortem/collection.py:23-34`, `187-199`), so two games with the same ID cannot have different `Result` headers when read through `Collection.read`. Replace this with a feasible fixture: for example, the same game with the same result present in both profiles, plus profile-specific games/results, and assert that each profile keeps its own copy and statistics.
+   - The tests do not require an end-to-end workspace CLI/manifest invocation even though the roadmap requires both CLI/API buildability (`ROADMAP.md:834-836`), nor do they require analysis-directory isolation, root landing-card title/description/count escaping, exact workspace-home links, root stylesheet generation, removal/rename cleanup, or the no-write guarantee after every invalid path/collision. Add those assertions and a regression proving the existing one-collection `site` command remains unchanged. The “profile with no analyzed games” case also needs the exact expected files and links, not only “does not create broken chapter links.”
+
+5. **blocking** — The out-of-scope boundary is not carried into the design strongly enough to constrain the new manifest/CLI surface.
+   - The record says that desktop work is later and fetching/remote credentials remain F-3 (`design/002-separate-collections.md:79-82`, `112-114`), but it has no explicit F-13 out-of-scope section covering the owner's real archive, remote sources, EPUB/PyPI work, LLM prose, the Markdown pipeline/F-12 demo, and combined statistics. More importantly, a “small local configuration file” plus a workspace command can easily become the `pgn-postmortem.toml` pipeline/config work that the governing plan places in F-3 (`docs/book-plan.md:141-161`, `ROADMAP.md:74-77`). Record whether a local profile-only manifest is part of F-13, define that it contains no fetching/output-publishing/credentials behavior, and list the remaining deferred concerns explicitly.
+
+The owner decisions and the high-level OTB/correspondence isolation are sound, but the workspace cannot be implemented and verified deterministically until these blocking contracts, cleanup/link rules, feasible fixtures, tests and boundaries are recorded.
 
 — GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
 BLOCK
