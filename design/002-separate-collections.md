@@ -116,6 +116,9 @@ copies an existing output tree to a sibling staging directory, applies the
 profile builds and cleanup there, and replaces the managed output only after
 all profiles and the landing page succeed. On validation or build failure the
 staging directory is removed and an existing output tree is unchanged.
+After the staged tree is promoted, every `Path` in `landing` and in each
+returned `SiteReport` (`articles`, `removed` and `quiz`) is rebased to the final
+`out_dir`; no report path points into the deleted staging directory.
 
 The workspace takes an ordered list of profiles. It validates all slugs and
 paths before writing anything: slugs are non-empty, ASCII, stable and unique;
@@ -198,18 +201,28 @@ are distinct when used by a future explicit analysis step.
 
 The workspace writes generated root `index.html`, `assets/style.css` and
 `.pgn-postmortem-workspace.json`. The JSON manifest is UTF-8, contains
-`{"format": 1, "slugs": [...]}`, and is itself the persisted list of managed
-profiles. The root HTML carries
+`{"format": 1, "generator": "pgn-postmortem workspace", "slugs": [...]}`, and
+is itself the persisted list of managed profiles. The root HTML carries
 `<meta name="generator" content="pgn-postmortem workspace">`; the root CSS
-starts with `/* pgn-postmortem workspace */`. Each profile gets
-`.pgn-postmortem-profile.json`, containing `{"format": 1, "slug": ..., "files": [...]}`
-with the complete generated relative file list, including `assets/style.css`.
-Generated HTML carries the existing generator marker and generated CSS carries
-the profile marker. On a rebuild, the manifest and profile manifests are read
-only when their markers and format match; removed profiles have only their
-listed generated files deleted, their marker removed, and authored files and
-directories preserved. A profile's existing `build_site` cleanup remains local
-to its slug.
+starts with `/* pgn-postmortem workspace */`. Each profile gets a marker file
+`.pgn-postmortem-profile.json`, containing
+`{"format": 1, "generator": "pgn-postmortem workspace profile", "slug": ..., "files": [...]}`
+with the complete generated relative file list, excluding the marker itself
+and including `assets/style.css`. Generated profile CSS starts with the exact
+bytes `/* pgn-postmortem workspace profile: <slug> */`; generated HTML carries
+the existing generator marker.
+
+The root manifest is trusted only when its JSON object has exactly the stated
+format/generator fields plus a string slug list, and the root HTML/CSS carry the
+exact root markers. A profile marker is trusted only when its format/generator
+fields and slug match, every listed path is normalized relative and beneath
+that profile, every listed HTML/CSS file carries its exact marker, and the
+marker file itself is adjacent to that profile. Marker files are not included
+in their own `files` list. An untrusted or malformed manifest/marker is treated
+as authored content and nothing it lists is removed. On a rebuild, trusted
+removed profiles have only their listed files and marker removed; authored
+files and directories remain. A profile's existing `build_site` cleanup remains
+local to its slug.
 
 The existing `site` command remains unchanged for users who want one collection
 without a workspace. The desktop application is not part of F-13; it will later
@@ -243,6 +256,10 @@ valid fixture. Tests must prove:
 - a failure in a later profile leaves a pre-existing output tree unchanged,
   while a successful build does not modify any input or analyzed cache file;
 - the existing one-collection `site` command's golden output remains unchanged.
+- the successful `WorkspaceReport` paths all point into the final output tree,
+  not the temporary staging tree; validation and later-profile failures assert
+  their exact exception type, slug, cause, message and unchanged output;
+- untrusted root/profile manifests and markers cannot remove authored files.
 
 The owner reads an OTB landing page and a correspondence landing page before
 merge and confirms that the collections are visibly separate. A negative
@@ -360,6 +377,36 @@ BLOCK
    - The design says `analyzed_dir` is read-only, but it does not reject an analyzed directory or input path that equals or lies inside a derived `out_dir / slug` (or another profile's managed output). In that case the workspace writes generated site files into the path it promised not to write, and the current profile-local cleanup can inspect the same tree. Define the input/cache-versus-output overlap rule and add a test that snapshots an analyzed cache and proves a successful workspace build does not modify it.
 
 The revised design fixes the prior target, API/manifest choice, analysis direction, navigation, feasible-fixture, coverage and F-3/desktop-boundary findings. The remaining report/failure and cleanup/isolation contracts must be recorded before the workspace can be implemented and approved.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+BLOCK
+
+## Review 004
+
+- **Revision covered:** `9463474ba131eac01fbeb0128f5641da164e40fe`.
+- **Target proof:** `git rev-parse --verify '9463474^{commit}'` returned `9463474ba131eac01fbeb0128f5641da164e40fe`; `git rev-parse --verify main` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; `git merge-base main 9463474` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; and `git diff --name-status 2391c4210c6bed5c5c7a08531a9cfa4012400d7e..9463474ba131eac01fbeb0128f5641da164e40fe` returned exactly `M design/002-separate-collections.md`. The worktree's unrelated modification to `scripts/update_games.sh` is outside this review.
+- **Files checked:** the target design record and Reviews 001-003; the exact merge-base diff; `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `design/README.md`, `reviews/README.md`, `PLAN.md`, `ROADMAP.md`, `docs/book-plan.md`; the current `pgn_postmortem/collection.py`, `pgn_postmortem/site.py`, `pgn_postmortem/cli.py`, `pgn_postmortem/analysis.py`, `pgn_postmortem/__init__.py`; `tests/test_site.py`, `tests/test_cli.py`, `tests/test_analysis.py`, `tests/test_selection.py`; and `pyproject.toml`. The design file list was obtained from the exact local diff from the merge-base; the other files were read as governing and implementation context.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** exact revision and merge-base verification; exact merge-base file-list and diff inspection; `git diff --check`; `.venv/bin/python -m ruff check .`; `.venv/bin/python -m pytest -q`; and read-only inspection of the current API, site writer, CLI, tests and project rules. No implementation code was changed.
+
+### Review 003 findings
+
+1. **Resolved in the contract.** `WorkspaceReport` now has its landing path and per-slug `SiteReport` mapping, configuration and build exceptions have named bases, attributes and message shape, and the staged build promises rollback of the pre-existing output on validation or profile failure (`design/002-separate-collections.md:73-118`).
+2. **Resolved in intent.** The workspace and profile manifest names and JSON shapes, root markers, generated-file tracking, removed-profile cleanup, authored-file preservation and input/cache-versus-output validation are now stated (`design/002-separate-collections.md:188-212`).
+3. **Resolved.** The navigation depths and hrefs, the unchanged one-collection command, feasible overlap fixture, API/CLI coverage, no-write checks, and explicit F-13 boundaries are recorded (`design/002-separate-collections.md:178-186`, `220-257`).
+
+### Findings
+
+1. **blocking** — The exact `WorkspaceReport` path contract is not complete once the required atomic staging is applied.
+   - `design/002-separate-collections.md:93-118` says the report contains existing `SiteReport` values, while the current `SiteReport` contains output `Path` fields (`articles`, `removed` and `quiz`). The specified implementation builds those reports in a sibling staging directory and then replaces that directory with `out_dir`; it does not say that every nested report path is rebased to the final output tree. Returning the direct reports would leave paths pointing at the deleted staging tree, while rebasing changes observable report values.
+   - Define that `WorkspaceReport.landing` and every `SiteReport` path returned in `profiles` points into the committed `out_dir` (or explicitly define another contract), and require assertions for the exact exception type, `slug`, `cause`, message and final report paths. The current test list only requires the later-profile filesystem rollback (`design/002-separate-collections.md:236-245`), so it does not close this public API contract.
+
+2. **blocking** — The manifest/profile marker format and trust rule remain underspecified.
+   - `design/002-separate-collections.md:199-210` gives exact root HTML and root CSS marker text, but says only that generated profile CSS carries “the profile marker”; it gives no marker bytes, location or relation to the profile slug. Neither JSON manifest shape contains a marker field, and “the manifest and profile manifests are read only when their markers and format match” does not say which adjacent files authenticate each manifest or which files are included in the profile `files` list.
+   - Without that rule, a foreign or stale `.pgn-postmortem-workspace.json` or `.pgn-postmortem-profile.json` containing `format: 1` can be treated as managed state and cause listed files to be deleted, contrary to the authored-file preservation promise. Specify the exact profile marker and the root/profile manifest authentication checks, including marker scope and whether marker files are tracked, then add a test that plants an untrusted manifest/marker and proves no authored file is removed.
+
+The revised design fixes the previous API/error naming, staging intent, cache/output rejection, navigation, fixture, coverage direction and out-of-scope findings. The report-path and persistent-marker details above are still necessary before the workspace contract is deterministic and implementable.
 
 — GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
 BLOCK
