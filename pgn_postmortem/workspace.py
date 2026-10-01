@@ -11,7 +11,7 @@ from pathlib import Path
 from tempfile import mkdtemp
 
 from pgn_postmortem.collection import Collection
-from pgn_postmortem.site import SiteReport, build_site, write_text
+from pgn_postmortem.site import GENERATOR, SiteReport, build_site, is_generated, write_text
 
 SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 ROOT_MANIFEST = ".pgn-postmortem-workspace.json"
@@ -93,7 +93,7 @@ class Workspace:
         slugs = set()
         outputs = []
         for profile in self.profiles:
-            if not SLUG.fullmatch(profile.slug) or profile.slug == "assets":
+            if not SLUG.fullmatch(profile.slug) or profile.slug in {"assets", "index.html"}:
                 raise WorkspaceConfigError(f"invalid collection slug: {profile.slug!r}")
             if profile.slug in slugs:
                 raise WorkspaceConfigError(f"duplicate collection slug: {profile.slug!r}")
@@ -181,6 +181,8 @@ def _mark_profile(directory: Path, slug: str, report: SiteReport) -> None:
     css = directory / "assets" / "style.css"
     css.write_text(PROFILE_CSS_MARKER.format(slug=slug) + "\n" + css.read_text(encoding="utf-8"), encoding="utf-8")
     files = {"assets/style.css", "index.html"}
+    if (directory / "career.html").is_file() and is_generated(directory / "career.html"):
+        files.add("career.html")
     files.update(path.relative_to(directory).as_posix() for path in report.articles)
     if report.quiz:
         files.add(report.quiz.relative_to(directory).as_posix())
@@ -205,11 +207,23 @@ def _clean_removed_profiles(out_dir: Path, current: set[str]) -> None:
         slugs = data["slugs"]
         if data != {"format": 1, "generator": ROOT_GENERATOR, "slugs": slugs} or not isinstance(slugs, list):
             return
-        if any(not isinstance(slug, str) or not SLUG.fullmatch(slug) or slug == "assets" for slug in slugs):
+        if any(
+            not isinstance(slug, str) or not SLUG.fullmatch(slug) or slug in {"assets", "index.html"}
+            for slug in slugs
+        ):
             return
-        if len(set(slugs)) != len(slugs) or not (out_dir / "index.html").read_text(encoding="utf-8").find(
-            '<meta name="generator" content="pgn-postmortem workspace">'
-        ) >= 0:
+        if len(set(slugs)) != len(slugs):
+            return
+        if any(
+            out_dir / slug != (out_dir / slug).resolve()
+            or out_dir not in (out_dir / slug).resolve().parents
+            for slug in slugs
+        ):
+            return
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        if '<meta name="generator" content="pgn-postmortem workspace">' not in index:
+            return
+        if not (out_dir / "assets" / "style.css").read_text(encoding="utf-8").startswith(ROOT_CSS_MARKER):
             return
         for slug in set(slugs) - current:
             _clean_profile(out_dir / slug, slug)
@@ -226,13 +240,26 @@ def _clean_profile(directory: Path, slug: str) -> None:
             return
         if not isinstance(files, list):
             return
+        validated = []
         for relative in files:
             path = Path(relative)
             if path.is_absolute() or ".." in path.parts or not _generated_profile_path(path):
                 return
             target = directory / path
-            if target.is_file() and (target.suffix == ".html" or path.as_posix() == "assets/style.css"):
-                target.unlink()
+            if (
+                not target.is_file()
+                or not target.is_relative_to(directory)
+                or not target.resolve().parent.is_relative_to(directory.resolve())
+            ):
+                return
+            if path.as_posix() == "assets/style.css":
+                if not target.read_text(encoding="utf-8").startswith(PROFILE_CSS_MARKER.format(slug=slug)):
+                    return
+            elif GENERATOR not in target.read_text(encoding="utf-8"):
+                return
+            validated.append(target)
+        for target in validated:
+            target.unlink()
         marker.unlink()
     except (OSError, ValueError, KeyError, TypeError):
         return

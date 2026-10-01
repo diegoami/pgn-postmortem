@@ -48,6 +48,8 @@ def test_workspace_api_and_manifest_cli_build_isolated_sites(tmp_path):
     assert (tmp_path / "site" / "otb" / "career.html").is_file()
     assert (tmp_path / "site" / "correspondence" / "career.html").is_file()
     assert 'href="../index.html"' in (tmp_path / "site" / "otb" / "index.html").read_text(encoding="utf-8")
+    game = next((tmp_path / "site" / "otb" / "games").glob("*.html"))
+    assert 'href="../../index.html"' in game.read_text(encoding="utf-8")
     saved = json.loads((tmp_path / "site" / ".pgn-postmortem-workspace.json").read_text(encoding="utf-8"))
     assert saved == {"format": 1, "generator": "pgn-postmortem workspace", "slugs": ["otb", "correspondence"]}
     assert main(["workspace", str(config), "--out", str(tmp_path / "cli-site"), "--no-history"]) == 0
@@ -63,6 +65,11 @@ def test_workspace_rejects_duplicate_or_unsafe_profiles_before_writing(tmp_path)
     assert not out.exists()
     with pytest.raises(WorkspaceConfigError):
         Workspace((CollectionProfile("../outside", "Bad", (FIXTURE,)),)).build(out)
+    assert not out.exists()
+    with pytest.raises(WorkspaceConfigError):
+        Workspace((CollectionProfile("index.html", "Bad", (FIXTURE,)),)).build(out)
+    with pytest.raises(WorkspaceConfigError):
+        Workspace((CollectionProfile("otb", "Bad", (FIXTURE,), analyzed_dir=out),)).build(out)
     assert not out.exists()
 
 
@@ -88,4 +95,25 @@ def test_workspace_removes_generated_removed_profile_but_keeps_authored_file(tmp
     one = Workspace((CollectionProfile("otb", "Over-the-board games", (FIXTURE,), player="Ada Example"),))
     one.build(output)
     assert not (output / "correspondence" / "index.html").exists()
+    assert authored.read_text(encoding="utf-8") == "keep"
+
+
+def test_untrusted_profile_marker_cannot_remove_authored_file(tmp_path):
+    config = manifest(tmp_path)
+    output = tmp_path / "site"
+    Workspace.from_toml(config).build(output)
+    authored = output / "correspondence" / "notes.txt"
+    authored.write_text("keep", encoding="utf-8")
+    marker = output / "correspondence" / ".pgn-postmortem-profile.json"
+    marker.write_text(
+        json.dumps({
+            "format": 1,
+            "generator": "pgn-postmortem workspace profile",
+            "slug": "correspondence",
+            "files": ["notes.txt"],
+        }),
+        encoding="utf-8",
+    )
+    one = Workspace((CollectionProfile("otb", "Over-the-board games", (FIXTURE,), player="Ada Example"),))
+    one.build(output)
     assert authored.read_text(encoding="utf-8") == "keep"

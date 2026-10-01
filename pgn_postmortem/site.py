@@ -1631,7 +1631,7 @@ def build_site(
         path = out_dir / "games" / article.filename
         html_text = article_html(
             article, previous, following, site_title=title, thresholds=thresholds, history=reading,
-            workspace_home=workspace_home,
+            workspace_home="../../index.html" if workspace_home else None,
         )
         write_text(path, html_text)
         report.articles.append(path)
@@ -1650,7 +1650,16 @@ def build_site(
         for chapter in ("wins", "losses", "draws"):
             if chapters[chapter]:
                 path = out_dir / "chapters" / f"best-{chapter}.html"
-                write_text(path, chapter_html(chapter, chapters[chapter], title, reading, workspace_home))
+                write_text(
+                    path,
+                    chapter_html(
+                        chapter,
+                        chapters[chapter],
+                        title,
+                        reading,
+                        "../../index.html" if workspace_home else None,
+                    ),
+                )
                 generated_book.append(path)
     quiz = None
     if names:
