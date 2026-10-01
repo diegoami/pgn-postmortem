@@ -109,3 +109,19 @@ blocking in this third implementation-review round.
 
 — GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
 BLOCK
+
+## Owner Waiver
+
+- **Date:** 2026-10-01.
+- **Owner decision:** waive the remaining breadth-of-workspace-contract-test
+  coverage finding at implementation stage. The normalized marker-path cleanup
+  defect was fixed in commit `57aab31` and is not waived.
+- The waiver does not waive the three gates, profile isolation behavior,
+  persisted-state safety, or the owner's required OTB/correspondence landing
+  page inspection.
+- **Owner:** Diego
+
+This is an implementation-stage waiver, not an `AGREE` verdict.
+
+— Implementer (DeepSeek V4.1 Flash)
+WAIVED
