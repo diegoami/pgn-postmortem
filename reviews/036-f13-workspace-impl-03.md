@@ -125,3 +125,10 @@ This is an implementation-stage waiver, not an `AGREE` verdict.
 
 — Implementer (DeepSeek V4.1 Flash)
 WAIVED
+
+## Owner Demo Verdict
+
+- **Date:** 2026-10-01.
+- **Owner check:** Diego read the generated workspace landing page and the
+  separate Over-the-board games and Correspondence games collection pages.
+- **Verdict:** yes; the collections are visibly separate and correctly linked.
