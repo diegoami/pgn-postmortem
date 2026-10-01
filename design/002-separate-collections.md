@@ -193,11 +193,13 @@ Profiles are validated before writing: slugs match
 `inputs` and `analyzed_dir` are read-only paths; the derived site path is
 `out_dir / slug`; absolute/traversal paths are rejected where output paths are
 accepted; and no profile output path may equal, contain or be contained by
-another profile output path. Every resolved input and analysis path is rejected
-if it equals or lies beneath any managed `out_dir / slug`; this is the cache
-isolation rule. Input paths may overlap one another because the same game is
-allowed to appear in two deliberately separate profiles. Analysis directories
-are distinct when used by a future explicit analysis step.
+another profile output path. Every resolved input and analysis path must be
+disjoint from every managed `out_dir / slug` in both directions: it cannot be
+the output, lie beneath the output, contain the output, or equal an ancestor of
+the output. This is the cache isolation rule. Input paths may overlap one
+another because the same game is allowed to appear in two deliberately
+separate profiles. Analysis directories are distinct when used by a future
+explicit analysis step.
 
 The workspace writes generated root `index.html`, `assets/style.css` and
 `.pgn-postmortem-workspace.json`. The JSON manifest is UTF-8, contains
@@ -214,15 +216,19 @@ the existing generator marker.
 
 The root manifest is trusted only when its JSON object has exactly the stated
 format/generator fields plus a string slug list, and the root HTML/CSS carry the
-exact root markers. A profile marker is trusted only when its format/generator
-fields and slug match, every listed path is normalized relative and beneath
-that profile, every listed HTML/CSS file carries its exact marker, and the
-marker file itself is adjacent to that profile. Marker files are not included
-in their own `files` list. An untrusted or malformed manifest/marker is treated
-as authored content and nothing it lists is removed. On a rebuild, trusted
-removed profiles have only their listed files and marker removed; authored
-files and directories remain. A profile's existing `build_site` cleanup remains
-local to its slug.
+exact root markers. Every persisted slug is revalidated with the same slug
+regex, reserved-name rule, uniqueness rule and resolved-path-under-`out_dir`
+rule used for new profiles before it can be used for cleanup. A profile marker
+is trusted only when its format/generator fields and slug match, every listed
+path is normalized relative and beneath that profile, every listed path is a
+regular file in the permitted generated set (`index.html`, `career.html`,
+`quiz.html`, `assets/style.css`, `chapters/*.html` or `games/*.html`), the HTML
+or CSS carries its exact marker, and the marker file itself is adjacent to that
+profile. Marker files are not included in their own `files` list. An untrusted
+or malformed manifest/marker is treated as authored content and nothing it
+lists is removed. On a rebuild, trusted removed profiles have only their
+listed files and marker removed; authored files and directories remain. A
+profile's existing `build_site` cleanup remains local to its slug.
 
 The existing `site` command remains unchanged for users who want one collection
 without a workspace. The desktop application is not part of F-13; it will later
@@ -253,6 +259,10 @@ valid fixture. Tests must prove:
   in that profile and all other profile pages;
 - invalid, duplicate, traversal and overlapping output paths fail before any
   output is written;
+- malformed-but-marker-authenticated persisted slugs and marker file lists fail
+  trust validation and cannot delete authored files;
+- both cache-under-output and cache-ancestor-of-output collisions fail before
+  any output is written;
 - a failure in a later profile leaves a pre-existing output tree unchanged,
   while a successful build does not modify any input or analyzed cache file;
 - the existing one-collection `site` command's golden output remains unchanged.
@@ -407,6 +417,35 @@ BLOCK
    - Without that rule, a foreign or stale `.pgn-postmortem-workspace.json` or `.pgn-postmortem-profile.json` containing `format: 1` can be treated as managed state and cause listed files to be deleted, contrary to the authored-file preservation promise. Specify the exact profile marker and the root/profile manifest authentication checks, including marker scope and whether marker files are tracked, then add a test that plants an untrusted manifest/marker and proves no authored file is removed.
 
 The revised design fixes the previous API/error naming, staging intent, cache/output rejection, navigation, fixture, coverage direction and out-of-scope findings. The report-path and persistent-marker details above are still necessary before the workspace contract is deterministic and implementable.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+BLOCK
+
+## Review 005
+
+- **Revision covered:** `895c683802f59f50ff1b54d4ebaa581a35ee15bb`.
+- **Target proof:** `git rev-parse --verify '895c683^{commit}'` returned `895c683802f59f50ff1b54d4ebaa581a35ee15bb`; `git rev-parse --verify 'main^{commit}'` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; `git merge-base main 895c683` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; and `git diff --name-status 2391c4210c6bed5c5c7a08531a9cfa4012400d7e..895c683802f59f50ff1b54d4ebaa581a35ee15bb` returned exactly `M design/002-separate-collections.md`.
+- **Files checked:** the complete design record including Reviews 001-004; the exact merge-base diff; `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `PLAN.md`, `ROADMAP.md`, `design/README.md`, `reviews/README.md`, `docs/book-plan.md` and `pyproject.toml`; the current `pgn_postmortem/collection.py`, `pgn_postmortem/site.py`, `pgn_postmortem/cli.py`, `pgn_postmortem/analysis.py` and `pgn_postmortem/__init__.py`; and the relevant collection, site, CLI, analysis and selection tests. The unrelated worktree modification to `scripts/update_games.sh` is outside this review.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** exact revision and merge-base verification; exact merge-base file-list verification and diff inspection; `git diff --check`; `.venv/bin/python -m ruff check .`; and `.venv/bin/python -m pytest -q`. All passed. No implementation code was changed.
+
+### Review 004 findings
+
+1. **Resolved.** The successful `WorkspaceReport` now explicitly rebases `landing` and every returned `SiteReport` path (`articles`, `removed` and `quiz`) from staging to the final `out_dir`, and the tests require those paths not to point into deleted staging (`design/002-separate-collections.md:107-121`, `259-262`).
+2. **Resolved.** The staged build has an atomic caller-visible failure contract: configuration validation occurs before output, profile failures have typed `slug`/`cause`/message details, staging is removed, and an existing output tree remains unchanged (`design/002-separate-collections.md:107-118`, `256-262`).
+3. **Resolved.** Navigation is explicit for collection-root, chapter and game depths, including the stylesheet and workspace-home links, and the existing one-collection `site` command remains unchanged (`design/002-separate-collections.md:181-189`, `247-258`).
+4. **Resolved.** The profile-only TOML/API surface, read-only analyzed-cache behavior, no-Stockfish workspace build, API/CLI parity, separate-profile fixture, marker coverage, cache/output rejection intent, tests and F-13 out-of-scope boundaries are recorded (`design/002-separate-collections.md:99-105`, `129-156`, `191-200`, `231-274`).
+
+### Findings
+
+1. **blocking** — Trusted root manifests do not revalidate persisted slugs as safe profile slugs. The root trust rule accepts any string list when the JSON object and root markers match (`design/002-separate-collections.md:202-225`), while the slug regex and reserved-name rules are stated only for newly supplied profiles (`design/002-separate-collections.md:191-197`). A trusted stale manifest containing `../outside`, an empty slug or another invalid slug could direct removed-profile cleanup outside the workspace. Require every persisted slug to satisfy the same syntax, uniqueness, reserved-name and resolved-path-under-`out_dir` checks before trusting the root manifest, and test malformed-but-marker-authenticated slug lists.
+
+2. **blocking** — The profile-marker trust rule does not constrain every listed entry to a generated regular HTML/CSS file. It requires marker checks for listed HTML/CSS files, but a listed authored text file, JSON file, directory or other non-HTML/CSS path is not excluded by the rule (`design/002-separate-collections.md:207-224`). Cleanup could therefore delete content merely because a planted marker lists it. Define the complete permitted generated path set, require each entry to be a regular generated file beneath the profile (including the exact stylesheet path), and add a regression showing that an authored non-HTML/CSS file listed by a planted marker is not removed.
+
+3. **blocking** — Cache isolation is specified only in one direction. An input or cache path is rejected when it equals or lies beneath a managed `out_dir / slug`, but a cache that contains a managed profile output is not rejected (`design/002-separate-collections.md:191-200`). For example, `analyzed_dir = out_dir` is an ancestor of every profile output and satisfies the stated one-way test while the workspace writes generated files inside the supposedly read-only cache. Require every resolved input and analysis path to be disjoint from every managed profile output in both ancestor directions, and test a cache/output ancestor collision before any write.
+
+The final design resolves the prior report-path rebasing, atomic failure, navigation, manifest shape, profile marker shape, cache/output rejection intent, test coverage and out-of-scope findings. The three persisted-state and bidirectional path-safety gaps above still prevent the cleanup and read-only guarantees from being deterministic and safe.
 
 — GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
 BLOCK
