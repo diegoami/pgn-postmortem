@@ -169,6 +169,25 @@ analyzed.build_site("site/", title="Games of Ada Example")  # the quiz is for th
 
 Quote a `**` pattern so the library, not the shell, expands it. The scripts above are unchanged by it.
 
+### F-1.3 book demo
+
+`examples/book_demo/source/capablanca.pgn` is a five-game Capablanca subset from
+[PGN Mentor's Capablanca collection](https://www.pgnmentor.com/players/Capablanca.zip),
+listed on its [free PGN downloads page](https://www.pgnmentor.com/files.html). The files are
+available for download completely free; the source page does not publish a separate open-source
+license, so the README does not claim one. The checked-in subset is the 1906 Raubitschek game and
+Marshall rounds 1, 2, 5 and 6 from 1909. The Stockfish 19, depth-22 files under
+`examples/book_demo/analyzed/` are derived/analyzed data from that source. This repository's
+distribution policy limits this demo data to non-commercial use. The originally selected Caissabase source remains documented in
+`ROADMAP.md`; its archived page is readable but its 630 MB download was not captured by Wayback.
+
+Build the separate local book demo from the committed analysis without running Stockfish:
+
+```bash
+pgn-postmortem site examples/book_demo/analyzed --player "Capablanca, Jose Raul" \
+  --title "José Raúl Capablanca" --out examples/book_demo/site
+```
+
 Every game the library writes is named `<date>-<id>.pgn` and carries two headers of its own:
 
 - `PostmortemId`, the game's content id;

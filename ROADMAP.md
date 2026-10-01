@@ -121,14 +121,26 @@ The owner confirmed on 2026-09-24 that the quoted wording of F-1 to F-3 is the o
   7. **Owner decision — the demo collection** (before F-1.3). Default: **Capablanca's games** from a
      public source whose terms allow redistribution; the builder proposes the source when F-1.3 is
      shaped for its session, and it is named in the README.
-     **Unchanged by F-12 (2026-09-26):** F-1.3's demo book is still Capablanca's games. F-12's site
-     demo of the five classic games in `examples/` may be replaced by it then.
+      **Owner decision (2026-09-27):** the planned source was the archived Caissabase release
+      ([2024-10-07 snapshot](https://web.archive.org/web/20241007103203/http://caissabase.co.uk/)),
+      whose page states that the game data is under **CC BY-NC** and that the moves are facts. Its
+      linked 630 MB download returned 404 from Wayback when F-1.3 started.
+      **Owner decision (2026-09-30):** use the five-game fallback subset from
+      [PGN Mentor's Capablanca collection](https://www.pgnmentor.com/players/Capablanca.zip), whose
+      downloads page says the files are available completely free. The README names the subset,
+      source pages and the fact that no separate open-source license is claimed. F-12's site demo of
+      the five classic games in `examples/` remains unchanged.
+      **Owner decision (2026-09-27):** keep the F-12 five-game root Pages demo and its unchanged
+      `/markdown/` demo; add the Capablanca book as a separate local demo path in F-1.3. This avoids
+      changing the already-landed F-12 contract.
   8. **Owner decision — the e-readers the EPUB must work in** (before F-1.4). Default: **Apple
      Books and Kindle** (via Send to Kindle). Alternative: add Google Play Books, which
      `docs/book-plan.md` lists too.
   9. **Owner decision — selection weights** (before F-1.3). Default: tune them on fixtures and the
      demo collection in F-1.3; tuning on the owner's archive needs it analyzed, which happens only
-     when the owner asks.
+      when the owner asks.
+      **Decided by the owner on 2026-09-27: tune them on the hand-made fixtures and the selected
+      Capablanca demo collection; do not analyze or tune on the owner's archive yet** (the default).
 
 ### F-5 — A result for games whose result was not recorded
 

@@ -1,0 +1,38 @@
+[Event "USA m"]
+[Site "New York"]
+[Date "1909.??.??"]
+[Round "2"]
+[White "Capablanca, Jose Raul"]
+[Black "Marshall, Frank James"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C63"]
+[PostmortemId "d6a0c6ad8a"]
+[PostmortemAnalysis "Stockfish 19, depth 22"]
+
+1. e4 { [%eval 0.19] } 1... e5 { [%eval 0.26] } 2. Nf3 { [%eval 0.23] } 2...
+Nc6 { [%eval 0.19] } 3. Bb5 { [%eval 0.21] } 3... f5 { [%eval 0.63] } 4. Nc3
+{ [%eval 0.58] } 4... Nf6 { [%eval 1.05] } 5. Qe2 { [%eval 0.53] } 5... Nd4
+{ [%eval 0.50] } 6. Nxd4 { [%eval 0.63] } 6... exd4 { [%eval 0.50] } 7. exf5+
+{ [%eval 0.52] } 7... Be7 { [%eval 0.48] } 8. Ne4 { [%eval 0.52] } 8... O-O
+{ [%eval 0.53] } 9. Nxf6+ { [%eval 0.57] } 9... Bxf6 { [%eval 0.55] } 10. O-O
+{ [%eval 0.55] } 10... d5 { [%eval 0.42] } 11. Bd3 { [%eval 0.28] } 11... c5
+{ [%eval 0.24] } 12. Qh5 { [%eval 0.01] } 12... Qc7 { [%eval 0.38] } 13. c4
+{ [%eval 0.15] } 13... dxc4 { [%eval 0.87] } 14. Bxc4+ { [%eval 0.91] } 14...
+Kh8 { [%eval 0.80] } 15. d3 { [%eval 0.98] } 15... Qe5 { [%eval 1.34] } 16. g4
+{ [%eval 1.51] } 16... Bd7 { [%eval 1.42] } 17. a4 { [%eval 0.92] } 17... Be7
+$6 { [%eval 2.85] } ( 17... g6 18. Qh6 Bg7 19. Bf4 Qe2 20. Qh4 gxf5 21. f3 $14
+) 18. Bd2 { [%eval 3.47] } ( 18. Bd2 Qc7 19. Bf7 Rxf7 20. Qxf7 Bd6 21. Qh5 Rf8
+$16 ) 18... Qe2 { [%eval 3.79] } 19. Rae1 { [%eval 3.98] } 19... Qxd2
+{ [%eval 4.02] } 20. Rxe7 { [%eval 3.70] } 20... Be8 $6 { [%eval 6.24] } (
+20... Bxa4 21. Bd5 Rf6 22. h4 Raf8 23. Qg5 Qxg5 24. hxg5 $18 ) 21. f6
+{ [%eval 6.28] } ( 21. f6 Qh6 22. Qxh6 gxh6 23. Rfe1 Rb8 24. h4 Bxa4 $18 )
+21... Qh6 { [%eval 6.31] } 22. Qxh6 { [%eval 6.55] } 22... gxh6
+{ [%eval 6.43] } 23. Rfe1 { [%eval 6.44] } 23... Bxa4 { [%eval 6.69] } 24. Rxb7
+{ [%eval 6.76] } 24... Rae8 { [%eval 7.16] } 25. Rxe8 { [%eval 6.75] } 25...
+Rxe8 { [%eval 6.55] } 26. Rxa7 { [%eval 6.68] } 26... Bd1 { [%eval 6.96] } 27.
+h3 { [%eval 7.04] } 27... h5 { [%eval 7.05] } 28. g5 { [%eval 7.51] } 28... h4
+{ [%eval 7.89] } 29. f4 { [%eval 8.01] } 29... Bh5 { [%eval 8.10] } 30. f5
+{ [%eval 8.29] } 30... Rf8 { [%eval 8.61] } 31. Rc7 { [%eval 8.90] } 31... Rb8
+{ [%eval 10.38] } 32. Rxc5 { [%eval 10.93] } 1-0

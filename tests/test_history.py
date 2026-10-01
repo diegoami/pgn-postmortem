@@ -88,7 +88,7 @@ def test_every_page_carries_the_script_inline_byte_identical_to_the_package_file
         assert body == script, f"{page.name}: the inlined script differs from {SCRIPT.name}"
         assert text.count("<script") == 1, page.name
         checked += 1
-    assert checked == 8  # the index, six articles and the quiz
+    assert checked == 9  # the index, six articles, career and the quiz
 
 
 def test_the_script_makes_no_network_use_and_cannot_break_out_of_its_element():
@@ -153,6 +153,9 @@ def test_the_data_attributes_are_the_named_ones_and_only_those(sites):
         if page.name == "quiz.html":  # F-9: each line carries its game and its move, as the answers do
             assert placed == {("html", "data-site"), ("li", "data-game"), ("li", "data-move")}
             quiz = [(li.attrs["data-game"], li.attrs["data-move"]) for li in dom.find_all("li")]
+            continue
+        if page.name == "career.html" or page.parent.name == "chapters":
+            assert placed == {("html", "data-site")}
             continue
         item = by_stem[page.stem]
         (article,) = dom.find_all("article")

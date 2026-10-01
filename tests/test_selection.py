@@ -1,0 +1,104 @@
+"""F-1.3's deterministic selection contract, without Stockfish."""
+
+from copy import deepcopy
+from pathlib import Path
+
+import pytest
+
+from pgn_postmortem import Collection
+from pgn_postmortem.collection import CollectedGame
+from pgn_postmortem.selection import (
+    ChapterWeights,
+    SelectionOptions,
+    SelectionWeights,
+    features,
+    select_chapters,
+)
+from pgn_postmortem.site import career_html, make_articles
+
+
+def fixture_path():
+    return Path(__file__).parent / "fixtures" / "site" / "analyzed"
+
+
+def test_default_weights_are_bound_and_invalid_options_fail():
+    options = SelectionOptions()
+    assert options.chapter_size == 5 and options.minimum_length == 20
+    assert options.weights.wins.player_accuracy == 0.30
+    with pytest.raises(ValueError):
+        ChapterWeights(0.9, 0, 0, 0, 0, 0, 0)
+    with pytest.raises(ValueError):
+        ChapterWeights(float("nan"), 0, 0, 0, 0, 0, 0)
+    with pytest.raises(ValueError):
+        SelectionOptions(chapter_size=0)
+    with pytest.raises(ValueError):
+        SelectionOptions(minimum_length=0)
+    custom = ChapterWeights(1, 0, 0, 0, 0, 0, 0)
+    assert SelectionOptions(weights=SelectionWeights(wins=custom)).weights.wins == custom
+
+
+def test_marker_only_and_partial_analysis_are_not_selection_candidates():
+    collection = Collection.read(fixture_path(), keep_analysis=True)
+    item = next(iter(collection))
+    marker_only = deepcopy(item.game)
+    for node in marker_only.mainline():
+        node.set_eval(None)
+    article = make_articles([CollectedGame(item.id, marker_only, item.origin)])[0]
+    assert features(article, {"ada example"}, 1) is None
+
+    partial = deepcopy(item.game)
+    next(iter(partial.mainline())).set_eval(None)
+    article = make_articles([CollectedGame(item.id, partial, item.origin)])[0]
+    assert features(article, {"ada example"}, 1) is None
+
+
+def test_both_sides_player_averages_side_accuracies_equally():
+    collection = Collection.read(
+        Path(__file__).parent / "fixtures" / "site" / "quiz" / "both-sides.pgn", keep_analysis=True
+    )
+    article = make_articles(collection)[0]
+    result = features(article, {"adaex", "example, ada"}, 1)
+    side_values = []
+    for side in (True, False):
+        reviews = [
+            review
+            for review in article.reviews
+            if review.mover == side and review.before is not None and review.after is not None
+        ]
+        side_values.append(1 - sum(review.loss for review in reviews) / len(reviews) / 100)
+    assert result is not None
+    assert result.player_accuracy == pytest.approx(sum(side_values) / 2)
+
+
+def test_career_opponents_are_case_insensitive():
+    collection = Collection.read(fixture_path(), keep_analysis=True)
+    articles = make_articles(collection)
+    targets = [
+        article
+        for article in articles
+        if "ada example" in {
+            (article.game.headers.get("White") or "").strip().casefold(),
+            (article.game.headers.get("Black") or "").strip().casefold(),
+        }
+    ][:2]
+    for article, value in zip(targets, ("Rival", "RIVAL"), strict=True):
+        own = (article.game.headers.get("White") or "").strip().casefold() == "ada example"
+        article.game.headers["Black" if own else "White"] = value
+    text = career_html(
+        articles,
+        {"ada example"},
+        "Ada Example",
+        "Games",
+        {chapter: [] for chapter in ("wins", "losses", "draws")},
+    )
+    assert "Rival: 2" in text and "RIVAL: 1" not in text
+
+
+def test_selection_is_mutually_exclusive_and_deterministic():
+    collection = Collection.read(fixture_path(), keep_analysis=True)
+    articles = make_articles(collection)
+    first = select_chapters(articles, {"ada example"}, SelectionOptions(minimum_length=1))
+    second = select_chapters(articles, {"ada example"}, SelectionOptions(minimum_length=1))
+    assert first == second
+    ids = [article.item.id for games in first.values() for article, _ in games]
+    assert len(ids) == len(set(ids))

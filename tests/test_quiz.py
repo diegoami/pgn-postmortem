@@ -267,8 +267,17 @@ def test_a_rebuild_without_a_player_removes_the_quiz_page_the_builder_wrote(tmp_
     assert (tmp_path / "quiz.html").is_file() and links_quiz(tmp_path)
     report = build_site(games, tmp_path)
     assert not (tmp_path / "quiz.html").exists()
-    assert report.removed == [tmp_path / "quiz.html"]
+    assert set(report.removed) == {tmp_path / "quiz.html", tmp_path / "career.html"}
     assert not links_quiz(tmp_path)
+
+
+def test_a_player_without_analyzed_games_gets_only_the_career_page(tmp_path):
+    games = Collection.read(QUIZ, keep_analysis=False)
+    build_site(games, tmp_path, **NAMES)
+    assert (tmp_path / "career.html").is_file()
+    assert not list((tmp_path / "chapters").glob("*.html"))
+    index = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert "career.html" not in index and "best-wins.html" not in index
 
 
 def test_a_quiz_page_the_builder_did_not_write_is_never_removed(tmp_path):
