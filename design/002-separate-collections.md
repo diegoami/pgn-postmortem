@@ -89,6 +89,11 @@ class Workspace:
     profiles: tuple[CollectionProfile, ...]
 
     def build(self, out_dir: str | Path, *, history: bool = True) -> WorkspaceReport: ...
+
+@dataclass(frozen=True)
+class WorkspaceReport:
+    landing: Path
+    profiles: dict[str, SiteReport]
 ```
 
 `Workspace.build` reads each profile with `Collection.read` on
@@ -99,9 +104,18 @@ the profile's `analyzed_dir`; engine path, depth/time, workers and failure
 behavior remain the existing analysis contract. An absent `analyzed_dir` is
 valid and yields the normal unanalyzed-site behavior.
 
-`WorkspaceReport` returns the landing page path and one per-profile report. A
-profile read/build failure stops the build and reports the profile slug; config
-validation happens for every profile before any output is written.
+`WorkspaceReport` returns `landing=out_dir / "index.html"` and a mapping from
+profile slug to the existing `SiteReport`. Configuration errors raise
+`WorkspaceConfigError(ValueError)` before any output is written. A profile
+read/build failure raises `WorkspaceBuildError(RuntimeError)` with public
+attributes `slug` and `cause`, and the message
+`workspace profile '<slug>' failed: <cause>`.
+
+The workspace build is staged and atomic from the caller's perspective. It
+copies an existing output tree to a sibling staging directory, applies the
+profile builds and cleanup there, and replaces the managed output only after
+all profiles and the landing page succeed. On validation or build failure the
+staging directory is removed and an existing output tree is unchanged.
 
 The workspace takes an ordered list of profiles. It validates all slugs and
 paths before writing anything: slugs are non-empty, ASCII, stable and unique;
@@ -176,14 +190,26 @@ Profiles are validated before writing: slugs match
 `inputs` and `analyzed_dir` are read-only paths; the derived site path is
 `out_dir / slug`; absolute/traversal paths are rejected where output paths are
 accepted; and no profile output path may equal, contain or be contained by
-another profile output path. Analysis directories are distinct when used by a
-future explicit analysis step.
+another profile output path. Every resolved input and analysis path is rejected
+if it equals or lies beneath any managed `out_dir / slug`; this is the cache
+isolation rule. Input paths may overlap one another because the same game is
+allowed to appear in two deliberately separate profiles. Analysis directories
+are distinct when used by a future explicit analysis step.
 
-The workspace writes generated root `index.html` and `assets/style.css` with a
-workspace generator marker and a generated manifest listing current slugs. On
-a rebuild it removes generated root files and generated files for profiles
-removed from the manifest, but never removes a file without the generator
-marker. A profile's existing `build_site` cleanup remains local to its slug.
+The workspace writes generated root `index.html`, `assets/style.css` and
+`.pgn-postmortem-workspace.json`. The JSON manifest is UTF-8, contains
+`{"format": 1, "slugs": [...]}`, and is itself the persisted list of managed
+profiles. The root HTML carries
+`<meta name="generator" content="pgn-postmortem workspace">`; the root CSS
+starts with `/* pgn-postmortem workspace */`. Each profile gets
+`.pgn-postmortem-profile.json`, containing `{"format": 1, "slug": ..., "files": [...]}`
+with the complete generated relative file list, including `assets/style.css`.
+Generated HTML carries the existing generator marker and generated CSS carries
+the profile marker. On a rebuild, the manifest and profile manifests are read
+only when their markers and format match; removed profiles have only their
+listed generated files deleted, their marker removed, and authored files and
+directories preserved. A profile's existing `build_site` cleanup remains local
+to its slug.
 
 The existing `site` command remains unchanged for users who want one collection
 without a workspace. The desktop application is not part of F-13; it will later
@@ -214,6 +240,8 @@ valid fixture. Tests must prove:
   in that profile and all other profile pages;
 - invalid, duplicate, traversal and overlapping output paths fail before any
   output is written;
+- a failure in a later profile leaves a pre-existing output tree unchanged,
+  while a successful build does not modify any input or analyzed cache file;
 - the existing one-collection `site` command's golden output remains unchanged.
 
 The owner reads an OTB landing page and a correspondence landing page before
@@ -300,6 +328,38 @@ BLOCK
    - The record says that desktop work is later and fetching/remote credentials remain F-3 (`design/002-separate-collections.md:79-82`, `112-114`), but it has no explicit F-13 out-of-scope section covering the owner's real archive, remote sources, EPUB/PyPI work, LLM prose, the Markdown pipeline/F-12 demo, and combined statistics. More importantly, a “small local configuration file” plus a workspace command can easily become the `pgn-postmortem.toml` pipeline/config work that the governing plan places in F-3 (`docs/book-plan.md:141-161`, `ROADMAP.md:74-77`). Record whether a local profile-only manifest is part of F-13, define that it contains no fetching/output-publishing/credentials behavior, and list the remaining deferred concerns explicitly.
 
 The owner decisions and the high-level OTB/correspondence isolation are sound, but the workspace cannot be implemented and verified deterministically until these blocking contracts, cleanup/link rules, feasible fixtures, tests and boundaries are recorded.
+
+— GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
+BLOCK
+
+## Review 003
+
+- **Revision covered:** `602b5948cd2232500abd6e518fdf26e82cbf0039`.
+- **Target proof:** `git rev-parse --verify 602b594` returned `602b5948cd2232500abd6e518fdf26e82cbf0039`; `git rev-parse --verify main` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; `git merge-base main 602b594` returned `2391c4210c6bed5c5c7a08531a9cfa4012400d7e`; and `git diff --name-only 2391c4210c6bed5c5c7a08531a9cfa4012400d7e..602b5948cd2232500abd6e518fdf26e82cbf0039` returned exactly `design/002-separate-collections.md`. The worktree's unrelated modification to `scripts/update_games.sh` is outside this review.
+- **Files checked:** this target design record and Reviews 001-002; the exact merge-base diff; `PRINCIPLES.md`, `AGENTS.md`, `CLAUDE.md`, `design/README.md`, `reviews/README.md`, `ROADMAP.md`, `docs/book-plan.md`; the current `pgn_postmortem/collection.py`, `pgn_postmortem/site.py`, `pgn_postmortem/cli.py`, `pgn_postmortem/__init__.py`; `tests/test_cli.py`, `tests/test_site.py`; and `pyproject.toml`. The design file list was obtained from the exact merge-base range; the other files were read as governing and implementation context.
+- **Reviewer:** GPT-5.6 Luna (`opencode/gpt-5.6-luna#high`), fresh-context OpenCode reviewer.
+- **Mode:** OpenCode, design re-review.
+- **Checks run:** exact revision verification, merge-base verification, exact merge-base file-list verification and diff inspection; review of the amended design and prior reviews; read-only inspection of the current collection, site, CLI, package export and test contracts; and boundary checks against the project rules, roadmap and book plan. No implementation or code changes were made.
+
+### Review 002 findings
+
+1. **Resolved.** The public profile and workspace values now have an explicit frozen dataclass shape, the command is unambiguously `workspace`, and the profile-only `collections.toml` schema and manifest-relative paths are specified (`design/002-separate-collections.md:61-139`). The builder is explicitly read-only with respect to analysis: it does not run Stockfish, reads the optional analyzed directory with `keep_analysis=True`, and leaves analysis options to the existing per-profile `Collection.analyze` API (`design/002-separate-collections.md:94-104`, `143-150`).
+2. **Resolved in intent.** Site output is derived from the unique slug, validation is before output, and root/profile generated-file cleanup, manifest tracking and authored-file preservation are now part of the design (`design/002-separate-collections.md:106-110`, `174-186`).
+3. **Resolved.** The workspace-home link graph is explicit for collection-root, chapter and game pages, the root stylesheet is included, and the existing one-collection command is required to retain its current output (`design/002-separate-collections.md:152-172`).
+4. **Resolved in fixture and coverage direction.** The impossible differing-result duplicate fixture is replaced with the same game and same result/date/moves in both profiles, with profile-specific games, and the verification list now includes separate API/CLI builds, cleanup, markers, links and unchanged single-site output (`design/002-separate-collections.md:192-217`).
+5. **Resolved.** The design now explicitly keeps remote fetching, publishing, credentials, scheduling and the broader F-3 configuration out of the profile-only manifest, and excludes the desktop application, EPUB/PyPI work, combined statistics, Markdown pipeline and F-12 demo (`design/002-separate-collections.md:112-139`, `223-229`).
+
+### Findings
+
+1. **blocking** -- The failure and report contract is still not implementable or reviewable deterministically.
+   - `design/002-separate-collections.md:87-104` declares `WorkspaceReport` but specifies neither its fields/types (including the landing-page field and the per-profile report mapping) nor the exception type/message contract. “Returns the landing page path and one per-profile report” and “reports the profile slug” are observable API/error behavior, not enough to make the Python API or CLI assertions exact. The existing per-site result is a concrete `SiteReport` (`pgn_postmortem/site.py:1508-1524`), but the design does not say whether the workspace report contains those reports directly or a new profile result value.
+   - Validation is promised before any write, but a read/build failure is only said to stop (`design/002-separate-collections.md:102-104`). A later profile can fail after earlier profiles have already caused `build_site` to write output (`pgn_postmortem/site.py:1604-1644`), so the design must state whether partial output is rolled back, retained and reported, or made atomic through a staging directory. Add the exact report/error contract and a test for a failure after an earlier profile, including the resulting filesystem state.
+
+2. **blocking** -- Workspace cleanup and read-only analysis isolation still lack the concrete path/marker contract needed to protect output.
+   - `design/002-separate-collections.md:182-186` requires a generated manifest and workspace marker but gives neither the manifest path/format nor the marker value and scope. A rebuild cannot reliably discover removed profiles without a named persisted manifest, and it cannot safely remove the existing profile `assets/style.css`: the current collection builder writes that file (`pgn_postmortem/site.py:1607-1609`), while its generated-file predicate recognizes only pages carrying the HTML generator meta tag (`pgn_postmortem/site.py:1532-1537`). Define the manifest filename/format, the root and profile marker rules, the complete generated-file set, and the removal behavior for a removed profile's stylesheet and directory while preserving authored files.
+   - The design says `analyzed_dir` is read-only, but it does not reject an analyzed directory or input path that equals or lies inside a derived `out_dir / slug` (or another profile's managed output). In that case the workspace writes generated site files into the path it promised not to write, and the current profile-local cleanup can inspect the same tree. Define the input/cache-versus-output overlap rule and add a test that snapshots an analyzed cache and proves a successful workspace build does not modify it.
+
+The revised design fixes the prior target, API/manifest choice, analysis direction, navigation, feasible-fixture, coverage and F-3/desktop-boundary findings. The remaining report/failure and cleanup/isolation contracts must be recorded before the workspace can be implemented and approved.
 
 — GPT-5.6 Luna (opencode/gpt-5.6-luna#high), reviewer
 BLOCK
