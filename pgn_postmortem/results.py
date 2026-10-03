@@ -220,6 +220,7 @@ def correct_results(
             continue
         if ANALYSIS_HEADER not in game.headers:
             report.skipped += 1
+            report.warnings.append(f"skipping {file}: not analyzed")
             continue
         if _tally(report, game, presume_threshold, file.name) and not dry_run:
             partial = file.with_name(file.name + ".partial")

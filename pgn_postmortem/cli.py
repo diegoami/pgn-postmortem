@@ -80,6 +80,8 @@ def cmd_read(args: argparse.Namespace) -> int:
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
+    if args.result_threshold is not None and not args.correct_results:
+        raise SystemExit("error: --result-threshold only applies with --correct-results")
     collection = read_collection(args)
 
     def progress(done: int, total: int, item: CollectedGame) -> None:
@@ -97,6 +99,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         progress=progress,
     )
     print(f"Analyzed {report.analyzed} game(s) into {args.out}; {report.skipped} already there.")
+    for change in report.corrections:
+        print(change.line())
+    if args.correct_results:
+        print(f"Corrected the result of {len(report.corrections)} game(s) analyzed now.")
     return 0
 
 

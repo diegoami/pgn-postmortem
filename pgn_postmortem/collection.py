@@ -244,7 +244,9 @@ def strip_game(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:
     out = chess.pgn.Game()
     corrected = ANALYSIS_HEADER in game.headers and ORIGINAL_RESULT_HEADER in game.headers
     for key, value in game.headers.items():
-        if key in DROPPED_HEADERS or (corrected and key == ORIGINAL_RESULT_HEADER):
+        # a game without the marker is a source: its own OriginalResult is never believed, and must not
+        # survive into the analyzed copy (where the marker would make source_result believe it)
+        if key in DROPPED_HEADERS or key == ORIGINAL_RESULT_HEADER:
             continue
         out.headers[key] = value
     if corrected:  # the correction came from the analysis, which is dropped too

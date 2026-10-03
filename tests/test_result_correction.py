@@ -158,7 +158,14 @@ def test_the_file_changes_only_in_its_headers_and_a_second_run_changes_nothing(a
     corrected = path.read_text(encoding="utf-8").splitlines()
     assert [line for line in corrected if line not in original][:2] == ['[Result "1-0"]', '[OriginalResult "0-1"]']
     assert [line for line in original if line not in corrected][:1] == ['[Result "0-1"]']
-    assert path.read_text(encoding="utf-8").count("[%eval") == 6 and original[-1].endswith("0-1")
+    # the movetext is byte for byte the same line by line, except the game's result token at the end
+    def movetext(lines):
+        return lines[lines.index("") + 1 :]
+
+    old, new = movetext(original), movetext(corrected)
+    assert len(old) == len(new) and old[:-1] == new[:-1]
+    assert old[-1].removesuffix("0-1") == new[-1].removesuffix("1-0")
+    assert len(corrected) == len(original) + 1  # the one header line added
     snapshot = {p.name: p.read_bytes() for p in analyzed.glob("*.pgn")}
     again = correct_results(analyzed)
     assert again.changes == []
@@ -250,6 +257,29 @@ def test_reading_without_the_analysis_restores_the_source_result(analyzed):
     assert "[%eval" not in str(item.game)
 
 
+def test_a_source_games_own_original_result_never_reaches_its_analyzed_copy(tmp_path, monkeypatch):
+    text = (FIXTURES / "loss-is-win.pgn").read_text(encoding="utf-8")
+    text = text[: text.index("[PostmortemAnalysis")] + text[text.index("\n1. e4") :]  # a source: no marker
+    bogus = tmp_path / "bogus.pgn"
+    bogus.write_text(text.replace('[Result "0-1"]', '[Result "0-1"]\n[OriginalResult "1-0"]'), encoding="utf-8")
+    plain = tmp_path / "plain.pgn"
+    plain.write_text(text, encoding="utf-8")
+    (source,) = Collection.read(bogus)
+    assert source.id == Collection.read(plain).games[0].id
+    assert ORIGINAL_RESULT_HEADER not in source.game.headers
+    fake_engine(monkeypatch, FIXTURES / "loss-is-win.pgn")
+    Collection.read(bogus).analyze(tmp_path / "a", depth=1, workers=1, engine_path="x")
+    (analyzed_file,) = (tmp_path / "a").glob("*.pgn")
+    assert ORIGINAL_RESULT_HEADER not in load(analyzed_file).headers
+    (analyzed,) = Collection.read(analyzed_file, keep_analysis=True)
+    assert analyzed.id == source.id and analyzed_file.name == source.filename
+    both = Collection.read([bogus, analyzed_file], keep_analysis=True)
+    assert len(both) == 1 and both.report.duplicates == 1
+    report = correct_results(tmp_path / "a")  # the bogus value is not taken as the original
+    assert [(c.old, c.new) for c in report.changes] == [("0-1", "1-0")]
+    assert results(tmp_path / "a") == {"loss-is-win.pgn": ("1-0", "0-1")}
+
+
 def test_an_original_result_header_of_a_source_game_is_not_believed(tmp_path):
     text = (FIXTURES / "not-analyzed.pgn").read_text(encoding="utf-8").replace(
         '[Result "0-1"]', '[Result "0-1"]\n[OriginalResult "1-0"]'
@@ -309,16 +339,20 @@ def test_analysis_corrects_new_games_when_asked(tmp_path, monkeypatch):
     games = Collection.read(source)
     gid = games.games[0].id
     started = fake_engine(monkeypatch, source)
-    games.analyze(tmp_path / "off", depth=1, workers=1, engine_path="x")
+    off = games.analyze(tmp_path / "off", depth=1, workers=1, engine_path="x")
+    assert off.corrections == []
     assert results(tmp_path / "off") == {"loss-is-win.pgn": ("0-1", None)}
-    games.analyze(tmp_path / "on", depth=1, workers=1, engine_path="x", correct_results=True)
+    on = games.analyze(tmp_path / "on", depth=1, workers=1, engine_path="x", correct_results=True)
+    assert [(c.path, c.old, c.new, c.kind) for c in on.corrections] == [
+        (games.games[0].filename, "0-1", "1-0", "corrected")
+    ]
     assert results(tmp_path / "on") == {"loss-is-win.pgn": ("1-0", "0-1")}
     assert len(started) == 2
     # the file name and id are those of the source, and the game is then "already analyzed"
     assert (tmp_path / "on" / games.games[0].filename).exists()
     assert analysis.analyzed_ids(tmp_path / "on") == {gid}
     report = games.analyze(tmp_path / "on", depth=1, workers=1, engine_path="x", correct_results=True)
-    assert (report.analyzed, report.skipped) == (0, 1)
+    assert (report.analyzed, report.skipped, report.corrections) == (0, 1, [])
     assert len(started) == 2
 
 
@@ -363,6 +397,67 @@ def test_the_command_line_rejects_a_bad_threshold_before_writing(analyzed):
     assert not (analyzed / "o").exists()
     missing = run_cli("correct-results", "nowhere", cwd=analyzed)
     assert missing.returncode == 1 and "no such file or directory" in missing.stderr
+
+
+FAKE_ENGINE = """#!{python}
+import sys
+import chess
+
+board = chess.Board()
+for line in sys.stdin:
+    words = line.split()
+    if not words:
+        continue
+    if words[0] == "uci":
+        print("id name Fake 1\\nuciok", flush=True)
+    elif words[0] == "isready":
+        print("readyok", flush=True)
+    elif words[0] == "position":
+        board = chess.Board() if words[1] == "startpos" else chess.Board(" ".join(words[2:8]))
+        for uci in words[words.index("moves") + 1 :] if "moves" in words else []:
+            board.push_uci(uci)
+    elif words[0] == "go":
+        move = next(iter(board.legal_moves), None)
+        cp = 275 if board.turn == chess.WHITE else -275  # White is better, from the side to move's view
+        print(f"info depth 1 score cp {{cp}}" + (f" pv {{move.uci()}}" if move else ""), flush=True)
+        print(f"bestmove {{move.uci() if move else '(none)'}}", flush=True)
+    elif words[0] == "quit":
+        break
+"""
+
+
+def test_the_command_line_analyzes_with_a_fake_engine_and_lists_the_corrections(tmp_path):
+    engine = tmp_path / "fake-engine"
+    engine.write_text(FAKE_ENGINE.format(python=sys.executable), encoding="utf-8")
+    engine.chmod(0o755)
+    src = tmp_path / "games"
+    src.mkdir()
+    for name in ("loss-is-win.pgn", "agrees.pgn"):  # recorded 0-1 and 1-0; the fake engine gives White 73%
+        text = (FIXTURES / name).read_text(encoding="utf-8")
+        source = text[: text.index("[PostmortemAnalysis")] + text[text.index("\n1. e4") :]
+        (src / name).write_text(source, encoding="utf-8")
+    run = run_cli("analyze", str(src), "--out", "out", "--depth", "1", "--workers", "1", "--engine", str(engine),
+                  "--correct-results", cwd=tmp_path)
+    assert run.returncode == 0, run.stderr
+    lines = run.stdout.splitlines()
+    assert any(line.endswith(": 0-1 -> 1-0 (Ada Example vs. Bert Sample, corrected)") for line in lines), run.stdout
+    assert lines[-1] == "Corrected the result of 1 game(s) analyzed now."
+    assert sum("->" in line for line in lines) == 1
+    assert results(tmp_path / "out") == {"loss-is-win.pgn": ("1-0", "0-1"), "agrees.pgn": ("1-0", None)}
+
+
+def test_a_result_threshold_without_correct_results_is_a_usage_error(tmp_path):
+    run = run_cli("analyze", str(FIXTURES), "--out", "o", "--result-threshold", "80", cwd=tmp_path)
+    assert run.returncode == 1 and "--result-threshold only applies with --correct-results" in run.stderr
+    assert not (tmp_path / "o").exists()
+    with pytest.raises(ValueError, match="presume_threshold"):
+        Collection([]).analyze(tmp_path / "o", presume_threshold=40)  # the library validates it, whatever the flag
+
+
+def test_a_file_that_is_not_analyzed_is_skipped_with_a_warning(analyzed):
+    report = correct_results(analyzed)
+    (warning,) = report.warnings
+    assert warning.endswith(f"{where(analyzed, 'not-analyzed.pgn').name}: not analyzed")
 
 
 # --- the site -------------------------------------------------------------------------------

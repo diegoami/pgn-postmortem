@@ -45,13 +45,16 @@ from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import chess
 import chess.engine
 import chess.pgn
 
 from pgn_postmortem.collection import ANALYSIS_HEADER, CollectedGame, analyzed_ids, format_game
+
+if TYPE_CHECKING:
+    from pgn_postmortem.results import ResultChange
 
 FALLBACK_ENGINE_PATH = "/usr/games/stockfish"  # where Debian and Ubuntu install it, off the default PATH
 
@@ -86,6 +89,7 @@ class AnalysisReport:
     analyzed: int = 0
     skipped: int = 0
     written: list[Path] = field(default_factory=list)
+    corrections: list[ResultChange] = field(default_factory=list)  # with ``correct_results``: each result rewritten
 
 
 def default_engine_path() -> str:
@@ -239,7 +243,7 @@ def analyze_games(
     from pgn_postmortem.results import PRESUME_THRESHOLD, check_presume_threshold, correct_game
 
     result_threshold = PRESUME_THRESHOLD if presume_threshold is None else presume_threshold
-    if correct_results:
+    if correct_results or presume_threshold is not None:
         check_presume_threshold(result_threshold)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -254,7 +258,7 @@ def analyze_games(
     workers = max(1, min(workers or os.cpu_count() or 1, len(todo)))
     engines: queue.Queue[chess.engine.SimpleEngine] = queue.Queue()
 
-    def run(item: CollectedGame) -> Path:
+    def run(item: CollectedGame) -> tuple[Path, ResultChange | None]:
         engine = engines.get()
         try:
             analyzed = analyze_game(engine, limit, item.game, item.id, pv_plies, thresholds)
@@ -262,13 +266,12 @@ def analyze_games(
             raise EngineFailure(f"the engine failed on {item.origin}: {err}") from err
         finally:
             engines.put(engine)
-        if correct_results:
-            correct_game(analyzed, result_threshold)
+        change = correct_game(analyzed, result_threshold, item.filename) if correct_results else None
         path = out_dir / item.filename
         partial = path.with_name(path.name + ".partial")
         partial.write_text(format_game(analyzed), encoding="utf-8")
         os.replace(partial, path)  # a run that is interrupted never leaves a half-written game behind
-        return path
+        return path, change
 
     engine_path = engine_path or default_engine_path()
     try:
@@ -286,7 +289,10 @@ def analyze_games(
             futures = {pool.submit(run, item): item for item in todo}
             try:
                 for done, future in enumerate(as_completed(futures), start=1):
-                    report.written.append(future.result())
+                    path, change = future.result()
+                    report.written.append(path)
+                    if change:
+                        report.corrections.append(change)
                     report.analyzed += 1
                     if progress:
                         progress(done, len(todo), futures[future])
@@ -302,4 +308,5 @@ def analyze_games(
             except ENGINE_ERRORS:
                 pass  # it already died
     report.written.sort()
+    report.corrections.sort(key=lambda change: change.path)
     return report
