@@ -18,6 +18,7 @@ The same steps from the command line are ``pgn-postmortem read``,
 
 from pgn_postmortem.analysis import AnalysisReport, EngineFailure, Thresholds, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection, ReadReport, find_pgn_files
+from pgn_postmortem.results import CorrectionReport, ResultChange, correct_game, correct_results, decided_result
 from pgn_postmortem.selection import (
     ChapterWeights,
     SelectionFeatures,
@@ -40,6 +41,11 @@ __all__ = [
     "AnalysisReport",
     "CollectedGame",
     "Collection",
+    "CorrectionReport",
+    "ResultChange",
+    "correct_game",
+    "correct_results",
+    "decided_result",
     "EngineFailure",
     "ReadReport",
     "ChapterWeights",

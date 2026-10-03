@@ -28,7 +28,10 @@ SHA-1 of:
 - the start position as a normalized FEN: python-chess's rendering of the
   position the ``FEN`` header sets up, and empty for the standard start, so a
   ``FEN`` header that spells out the standard start is the same as none;
-- the ``Result`` header as written (``*`` when there is none);
+- the ``Result`` header as written (``*`` when there is none), except for a
+  game the library analyzed and whose result it corrected (ROADMAP.md,
+  F-14): there, the source's value kept in ``OriginalResult`` (see
+  ``source_result``), so a correction changes no id, file name or match;
 - the ``Date`` header as written (``????.??.??``, python-chess's placeholder,
   when there is none);
 - the mainline moves in UCI.
@@ -63,6 +66,7 @@ import chess.pgn
 
 ID_HEADER = "PostmortemId"
 ANALYSIS_HEADER = "PostmortemAnalysis"  # written only by the analysis step (pgn_postmortem.analysis)
+ORIGINAL_RESULT_HEADER = "OriginalResult"  # written only by the result correction (pgn_postmortem.results)
 DROPPED_HEADERS = {"Annotator", "PlyCount", "CurrentPosition", ANALYSIS_HEADER}
 
 GLOB_CHARS = set("*?[")
@@ -184,6 +188,17 @@ def iter_games(path: Path, report: ReadReport) -> Iterator[tuple[str, chess.pgn.
         yield origin, game
 
 
+def source_result(game: chess.pgn.Game) -> str:
+    """The result the source recorded: ``OriginalResult`` for a game that
+    carries the analysis marker and the header (the result correction wrote
+    it, ``pgn_postmortem.results``), else ``Result`` as written (``*`` when
+    there is none). A source game's own ``OriginalResult`` is not believed."""
+    headers = game.headers
+    if ANALYSIS_HEADER in headers and ORIGINAL_RESULT_HEADER in headers:
+        return headers[ORIGINAL_RESULT_HEADER]
+    return headers.get("Result", "*")
+
+
 def game_id(game: chess.pgn.Game) -> str:
     """A short id computed from the game's start position, moves, result and
     date (the exact rule and what follows from it are in the module
@@ -192,7 +207,7 @@ def game_id(game: chess.pgn.Game) -> str:
     start = game.board().fen()
     parts = [
         "" if start == chess.STARTING_FEN else start,
-        game.headers.get("Result", "*"),
+        source_result(game),
         game.headers.get("Date", ""),
         " ".join(move.uci() for move in game.mainline_moves()),
     ]
@@ -227,9 +242,15 @@ def file_stem(game: chess.pgn.Game, gid: str) -> str:
 def strip_game(game: chess.pgn.Game, gid: str) -> chess.pgn.Game:
     """A copy of ``game`` with its headers and mainline moves only."""
     out = chess.pgn.Game()
+    corrected = ANALYSIS_HEADER in game.headers and ORIGINAL_RESULT_HEADER in game.headers
     for key, value in game.headers.items():
-        if key not in DROPPED_HEADERS:
-            out.headers[key] = value
+        # a game without the marker is a source: its own OriginalResult is never believed, and must not
+        # survive into the analyzed copy (where the marker would make source_result believe it)
+        if key in DROPPED_HEADERS or key == ORIGINAL_RESULT_HEADER:
+            continue
+        out.headers[key] = value
+    if corrected:  # the correction came from the analysis, which is dropped too
+        out.headers["Result"] = source_result(game)
     if "FEN" in game.headers:
         out.setup(game.board())
     out.headers[ID_HEADER] = gid
@@ -382,6 +403,15 @@ class Collection:
             path.write_text(format_game(item.game), encoding="utf-8")
             paths.append(path)
         return paths
+
+    def correct_results(self, presume_threshold: float | None = None):
+        """Correct, in memory, the result of each game that carries the
+        analysis (read with ``keep_analysis=True``) from its final position;
+        see ``pgn_postmortem.results.correct_game``. Ids are unchanged.
+        Returns the ``CorrectionReport``."""
+        from pgn_postmortem.results import correct_collection
+
+        return correct_collection(self.games, presume_threshold)
 
     def analyze(self, out_dir: str | Path, **options):
         """Analyze the games with Stockfish into ``out_dir``; see
