@@ -1,0 +1,10 @@
+[Event "Club championship"]
+[Site "Verona"]
+[Date "2013.01.05"]
+[Round "?"]
+[White "Ada Example"]
+[Black "Bert Sample"]
+[Result "*"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+
+1. e4 { [%eval 0.30] } 1... e5 { [%eval 0.30] } 2. Nf3 { [%eval 0.30] } 2... Nc6 { [%eval 0.30] } 3. Bb5 { [%eval 0.30] } 3... a6 { [%eval 2.75] } *

@@ -1,0 +1,10 @@
+[Event "Club championship"]
+[Site "Verona"]
+[Date "2013.01.09"]
+[Round "?"]
+[White "Bert Sample"]
+[Black "Ada Example"]
+[Result "1/2-1/2"]
+[PostmortemAnalysis "hand-written for the tests, not by an engine"]
+
+1. f3 { [%eval -0.50] } 1... e5 { [%eval -0.50] } 2. g4 { [%eval -3.00] } 2... Qh4# 1/2-1/2
