@@ -15,11 +15,14 @@ and SVG. There's no account and no server, and the site lives in git.
 classic games, from Chigorin–Steinitz (1892) to Carlsen–Anand (2014), with a "what would you play?"
 question at each critical moment. The Markdown pages this README describes are at the demo's
 [`/markdown/`](https://diegoami.github.io/pgn-postmortem/markdown/), and are also
-[browsable on GitHub](examples/docs/index.md). For a real collection built with the library, see
-[the author's book of their own games](https://diegoami.github.io/chessgamescollection/).
+[browsable on GitHub](examples/docs/index.md).
 
 **[→ A real collection](https://diegoami.github.io/chessgamescollection/)**: the author's own games, built with
-this library (source in [diegoami/chessgamescollection](https://github.com/diegoami/chessgamescollection)).
+this library as three separate collections (source in
+[diegoami/chessgamescollection](https://github.com/diegoami/chessgamescollection)):
+[over-the-board games](https://diegoami.github.io/chessgamescollection/otb/) (148),
+[correspondence games](https://diegoami.github.io/chessgamescollection/correspondence/) (1,068) and
+[standard games](https://diegoami.github.io/chessgamescollection/standard/) (264, played online).
 
 <table>
 <tr>
