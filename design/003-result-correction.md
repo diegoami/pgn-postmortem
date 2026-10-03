@@ -1,6 +1,6 @@
 # F-14: correct the recorded result from the final position
 
-Status: proposed
+Status: proposed (implemented; awaiting the fresh-context review)
 
 Owner decisions (2026-10-03): see `ROADMAP.md`, F-14. They are restated where
 they decide something below and marked as such.
