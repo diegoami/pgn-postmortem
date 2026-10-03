@@ -277,7 +277,7 @@ recorded, and **writes** the verdict into the game's `Result` header, keeping th
 again changes nothing, and the original is never overwritten by a corrected value. The game's id and
 file name do not change (the id is computed from the source's result), so analysis is not redone and
 the analyzed copy still matches its source. For new games, `pgn-postmortem analyze ... --correct-results
-[--result-threshold 70]` does it as each game is analyzed; in Python, `correct_results("analyzed/")`,
+[--result-threshold 70]` does it as each game is analyzed and lists each change; in Python, `correct_results("analyzed/")`,
 `Collection.correct_results()` (in memory) and `analyze(..., correct_results=True)`. It is a choice, not
 a default: a decisive result in a level position can be genuine (a time forfeit, a resignation, an
 adjudication), and the library cannot tell, so check the list. An article of a corrected game shows a

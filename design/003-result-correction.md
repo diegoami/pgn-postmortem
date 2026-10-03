@@ -77,6 +77,10 @@ otherwise None (no verdict). The threshold is validated 55-95 exactly as F-5's.
   (`OriginalResult "*"`): the header becomes definitive and agrees with what
   the site showed before.
 
+A game without the marker is a source: reading it (`strip_game`) drops any
+`OriginalResult` it carries, so the header never reaches its analyzed copy
+(where the marker would make `source_result` believe it and change the id).
+
 ### The id rule (owner decision)
 
 `game_id` hashes the **original** result: `OriginalResult` when the game
@@ -100,11 +104,13 @@ analysis, and the stripped game is a stripped game again.
   the same for the games of a collection read with `keep_analysis=True`, in
   memory (so a site can be built from corrected games without writing them).
   Not-analyzed games are skipped.
-- `analyze_games(..., correct_results=False, presume_threshold=70.0)` and
+- `analyze_games(..., correct_results=False, presume_threshold=None)` and
   `Collection.analyze(...)`: when true, each newly analyzed game is corrected
   before it is written. The threshold is validated up front, before the
-  engine starts. Games already analyzed are not touched by this option; the
-  `correct-results` command is for them.
+  engine starts, and also when given without `correct_results` (the library
+  validates it, whatever the flag). Games already analyzed are not touched by
+  this option; the `correct-results` command is for them. Each correction is
+  carried in `AnalysisReport.corrections` (a `ResultChange` each).
 - `ResultChange(path, game_id, white, black, old, new, kind)`, `kind` one of
   `corrected`, `restored`; `CorrectionReport(changes, unchanged, no_verdict,
   skipped, warnings)` with `summary()` and one line per change
@@ -117,7 +123,23 @@ analysis, and the stripped game is a stripped game again.
   line per changed game (file, players, old -> new) and the counts; with
   `--dry-run`, writes nothing. Threshold outside 55-95: exit 1 with an error
   before any file is touched.
-- `pgn-postmortem analyze ... --correct-results [--result-threshold N]`.
+- `pgn-postmortem analyze ... --correct-results [--result-threshold N]`: after
+  the usual summary, one line per correction (old -> new, as `correct-results`
+  prints it) and a count. `--result-threshold` without `--correct-results` is a
+  usage error (exit 1, before anything is done), not silently ignored.
+
+### Files and floats
+
+A corrected file is re-exported whole with `format_game`, the analysis step's
+own writer, so the library's output keeps its line wrapping and only a header
+line is added and the result token changes (a test asserts the movetext line by
+line). A hand-edited file with other wrapping would be re-wrapped. A file that
+is not analyzed is skipped with a warning.
+
+Known limitation, inherited from F-5 and left alone: the Black-side edge
+`100 - white >= threshold` can miss by a floating-point ulp for some
+centipawn values when a threshold was itself computed as `100 - win_percent(cp)`;
+it is not a one-line change that keeps F-5's rule, so F-14 does not touch it.
 
 ### The site
 
