@@ -104,7 +104,10 @@ shown like a recorded one, with no marker, everywhere outside the PGN section
 (the infobox, the lead, the end of the moves, the conclusion, the index).
 The game itself is untouched: its ``Result`` header, so its id and its file
 name, and the article's PGN section stay as the source had them. A recorded
-result is always shown as recorded.
+result is always shown as recorded: the library may have corrected it from
+the final position (ROADMAP.md, F-14, ``pgn_postmortem.results``), keeping the
+source's in ``OriginalResult``, and the article then says so (an infobox row
+and a sentence in the conclusion).
 
 **The quiz** (ROADMAP.md, F-9). ``build_site`` takes the player's name and
 aliases (``player``, ``aliases``), matched as ``Collection.read`` matches them:
@@ -175,6 +178,7 @@ import chess.svg
 from pgn_postmortem.analysis import LICHESS_THRESHOLDS, MATE_SCORE, Thresholds, classify, win_percent
 from pgn_postmortem.collection import (
     ANALYSIS_HEADER,
+    ORIGINAL_RESULT_HEADER,
     CollectedGame,
     Collection,
     date_fields,
@@ -183,6 +187,14 @@ from pgn_postmortem.collection import (
     is_number,
     player_names,
     strip_game,
+)
+from pgn_postmortem.results import (  # noqa: F401 (re-exported: they lived here before F-14)
+    NOT_RECORDED,
+    PRESUME_THRESHOLD,
+    PRESUME_THRESHOLD_RANGE,
+    check_presume_threshold,
+    decided_result,
+    final_white_chances,
 )
 from pgn_postmortem.selection import DEFAULT_SELECTION_OPTIONS, SelectionOptions, select_chapters
 
@@ -193,9 +205,6 @@ GRADES = {
 }
 POSITION_SYMBOLS = {10: "=", 13: "∞", 14: "⩲", 15: "⩱", 16: "±", 17: "∓", 18: "+−", 19: "−+"}
 RESULTS = {"1-0": "1–0", "0-1": "0–1", "1/2-1/2": "½–½"}
-NOT_RECORDED = "*"  # the PGN result of a game in progress or with an unknown result
-PRESUME_THRESHOLD = 70.0  # the winning chances (%) that make an unrecorded result a win (owner, 2026-09-24)
-PRESUME_THRESHOLD_RANGE = (55.0, 95.0)
 # White's winning chances (%) at or below which Black is winning, and at or above which White is. The owner
 # changed the shaping's 35/65 to 40/60 on 2026-09-25, so that the example game's 15. Nxc5 (47% -> 37%) is a question.
 OUTCOME_BANDS = (40.0, 60.0)
@@ -369,31 +378,6 @@ def critical_moments(
 # --- the result -----------------------------------------------------------------
 
 
-def check_presume_threshold(threshold: float) -> None:
-    """Raise ``ValueError`` unless ``threshold`` is from 55 to 95."""
-    low, high = PRESUME_THRESHOLD_RANGE
-    if not low <= threshold <= high:  # also rejects NaN
-        raise ValueError(
-            f"presume_threshold must be from {low:g} to {high:g} (a side's winning chances in percent), "
-            f"not {threshold!r}"
-        )
-
-
-def final_white_chances(game: chess.pgn.Game) -> float | None:
-    """White's winning chances (0-100) in the final position of an analyzed
-    game, from the ``[%eval]`` of its last move (a forced mate counts as 100
-    for the side with the mate), or None: not analyzed, or no eval there."""
-    if not is_analyzed(game):
-        return None
-    score = game.end().eval()
-    if score is None:
-        return None
-    white = score.white()
-    if white.is_mate():
-        return 100.0 if white > chess.engine.Cp(0) else 0.0
-    return win_percent(white.score())
-
-
 def shown_result(game: chess.pgn.Game, presume_threshold: float = PRESUME_THRESHOLD) -> str:
     """The result the site shows for ``game``, in PGN notation: its
     ``Result`` header when one is recorded; otherwise the board's result,
@@ -403,19 +387,7 @@ def shown_result(game: chess.pgn.Game, presume_threshold: float = PRESUME_THRESH
     recorded = (game.headers.get("Result") or NOT_RECORDED).strip()
     if recorded not in ("", NOT_RECORDED):
         return recorded
-    board = game.end().board()
-    if board.is_checkmate():
-        return "0-1" if board.turn == chess.WHITE else "1-0"
-    if board.is_stalemate() or board.is_insufficient_material():
-        return "1/2-1/2"
-    white = final_white_chances(game)
-    if white is None:
-        return NOT_RECORDED
-    if white >= presume_threshold:
-        return "1-0"
-    if 100 - white >= presume_threshold:
-        return "0-1"
-    return "1/2-1/2"
+    return decided_result(game, presume_threshold) or NOT_RECORDED
 
 
 def engine_line(node: chess.pgn.GameNode) -> tuple[list[chess.Move], str] | None:
@@ -780,8 +752,15 @@ class Article:
     @property
     def presumed(self) -> bool:
         """Whether the result shown was not recorded but read from the board
-        or presumed from the analysis."""
-        return self.result != self.game.headers.get("Result", NOT_RECORDED)
+        or presumed from the analysis, or corrected from the final position
+        (F-14: the source recorded something else)."""
+        return self.result != self.game.headers.get("Result", NOT_RECORDED) or self.corrected
+
+    @property
+    def corrected(self) -> bool:
+        """Whether the library corrected the ``Result`` header (the source's
+        value is in ``OriginalResult``)."""
+        return self.analyzed and ORIGINAL_RESULT_HEADER in self.game.headers
 
     @property
     def moments(self) -> list[MoveReview]:
@@ -905,6 +884,8 @@ def infobox_html(article: Article) -> str:
     opening, eco = known(headers.get("Opening")), known(headers.get("ECO"))
     if opening or eco:
         rows.append(("Opening", esc(" ".join(filter(None, [eco, opening])))))
+    if article.corrected:
+        rows.append(("Source result", esc(result_text(headers[ORIGINAL_RESULT_HEADER], "Not recorded"))))
     rows.append(("Moves", str(moves_played(article.game))))
     if value := known(headers.get("Termination")):
         rows.append(("Termination", esc(value)))
@@ -1068,6 +1049,11 @@ def conclusion_html(article: Article) -> str:
                         "so the result came from outside the position on the board: a resignation, the clock or "
                         "an adjudication."
                     )
+    if article.corrected:
+        recorded = result_text(game.headers[ORIGINAL_RESULT_HEADER], "no result")
+        sentences.append(
+            f"The source recorded {esc(recorded)}; the result was corrected from the final position."
+        )
     if termination := known(game.headers.get("Termination")):
         sentences.append(f"The source records the termination as “{esc(termination)}”.")
     if article.analyzed:

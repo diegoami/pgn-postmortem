@@ -216,6 +216,8 @@ def analyze_games(
     engine_path: str | None = None,
     pv_plies: int = DEFAULT_PV_PLIES,
     thresholds: Thresholds = LICHESS_THRESHOLDS,
+    correct_results: bool = False,
+    presume_threshold: float | None = None,
     progress: Callable[[int, int, CollectedGame], None] | None = None,
 ) -> AnalysisReport:
     """Analyze every game not yet in ``out_dir`` into ``out_dir/<date>-<id>.pgn``.
@@ -225,7 +227,20 @@ def analyze_games(
     processes run side by side (0: one per CPU). No engine is started when
     there is nothing to analyze. ``progress(done, total, game)`` is called
     after each game.
+
+    With ``correct_results``, each game analyzed now has its ``Result``
+    corrected from its final position before it is written
+    (``pgn_postmortem.results``, ROADMAP.md F-14; ``presume_threshold`` is the
+    winning chances in percent, 70 by default, 55 to 95, checked before
+    anything is written or any engine started). A game already analyzed
+    into ``out_dir`` is not touched: ``pgn_postmortem.results.correct_results``
+    corrects those without an engine.
     """
+    from pgn_postmortem.results import PRESUME_THRESHOLD, check_presume_threshold, correct_game
+
+    result_threshold = PRESUME_THRESHOLD if presume_threshold is None else presume_threshold
+    if correct_results:
+        check_presume_threshold(result_threshold)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     done_ids = analyzed_ids(out_dir)
@@ -247,6 +262,8 @@ def analyze_games(
             raise EngineFailure(f"the engine failed on {item.origin}: {err}") from err
         finally:
             engines.put(engine)
+        if correct_results:
+            correct_game(analyzed, result_threshold)
         path = out_dir / item.filename
         partial = path.with_name(path.name + ".partial")
         partial.write_text(format_game(analyzed), encoding="utf-8")
