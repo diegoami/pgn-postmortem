@@ -8,21 +8,24 @@
 
     pgn-postmortem analyze INPUT... --out DIR [--player NAME] [--alias NAME]...
                            [--depth N | --time SECONDS] [--workers N] [--engine PATH]
-                           [--correct-results [--result-threshold PERCENT]]
+                           [--correct-results [--result-policy NAME] [--result-threshold PERCENT]
+                            [--result-skip-header NAME=REGEX]...]
         Read the same way, then analyze with Stockfish every game that is not
         in DIR yet, writing it to DIR with [%eval] comments. With
         --correct-results, each game analyzed now also gets its Result corrected
         from its final position (the source's value is kept in OriginalResult).
 
-    pgn-postmortem correct-results DIR [--threshold PERCENT] [--dry-run]
-        Correct, without an engine, the Result of every analyzed game in DIR from
-        its final position: the board first (checkmate, stalemate, insufficient
-        material), else a win for a side with at least PERCENT (default 70, from
-        55 to 95) winning chances by the final [%eval], else a draw. Also when the
-        source recorded a result: a decisive result in a level position can be
-        genuine (a time forfeit, a resignation), so every change is listed and
-        the source's value is kept in the OriginalResult header. Ids and file
-        names do not change; running it again changes nothing. --dry-run only lists.
+    pgn-postmortem correct-results DIR [--policy NAME] [--threshold PERCENT]
+                           [--skip-header NAME=REGEX]... [--dry-run] [--explain]
+        Optional: nothing is corrected unless you run this (or analyze
+        --correct-results). Correct, without an engine, the Result of every
+        analyzed game in DIR from its final position, and keep the source's value
+        in the OriginalResult header. The policy (see --help) says which
+        corrections are made; a decisive result in a level position can be genuine
+        (a time forfeit, a resignation), so the default policy is not for every
+        collection. Ids and file names do not change; running it again changes
+        nothing. --dry-run only lists; --explain also lists every game kept, and why.
+        Full reference: docs/result-correction.md.
 
     pgn-postmortem site INPUT... --out DIR [--player NAME] [--alias NAME]... [--title TEXT]
                         [--site-key KEY] [--no-history]
@@ -47,7 +50,7 @@ import sys
 from pgn_postmortem import __version__
 from pgn_postmortem.analysis import DEFAULT_TIME, EngineFailure, analyze_games
 from pgn_postmortem.collection import CollectedGame, Collection
-from pgn_postmortem.results import PRESUME_THRESHOLD, correct_results
+from pgn_postmortem.results import DEFAULT_POLICY, POLICIES, PRESUME_THRESHOLD, correct_results, header_skip
 from pgn_postmortem.selection import SelectionOptions
 from pgn_postmortem.site import build_site, check_site_key, display_name
 from pgn_postmortem.workspace import Workspace
@@ -79,9 +82,39 @@ def cmd_read(args: argparse.Namespace) -> int:
     return 0
 
 
+POLICY_HELP = (
+    "which corrections are made: 'all' (default): the final position's result whenever there is one, so a "
+    "recorded decisive result in a level position becomes a draw; 'contradictions': only a recorded win or loss "
+    "reversed, or a recorded draw made decisive; 'unrecorded': only a missing or '*' result is filled in; "
+    "'board': only what the board itself decides (checkmate, stalemate, insufficient material)"
+)
+SKIP_HELP = (
+    "leave alone the games whose header NAME matches the regular expression REGEX (repeatable; any rule skips), "
+    "e.g. 'Termination=(?i)forfeit|time' or 'PostmortemId=^bf58e2afa0$'"
+)
+
+
+def skip_rule(value: str) -> str:
+    try:
+        header_skip([value])
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(str(err)) from None
+    return value
+
+
 def cmd_analyze(args: argparse.Namespace) -> int:
-    if args.result_threshold is not None and not args.correct_results:
-        raise SystemExit("error: --result-threshold only applies with --correct-results")
+    given = [
+        flag
+        for flag, value in (
+            ("--result-threshold", args.result_threshold),
+            ("--result-policy", args.result_policy),
+            ("--result-skip-header", args.result_skip_header),
+        )
+        if value not in (None, [])
+    ]
+    if given and not args.correct_results:
+        verb = "only applies" if len(given) == 1 else "only apply"
+        raise SystemExit(f"error: {' and '.join(given)} {verb} with --correct-results")
     collection = read_collection(args)
 
     def progress(done: int, total: int, item: CollectedGame) -> None:
@@ -96,9 +129,14 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         engine_path=args.engine,
         correct_results=args.correct_results,
         presume_threshold=args.result_threshold,
+        result_policy=args.result_policy,
+        result_skip=header_skip(args.result_skip_header),
         progress=progress,
     )
     print(f"Analyzed {report.analyzed} game(s) into {args.out}; {report.skipped} already there.")
+    if args.correct_results:
+        threshold = PRESUME_THRESHOLD if args.result_threshold is None else args.result_threshold
+        print(f"Policy: {args.result_policy or DEFAULT_POLICY}, threshold {threshold:g}.")
     for change in report.corrections:
         print(change.line())
     if args.correct_results:
@@ -107,11 +145,23 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
 
 def cmd_correct_results(args: argparse.Namespace) -> int:
-    report = correct_results(args.directory, presume_threshold=args.threshold, dry_run=args.dry_run)
+    report = correct_results(
+        args.directory,
+        presume_threshold=args.threshold,
+        dry_run=args.dry_run,
+        policy=args.policy,
+        skip=header_skip(args.skip_header),
+    )
     for warning in report.warnings:
         print(f"warning: {warning}", file=sys.stderr)
+    print(report.header())
+    if args.skip_header:
+        print("Skip rules: " + "; ".join(args.skip_header))
     for change in report.changes:
         print(change.line())
+    if args.explain:
+        for line in report.explain():
+            print(line)
     print(report.summary())
     return 0
 
@@ -142,6 +192,8 @@ def cmd_site(args: argparse.Namespace) -> int:
 
 def cmd_workspace(args: argparse.Namespace) -> int:
     report = Workspace.from_toml(args.manifest).build(args.out, history=args.history)
+    for slug, correction in report.corrections.items():
+        print(f"{slug}: result correction in memory. {correction.header()} {correction.summary()}")
     print(f"Wrote workspace landing page to {report.landing} with {len(report.profiles)} collection(s).")
     return 0
 
@@ -179,6 +231,17 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PERCENT",
         help=f"winning chances (55 to 95) that make a win when correcting (default {PRESUME_THRESHOLD:g})",
     )
+    analyze.add_argument(
+        "--result-policy", choices=POLICIES, metavar="NAME", help="with --correct-results, " + POLICY_HELP
+    )
+    analyze.add_argument(
+        "--result-skip-header",
+        action="append",
+        default=[],
+        type=skip_rule,
+        metavar="NAME=REGEX",
+        help="with --correct-results, " + SKIP_HELP,
+    )
     analyze.set_defaults(func=cmd_analyze)
 
     correct = sub.add_parser("correct-results", help="correct the Result of analyzed games from the final position")
@@ -190,6 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PERCENT",
         help=f"winning chances (55 to 95) that make a win (default {PRESUME_THRESHOLD:g})",
     )
+    correct.add_argument("--policy", choices=POLICIES, default=DEFAULT_POLICY, metavar="NAME", help=POLICY_HELP)
+    correct.add_argument(
+        "--skip-header", action="append", default=[], type=skip_rule, metavar="NAME=REGEX", help=SKIP_HELP
+    )
+    correct.add_argument("--explain", action="store_true", help="also list every game kept, and why")
     correct.add_argument("--dry-run", action="store_true", help="list the changes without writing anything")
     correct.set_defaults(func=cmd_correct_results)
 

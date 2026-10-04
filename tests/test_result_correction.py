@@ -383,6 +383,7 @@ def test_the_command_line_lists_corrects_and_is_idempotent(analyzed):
     assert results(analyzed)["loss-is-win.pgn"] == ("1-0", "0-1")
     again = run_cli("correct-results", str(analyzed), cwd=analyzed)
     assert again.stdout.strip().splitlines() == [
+        "Policy: all, threshold 70.",  # F-15: the policy line comes first
         "Changed 0 game(s); 8 already agree, 1 without a verdict from the final position, 1 skipped."
     ]
 
