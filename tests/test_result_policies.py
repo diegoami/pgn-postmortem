@@ -351,3 +351,44 @@ def test_invalid_manifest_values_are_rejected_before_anything_is_written(tmp_pat
 def test_profiles_default_to_no_correction():
     profile = CollectionProfile("a", "A", ())
     assert (profile.correct_results, profile.result_threshold, profile.result_skip_headers) == (None, None, ())
+
+
+@pytest.mark.parametrize("key", ["result_skip_header", "correct_result", "result_policy", "correct_results_policy"])
+def test_a_misspelled_correction_key_is_rejected_before_anything_is_written(tmp_path, analyzed, key):  # noqa: F811
+    config = manifest_for(tmp_path, analyzed, f'correct_results = "all"\n{key} = ["Site=x"]')
+    message = f"unknown collection key '{key}'.*correct_results, result_threshold"
+    with pytest.raises(WorkspaceConfigError, match=message):
+        Workspace.from_toml(config).build(tmp_path / "site")
+    assert not (tmp_path / "site").exists()
+
+
+def test_other_unknown_manifest_keys_are_still_ignored(tmp_path, analyzed):  # noqa: F811
+    config = manifest_for(tmp_path, analyzed, 'colour = "red"\nresults = 3')  # F-13's rule
+    assert Workspace.from_toml(config).build(tmp_path / "site").corrections == {}
+
+
+def test_a_skip_that_raises_leaves_every_file_unchanged(analyzed):  # noqa: F811
+    before = {p.name: p.read_bytes() for p in analyzed.glob("*.pgn")}
+    calls = []
+
+    def skip(game):
+        calls.append(game.headers["Date"])
+        if len(calls) == 4:
+            raise RuntimeError("boom")
+        return False
+
+    with pytest.raises(RuntimeError, match="boom"):
+        correct_results(analyzed, skip=skip)
+    assert len(calls) == 4 and {p.name: p.read_bytes() for p in analyzed.glob("*.pgn")} == before
+    assert not list(analyzed.glob("*.partial"))
+
+
+def test_the_feature_is_exported_from_the_package_root():
+    import pgn_postmortem
+
+    names = ["POLICIES", "check_policy", "header_skip", "GameDecision", "CorrectionReport", "ResultChange",
+             "correct_results", "correct_game", "decided_result"]  # fmt: skip
+    for name in names:
+        assert name in pgn_postmortem.__all__ and hasattr(pgn_postmortem, name), name
+    assert all(hasattr(pgn_postmortem, name) for name in pgn_postmortem.__all__)
+    assert len(set(pgn_postmortem.__all__)) == len(pgn_postmortem.__all__)

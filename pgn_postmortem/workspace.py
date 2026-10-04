@@ -24,6 +24,9 @@ PROFILE_CSS_MARKER = "/* pgn-postmortem workspace profile: {slug} */"
 GENERATED_NAMES = {"index.html", "career.html", "quiz.html"}
 
 
+CORRECTION_KEYS = ("correct_results", "result_threshold", "result_skip_headers")
+
+
 class WorkspaceConfigError(ValueError):
     """The workspace configuration is unsafe or invalid."""
 
@@ -39,6 +42,10 @@ class WorkspaceBuildError(RuntimeError):
 
 @dataclass(frozen=True)
 class CollectionProfile:
+    """One collection of a workspace: its slug and title, the ``inputs`` it reads (files, directories or globs),
+    an optional read-only ``analyzed_dir``, the player's names and its landing-page text; and, optionally,
+    the in-memory result correction (``correct_results``, ``result_threshold``, ``result_skip_headers``)."""
+
     slug: str
     title: str
     inputs: tuple[str | Path, ...]
@@ -68,6 +75,9 @@ class WorkspaceReport:
 
 @dataclass(frozen=True)
 class Workspace:
+    """Isolated collection sites under one landing page: ``from_toml`` reads the manifest, ``validate``
+    checks it and ``build`` writes the sites, with no collection's games passed to another."""
+
     profiles: tuple[CollectionProfile, ...]
 
     @classmethod
@@ -83,6 +93,13 @@ class Workspace:
         for raw in data.get("collection", []):
             if not isinstance(raw, dict):
                 raise WorkspaceConfigError("each collection must be a table")
+            for key in raw:
+                # F-13's rule: other unknown keys are ignored. The correction family is strict, since a
+                # misspelled key would silently drop a skip rule or the correction itself.
+                if key.startswith(("correct", "result_")) and key not in CORRECTION_KEYS:
+                    raise WorkspaceConfigError(
+                        f"unknown collection key {key!r}; the result-correction keys are {', '.join(CORRECTION_KEYS)}"
+                    )
             inputs = raw.get("inputs", [])
             if not isinstance(inputs, list) or not all(isinstance(value, str) for value in inputs):
                 raise WorkspaceConfigError("collection inputs must be a list of strings")

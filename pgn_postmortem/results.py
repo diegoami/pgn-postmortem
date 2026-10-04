@@ -404,7 +404,9 @@ def correct_results(
     ``presume_threshold`` is the winning chances in percent (55 to 95) that
     make a win. ``skip(game) -> bool`` is called for each analyzed game (see
     ``decide_game``); build one from header rules with ``header_skip``. With
-    ``dry_run`` nothing is written. A file that is not analyzed, holds several
+    ``dry_run`` nothing is written; otherwise files are written only after
+    every game has been decided, so an exception (a ``skip`` that raises)
+    leaves every file unchanged. A file that is not analyzed, holds several
     games or does not parse is skipped, with a warning. Returns the
     ``CorrectionReport``. Raises ``FileNotFoundError`` for a missing ``path``
     and ``ValueError`` for an invalid threshold or policy, before anything is
@@ -420,6 +422,7 @@ def correct_results(
         raise FileNotFoundError(f"no such file or directory: {path}")
 
     report = CorrectionReport(dry_run=dry_run, policy=policy, threshold=presume_threshold)
+    changed: list[tuple[Path, chess.pgn.Game]] = []
     for file in files:
         handle = io.StringIO(read_text(file))
         game = chess.pgn.read_game(handle)
@@ -431,7 +434,12 @@ def correct_results(
             report.skipped += 1
             report.warnings.append(f"skipping {file}: not analyzed")
             continue
-        if _tally(report, game, presume_threshold, file.name, policy, skip) and not dry_run:
+        if _tally(report, game, presume_threshold, file.name, policy, skip):
+            changed.append((file, game))
+    # Every decision is made (and every ``skip`` called) before the first file is written, so a ``skip``
+    # that raises leaves every file as it was.
+    if not dry_run:
+        for file, game in changed:
             partial = file.with_name(file.name + ".partial")
             partial.write_text(format_game(game), encoding="utf-8")
             os.replace(partial, file)
