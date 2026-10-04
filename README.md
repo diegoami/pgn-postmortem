@@ -266,23 +266,6 @@ recorded one, in the infobox, the lead, after the moves, in the conclusion and i
 source's `*` is left as it is: the article's PGN section shows it, and the game's id, and therefore its
 file name, is computed from that `*` result, not from the result shown.
 
-**Correcting results that the position contradicts.** A source's `Result` is sometimes wrong, a
-residue of computer analysis: the side with the won position recorded as the loser, a draw as a
-defeat. `pgn-postmortem correct-results analyzed/` applies the same rule as above (the board first,
-else a win for a side with at least 70% winning chances in the final `[%eval]`, else a draw; the
-threshold is `--threshold`, 55 to 95) to every analyzed game in the directory, also when a result is
-recorded, and **writes** the verdict into the game's `Result` header, keeping the source's value in an
-`OriginalResult` header (present only when the two differ). It needs no engine, lists each change
-(`<file>: 0-1 -> 1-0 (White vs. Black, corrected)`) with counts, and `--dry-run` only lists. Running it
-again changes nothing, and the original is never overwritten by a corrected value. The game's id and
-file name do not change (the id is computed from the source's result), so analysis is not redone and
-the analyzed copy still matches its source. For new games, `pgn-postmortem analyze ... --correct-results
-[--result-threshold 70]` does it as each game is analyzed and lists each change; in Python, `correct_results("analyzed/")`,
-`Collection.correct_results()` (in memory) and `analyze(..., correct_results=True)`. It is a choice, not
-a default: a decisive result in a level position can be genuine (a time forfeit, a resignation, an
-adjudication), and the library cannot tell, so check the list. An article of a corrected game shows a
-"Source result" row and says the source recorded something else.
-
 **The quiz.** With `--player` or `--alias` (in the library, the names the collection was read with,
 or `build_site(..., player=..., aliases=[...])`), the index links at its top to `quiz.html`: every
 critical moment where the player was the one to move, across the player's games, from the move that
@@ -316,6 +299,59 @@ the history section, the quiz's marks and the `data-` attributes.
 The site of the test fixture is committed in [`tests/golden/site/`](tests/golden/site/index.html), and
 the same site without the reading history in
 [`tests/golden/site-no-history/`](tests/golden/site-no-history/index.html).
+
+### Correcting recorded results
+
+**Optional: nothing is corrected unless you ask.** Reading, `analyze`, `site` and `workspace` never touch
+a result by default.
+
+A source's `Result` is sometimes wrong, a residue of computer analysis: the side with the won position
+recorded as the loser, a draw as a defeat. For games the library analyzed, `correct-results` reads the
+final position (the board first: checkmate, stalemate, insufficient material; else the final `[%eval]`,
+a win for a side with at least 70% winning chances, a draw otherwise) and writes the result it gives into
+the game's `Result` header, keeping the source's value in an `OriginalResult` header. No engine runs.
+
+**The caveat, honestly:** a decisive result in a level position can be genuine (a time forfeit, a
+resignation, an adjudication), and the library cannot tell. So you choose how far it may go and which
+games it must leave alone, every change is listed with its reason, and the original is always kept.
+
+| policy | what it writes |
+|---|---|
+| `all` (default) | the final position's result whenever there is one: a recorded win in a level position becomes a draw |
+| `contradictions` | only a recorded win or loss reversed, or a recorded draw made decisive; never a decisive result made a draw because the position is level, and `*` is left alone |
+| `unrecorded` | only a missing or `*` result (the rule above, written to the file) |
+| `board` | only what the board itself decides (checkmate, stalemate, insufficient material) |
+
+```console tested
+$ pgn-postmortem correct-results analyzed --policy contradictions --dry-run --explain
+Policy: contradictions, threshold 70.
+2013-01-01-30390dba02.pgn: 0-1 -> 1-0 (Ada Example vs. Bert Sample, corrected)
+2013-01-02-545b079385.pgn: kept: policy (1-0, the final position says 1/2-1/2)
+```
+
+`--threshold` (55 to 95, one value) sets the winning chances that make a win, and `--skip-header
+NAME=REGEX` (repeatable) leaves alone the games whose header matches, for example
+`--skip-header 'Termination=(?i)forfeit|time'`. `--dry-run` lists and writes nothing; `--explain` also
+says why each game was kept (`kept: agrees`, `kept: policy`, `kept: skipped`, `kept: no verdict`).
+Running again changes nothing; a narrower policy restores what it would not correct. The game's id and
+file name do not change (the id is computed from the source's result), so analysis is not redone and the
+analyzed copy still matches its source. For new games, `pgn-postmortem analyze ... --correct-results`
+(with `--result-policy`, `--result-threshold`, `--result-skip-header`) does it as each game is analyzed.
+In Python, `correct_results("analyzed/", policy="contradictions", skip=...)`,
+`Collection.correct_results(policy=...)` (in memory) and `analyze(..., correct_results=True)`. In a
+workspace manifest, per collection, in memory only (no file is rewritten):
+
+```toml tested
+[[collection]]
+slug = "otb"
+title = "Over-the-board games"
+inputs = ["analyzed"]
+correct_results = "contradictions"
+```
+
+An article of a corrected game shows a "Source result" row and says the source recorded something else.
+The full reference, with a worked example of each policy, the skip rules, undoing a correction and the
+library API, is in [`docs/result-correction.md`](docs/result-correction.md).
 
 ## Claude Code skill
 
