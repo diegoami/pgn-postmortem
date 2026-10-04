@@ -222,6 +222,8 @@ def analyze_games(
     thresholds: Thresholds = LICHESS_THRESHOLDS,
     correct_results: bool = False,
     presume_threshold: float | None = None,
+    result_policy: str | None = None,
+    result_skip: Callable[[chess.pgn.Game], bool] | None = None,
     progress: Callable[[int, int, CollectedGame], None] | None = None,
 ) -> AnalysisReport:
     """Analyze every game not yet in ``out_dir`` into ``out_dir/<date>-<id>.pgn``.
@@ -236,15 +238,30 @@ def analyze_games(
     corrected from its final position before it is written
     (``pgn_postmortem.results``, ROADMAP.md F-14; ``presume_threshold`` is the
     winning chances in percent, 70 by default, 55 to 95, checked before
-    anything is written or any engine started). A game already analyzed
+    anything is written or any engine started). ``result_policy`` (one of
+    ``pgn_postmortem.results.POLICIES``, ``all`` by default) says which
+    corrections are made and ``result_skip(game) -> bool`` leaves a game's
+    result as it is (see ``pgn_postmortem.results``); giving either without
+    ``correct_results`` raises ``ValueError``. A game already analyzed
     into ``out_dir`` is not touched: ``pgn_postmortem.results.correct_results``
     corrects those without an engine.
     """
-    from pgn_postmortem.results import PRESUME_THRESHOLD, check_presume_threshold, correct_game
+    from pgn_postmortem.results import (
+        DEFAULT_POLICY,
+        PRESUME_THRESHOLD,
+        check_policy,
+        check_presume_threshold,
+        correct_game,
+    )
 
     result_threshold = PRESUME_THRESHOLD if presume_threshold is None else presume_threshold
     if correct_results or presume_threshold is not None:
         check_presume_threshold(result_threshold)
+    if result_policy is not None:
+        check_policy(result_policy)
+    if not correct_results and (result_policy is not None or result_skip is not None):
+        raise ValueError("result_policy and result_skip only apply with correct_results=True")
+    policy = result_policy or DEFAULT_POLICY
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     done_ids = analyzed_ids(out_dir)
@@ -266,7 +283,9 @@ def analyze_games(
             raise EngineFailure(f"the engine failed on {item.origin}: {err}") from err
         finally:
             engines.put(engine)
-        change = correct_game(analyzed, result_threshold, item.filename) if correct_results else None
+        change = None
+        if correct_results:
+            change = correct_game(analyzed, result_threshold, item.filename, policy=policy, skip=result_skip)
         path = out_dir / item.filename
         partial = path.with_name(path.name + ".partial")
         partial.write_text(format_game(analyzed), encoding="utf-8")

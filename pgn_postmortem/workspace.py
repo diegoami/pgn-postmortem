@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html import escape
 from pathlib import Path
 from tempfile import mkdtemp
 
 from pgn_postmortem.collection import Collection
+from pgn_postmortem.results import CorrectionReport, check_policy, check_presume_threshold, header_skip
 from pgn_postmortem.site import GENERATOR, SiteReport, build_site, is_generated, write_text
 
 SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
@@ -21,6 +22,9 @@ PROFILE_GENERATOR = "pgn-postmortem workspace profile"
 ROOT_CSS_MARKER = "/* pgn-postmortem workspace */"
 PROFILE_CSS_MARKER = "/* pgn-postmortem workspace profile: {slug} */"
 GENERATED_NAMES = {"index.html", "career.html", "quiz.html"}
+
+
+CORRECTION_KEYS = ("correct_results", "result_threshold", "result_skip_headers")
 
 
 class WorkspaceConfigError(ValueError):
@@ -38,6 +42,10 @@ class WorkspaceBuildError(RuntimeError):
 
 @dataclass(frozen=True)
 class CollectionProfile:
+    """One collection of a workspace: its slug and title, the ``inputs`` it reads (files, directories or globs),
+    an optional read-only ``analyzed_dir``, the player's names and its landing-page text; and, optionally,
+    the in-memory result correction (``correct_results``, ``result_threshold``, ``result_skip_headers``)."""
+
     slug: str
     title: str
     inputs: tuple[str | Path, ...]
@@ -46,16 +54,30 @@ class CollectionProfile:
     aliases: tuple[str, ...] = ()
     description: str = ""
     source_label: str = ""
+    # Optional result correction (ROADMAP F-15), applied in memory when the site is built and never written to
+    # a file. None: nothing is corrected. ``correct_results`` is a policy name (``pgn_postmortem.results.POLICIES``),
+    # ``result_threshold`` the winning chances (55 to 95; default 70) and ``result_skip_headers`` ``NAME=REGEX``
+    # rules for the games to leave alone.
+    correct_results: str | None = None
+    result_threshold: float | None = None
+    result_skip_headers: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class WorkspaceReport:
+    """``landing`` is the landing page, ``profiles`` the site report of each collection and ``corrections`` the
+    ``CorrectionReport`` of each collection whose manifest asked for result correction."""
+
     landing: Path
     profiles: dict[str, SiteReport]
+    corrections: dict[str, CorrectionReport] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class Workspace:
+    """Isolated collection sites under one landing page: ``from_toml`` reads the manifest, ``validate``
+    checks it and ``build`` writes the sites, with no collection's games passed to another."""
+
     profiles: tuple[CollectionProfile, ...]
 
     @classmethod
@@ -71,6 +93,13 @@ class Workspace:
         for raw in data.get("collection", []):
             if not isinstance(raw, dict):
                 raise WorkspaceConfigError("each collection must be a table")
+            for key in raw:
+                # F-13's rule: other unknown keys are ignored. The correction family is strict, since a
+                # misspelled key would silently drop a skip rule or the correction itself.
+                if key.startswith(("correct", "result_")) and key not in CORRECTION_KEYS:
+                    raise WorkspaceConfigError(
+                        f"unknown collection key {key!r}; the result-correction keys are {', '.join(CORRECTION_KEYS)}"
+                    )
             inputs = raw.get("inputs", [])
             if not isinstance(inputs, list) or not all(isinstance(value, str) for value in inputs):
                 raise WorkspaceConfigError("collection inputs must be a list of strings")
@@ -85,6 +114,9 @@ class Workspace:
                     aliases=tuple(raw.get("aliases", [])),
                     description=raw.get("description", ""),
                     source_label=raw.get("source_label", ""),
+                    correct_results=raw.get("correct_results"),
+                    result_threshold=raw.get("result_threshold"),
+                    result_skip_headers=_skip_rules(raw.get("result_skip_headers", [])),
                 )
             )
         return cls(tuple(profiles))
@@ -93,6 +125,7 @@ class Workspace:
         slugs = set()
         outputs = []
         for profile in self.profiles:
+            _check_correction(profile)
             if not SLUG.fullmatch(profile.slug) or profile.slug in {"assets", "index.html"}:
                 raise WorkspaceConfigError(f"invalid collection slug: {profile.slug!r}")
             if profile.slug in slugs:
@@ -127,10 +160,17 @@ class Workspace:
                 shutil.copytree(out_dir, staging)
             _clean_removed_profiles(staging, {profile.slug for profile in self.profiles})
             reports: dict[str, SiteReport] = {}
+            corrections: dict[str, CorrectionReport] = {}
             for profile in self.profiles:
                 inputs = [*profile.inputs, profile.analyzed_dir] if profile.analyzed_dir else list(profile.inputs)
                 try:
                     games = Collection.read(inputs, player=profile.player, aliases=profile.aliases, keep_analysis=True)
+                    if profile.correct_results is not None:  # in memory: no file is written
+                        corrections[profile.slug] = games.correct_results(
+                            profile.result_threshold,
+                            policy=profile.correct_results,
+                            skip=header_skip(profile.result_skip_headers),
+                        )
                     report = build_site(
                         games,
                         staging / profile.slug,
@@ -156,6 +196,7 @@ class Workspace:
             return WorkspaceReport(
                 out_dir / "index.html",
                 {slug: _rebase(report, staging, out_dir) for slug, report in reports.items()},
+                corrections,
             )
         except WorkspaceBuildError:
             if staging.exists():
@@ -165,6 +206,34 @@ class Workspace:
             if staging.exists():
                 shutil.rmtree(staging)
             raise WorkspaceBuildError("workspace", error) from error
+
+
+def _skip_rules(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(isinstance(rule, str) for rule in value):
+        raise WorkspaceConfigError("result_skip_headers must be a list of NAME=REGEX strings")
+    return tuple(value)
+
+
+def _check_correction(profile: CollectionProfile) -> None:
+    """Reject an invalid result-correction setting of ``profile``, before anything is written."""
+    where = f"collection '{profile.slug}'"
+    if profile.correct_results is None:
+        if profile.result_threshold is not None or profile.result_skip_headers:
+            raise WorkspaceConfigError(
+                f"{where}: result_threshold and result_skip_headers only apply with correct_results"
+            )
+        return
+    try:
+        if not isinstance(profile.correct_results, str):
+            raise ValueError(f"correct_results must be a policy name, not {profile.correct_results!r}")
+        check_policy(profile.correct_results)
+        if profile.result_threshold is not None:
+            if isinstance(profile.result_threshold, bool) or not isinstance(profile.result_threshold, int | float):
+                raise ValueError(f"result_threshold must be a number, not {profile.result_threshold!r}")
+            check_presume_threshold(profile.result_threshold)
+        header_skip(profile.result_skip_headers)
+    except ValueError as error:
+        raise WorkspaceConfigError(f"{where}: {error}") from error
 
 
 def _rebase(report: SiteReport, old: Path, new: Path) -> SiteReport:

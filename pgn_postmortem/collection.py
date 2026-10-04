@@ -57,7 +57,7 @@ import glob
 import hashlib
 import io
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -404,14 +404,25 @@ class Collection:
             paths.append(path)
         return paths
 
-    def correct_results(self, presume_threshold: float | None = None):
+    def correct_results(
+        self,
+        presume_threshold: float | None = None,
+        *,
+        policy: str = "all",
+        skip: Callable[[chess.pgn.Game], bool] | None = None,
+    ):
         """Correct, in memory, the result of each game that carries the
-        analysis (read with ``keep_analysis=True``) from its final position;
-        see ``pgn_postmortem.results.correct_game``. Ids are unchanged.
-        Returns the ``CorrectionReport``."""
+        analysis (read with ``keep_analysis=True``) from its final position
+        under ``policy`` (``all``, ``contradictions``, ``unrecorded`` or
+        ``board``); optional, nothing is corrected unless this is called. No
+        file is written and ids are unchanged. ``presume_threshold`` is the
+        winning chances in percent (55 to 95, 70 by default); ``skip(game)``
+        leaves a game as it is when it returns true. See
+        ``pgn_postmortem.results`` and ``docs/result-correction.md``. Returns
+        the ``CorrectionReport``."""
         from pgn_postmortem.results import correct_collection
 
-        return correct_collection(self.games, presume_threshold)
+        return correct_collection(self.games, presume_threshold, policy=policy, skip=skip)
 
     def analyze(self, out_dir: str | Path, **options):
         """Analyze the games with Stockfish into ``out_dir``; see
