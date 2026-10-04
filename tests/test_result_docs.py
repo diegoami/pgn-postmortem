@@ -28,6 +28,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "site" / "corrections"
 DOCS = [REPO_ROOT / "docs" / "result-correction.md", REPO_ROOT / "README.md"]
 FENCE = re.compile(r"^```(\w+) tested\n(.*?)^```$", re.S | re.M)
+OPENING = re.compile(r"^```.*tested", re.I | re.M)  # any fence line that mentions "tested"
+EXPECTED_BLOCKS = {"result-correction.md": 10, "README.md": 2}  # tested blocks per document, fixed on purpose
 
 
 def blocks():
@@ -55,6 +57,19 @@ def commands(text: str):
             current[1].append(line)
     if current:
         yield current
+
+
+def test_no_fence_that_says_tested_is_silently_dropped_and_the_counts_are_fixed():
+    for doc in DOCS:
+        text = doc.read_text(encoding="utf-8")
+        assert len(OPENING.findall(text)) == len(FENCE.findall(text)), f"a malformed 'tested' fence in {doc.name}"
+        assert len(FENCE.findall(text)) == EXPECTED_BLOCKS[doc.name], doc.name
+
+
+def test_a_console_block_without_expected_output_is_rejected():
+    for kind, text in FENCE.findall(DOCS[0].read_text(encoding="utf-8")):
+        if kind == "console":
+            assert any(expected for _, expected in commands(text)), text
 
 
 def test_the_docs_have_tested_examples_of_every_kind():
