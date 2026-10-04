@@ -141,7 +141,8 @@ library's `skip`.
 
 `CorrectionReport` gains `policy`, `threshold` and `decisions`, a
 `GameDecision` for each analyzed game: `path`, `game_id`, `white`, `black`,
-`old`, `new` and `status`, one of `corrected`, `restored`, `kept: agrees`
+`status`, `result` (the `Result` after), `verdict` (the final position's, or none) and `change`;
+`status` is one of `corrected`, `restored`, `kept: agrees`
 (the result already is the target and the verdict), `kept: policy` (the
 policy would not change it: the game's verdict differs from the result), `kept: skipped`,
 `kept: no verdict`. `changes` is as before (the corrected and restored ones).
@@ -157,7 +158,9 @@ then one line per change, then, with `--explain`, one line per kept game
 summary; `--dry-run` prints the same, as "Would change". **Deliberate format
 change** (F-14's tests that assert the whole output of `correct-results`
 adapt): the policy line comes first, so the test of the idempotent second run,
-which compared the whole output to one line, now compares its last line.
+which compared the whole output to one line, now expects the policy line before it
+(the only F-14 test edited). Anyone scripting against the output sees a new first
+line; the README says so.
 
 ### The manifest
 
@@ -173,6 +176,18 @@ manifest checks): `correct_results` must be one of the policies, the threshold
 a number from 55 to 95, the skip rules `NAME=REGEX` strings with a valid
 regular expression, and `result_threshold` or `result_skip_headers` without
 `correct_results` is an error.
+
+### Strict keys, and writing
+
+The manifest rule of F-13 is that a key it does not know is ignored. F-15 keeps
+it for every key outside the correction family, and makes the family strict: a
+`[[collection]]` key starting with `correct` or `result_` that is not
+`correct_results`, `result_threshold` or `result_skip_headers` is a
+`WorkspaceConfigError` naming the key and the valid ones, before anything is
+written (a misspelled skip key would otherwise build the site with the
+correction and without the skip). `correct_results(path)` decides every game
+(calling `skip`) before it writes any file, so an exception leaves every file
+as it was.
 
 ### Documentation
 

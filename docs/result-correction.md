@@ -170,10 +170,10 @@ their comments), once, before the policy; it must not change the game.
 ```python tested
 from pgn_postmortem import correct_results
 
-def level_and_recorded_decisive(game):
+def club_championship_games(game):
     return game.headers["Event"] == "Club championship"
 
-report = correct_results("analyzed", policy="contradictions", skip=level_and_recorded_decisive)
+report = correct_results("analyzed", policy="contradictions", skip=club_championship_games)
 assert report.excluded == 9 and report.changes == []
 ```
 
@@ -182,13 +182,22 @@ assert report.excluded == 9 and report.changes == []
 `Result` becomes the result the policy gives, and `OriginalResult` holds the
 source's value, written **only when the two differ**. A run never overwrites
 `OriginalResult` with a corrected value. Running again changes nothing.
+Files are written only after every game has been decided, so an error (for
+example a `skip` callable that raises) leaves every file as it was.
 
 **Undo.** Correct again with a policy that would not make the correction: a
 narrower policy **restores** each game it would not have corrected (the
 original comes back and `OriginalResult` is removed; reported `restored`).
-`--policy board` after `all` leaves only the board's corrections; the source's
-result is in every game's `OriginalResult` header, and reading the source again
-(without the analysis) always gives it back.
+`--policy board` after `all` restores everything except the board's own
+corrections.
+
+**There is no command that undoes the board's own corrections or the `*`
+fills** (no `--policy none`): a game the policy still corrects stays corrected.
+To undo those, re-read the source (reading without the analysis always gives
+the source's result back, and analyzing again from it is a new, uncorrected
+copy), or copy the `OriginalResult` value back into `Result` by hand and delete
+the header. `OriginalResult` exists only on a game whose `Result` differs from
+the source's, so it is also the list of what was changed.
 
 ```console tested
 $ pgn-postmortem correct-results analyzed

@@ -349,6 +349,9 @@ inputs = ["analyzed"]
 correct_results = "contradictions"
 ```
 
+**For anyone scripting against the output:** `correct-results` and `analyze --correct-results` now
+print a `Policy: NAME, threshold T.` line first (the change lines and the summary are as before).
+
 An article of a corrected game shows a "Source result" row and says the source recorded something else.
 The full reference, with a worked example of each policy, the skip rules, undoing a correction and the
 library API, is in [`docs/result-correction.md`](docs/result-correction.md).
