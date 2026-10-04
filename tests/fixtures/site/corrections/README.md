@@ -20,3 +20,19 @@ step.
 | `stalemate-is-win.pgn` | 1-0 | the board: stalemate (from a `FEN`), with an impossible `[%eval 5.00]` | 1/2-1/2 |
 | `no-final-eval.pgn` | 1-0 | no eval, and not ended on the board | unchanged (no verdict) |
 | `not-analyzed.pgn` | 0-1 | no analysis marker | untouched |
+
+## What each policy makes of them (ROADMAP F-15, `tests/test_result_policies.py`)
+
+No game was added for the policies: these ten cover every case. A game not
+listed under a policy is left as recorded.
+
+| policy | corrected |
+|---|---|
+| `all` | `loss-is-win`, `win-is-draw`, `draw-is-loss`, `unrecorded-is-win`, `mate-score`, `checkmate-is-draw`, `stalemate-is-win` |
+| `contradictions` | `loss-is-win` (1-0), `draw-is-loss` (0-1), `mate-score` (0-1), `checkmate-is-draw` (0-1); not `win-is-draw` (a win in a level position), `unrecorded-is-win` (`*`) or `stalemate-is-win` (a draw) |
+| `unrecorded` | `unrecorded-is-win` (1-0) |
+| `board` | `checkmate-is-draw` (0-1), `stalemate-is-win` (1/2-1/2) |
+
+`tests/test_result_docs.py` copies these games, analyzed, to `analyzed/` and
+runs the documentation's examples on them: the output the docs show names these
+files and their ids, so a change to a fixture's content changes the docs.
